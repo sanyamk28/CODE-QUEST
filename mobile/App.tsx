@@ -234,23 +234,31 @@ export default function App() {
   };
 
   // -------------------------------------------------------------
-  // SCREEN 1: AUTHENTICATION SCREEN (Student ID or Google Sign-In)
+  // SCREEN 1: AUTHENTICATION SCREEN (Google Stitch UI Spec)
   // -------------------------------------------------------------
   if (currentScreen === 'auth' && !isLoggedIn) {
     return (
       <SafeAreaView style={styles.authContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#080c18" />
+        <StatusBar barStyle="light-content" backgroundColor="#060913" />
         <ScrollView contentContainerStyle={styles.authScroll}>
+          {/* Top screen header indicator */}
+          <View style={styles.authScreenTagRow}>
+            <Text style={styles.authScreenTagIcon}>📲</Text>
+            <Text style={styles.authScreenTagText}>Authentication</Text>
+          </View>
+
           <View style={styles.authCard}>
             {/* CQ Code Quest Logo */}
-            <Image 
-              source={require('./assets/icon.png')} 
-              style={styles.authLogoImage}
-              resizeMode="contain"
-            />
+            <View style={styles.authLogoBox}>
+              <Image 
+                source={require('./assets/icon.png')} 
+                style={styles.authLogoImage}
+                resizeMode="cover"
+              />
+            </View>
 
             <Text style={styles.authTitle}>CODE QUEST</Text>
-            <Text style={styles.authSubtitle}>Sign in with Student ID or Google account</Text>
+            <Text style={styles.authSubtitle}>Your complete programming assessment{'\n'}platform</Text>
 
             {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
 
@@ -258,19 +266,23 @@ export default function App() {
             <View style={styles.inputGroup}>
               <TextInput
                 style={styles.cyberInput}
-                placeholder="Student ID or Email (e.g. CQ-9921 / alex@mail.com)"
-                placeholderTextColor="#6b7280"
+                placeholder="Student Email"
+                placeholderTextColor="#64748b"
                 value={email}
                 onChangeText={setEmail}
+                keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
               />
               <TextInput
                 style={styles.cyberInput}
                 placeholder="Password"
-                placeholderTextColor="#6b7280"
+                placeholderTextColor="#64748b"
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
               <TouchableOpacity style={styles.forgotPasswordRow}>
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
@@ -282,37 +294,28 @@ export default function App() {
               style={styles.gradientLoginButton} 
               onPress={handleLogin}
               disabled={isAuthenticating}
+              activeOpacity={0.85}
             >
               <Text style={styles.gradientLoginButtonText}>
                 {isAuthenticating ? 'Authenticating...' : 'Log In  ➔'}
               </Text>
             </TouchableOpacity>
 
+            {/* OR Divider */}
             <View style={styles.orDividerRow}>
-              <View style={styles.orDividerLine} />
               <Text style={styles.orDividerText}>OR</Text>
-              <View style={styles.orDividerLine} />
             </View>
 
-            {/* Google Sign In Button */}
+            {/* Sign in with Google Button */}
             <TouchableOpacity 
               style={styles.googleAuthButton}
               onPress={handleGoogleLogin}
               disabled={isAuthenticating}
+              activeOpacity={0.85}
             >
-              <Text style={styles.googleGLogo}>🔵</Text>
+              <Text style={styles.googleGLogo}>G</Text>
               <Text style={styles.googleAuthButtonText}>
                 {isAuthenticating ? 'Connecting...' : 'Sign in with Google'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* New Student Sequence Link */}
-            <TouchableOpacity 
-              onPress={() => setCurrentScreen('onboarding')}
-              style={{ marginTop: 18, marginBottom: 8 }}
-            >
-              <Text style={{ color: '#60a5fa', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
-                🚀  New Student? Initialize Custom Sequence
               </Text>
             </TouchableOpacity>
 
@@ -328,8 +331,8 @@ export default function App() {
                     setCurrentScreen('dashboard');
                   }
                 }}
-                trackColor={{ false: '#1f2937', true: '#3b82f6' }}
-                thumbColor={guestMode ? '#ffffff' : '#9ca3af'}
+                trackColor={{ false: '#1e2748', true: '#5b82ff' }}
+                thumbColor="#ffffff"
               />
             </View>
           </View>
@@ -1290,244 +1293,195 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.9,
     shadowRadius: 20,
   },
-  wireframeRing1: {
-    position: 'absolute',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 1,
-    borderColor: '#60a5fa',
-    transform: [{ rotate: '45deg' }],
-  },
-  wireframeRing2: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 1,
-    borderColor: '#c084fc',
-    transform: [{ rotate: '120deg' }],
-  },
-  wireframeRing3: {
-    position: 'absolute',
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    borderWidth: 1,
-    borderColor: 'rgba(96, 165, 250, 0.4)',
-  },
-  splashCard: {
-    width: '100%',
-    backgroundColor: '#0d1326',
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    alignItems: 'center',
-  },
-  splashTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 2,
-    marginBottom: 12,
-  },
-  splashSubtitle: {
-    fontSize: 13,
-    color: '#94a3b8',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  splashSubtitleHighlight: {
-    color: '#2dd4bf',
-    fontWeight: '700',
-  },
-  systemInitButton: {
-    width: '100%',
-    backgroundColor: '#111936',
-    borderWidth: 1,
-    borderColor: '#2563eb',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  systemInitButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  authenticateButton: {
-    width: '100%',
-    backgroundColor: '#0a0f20',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  authenticateButtonText: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  progressContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  progressBarBackground: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#1e293b',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#60a5fa',
-  },
-  progressText: {
-    fontFamily: 'monospace',
-    color: '#60a5fa',
-    fontSize: 11,
-    letterSpacing: 1,
-  },
-
-  // AUTH SCREEN
+  // -------------------------------------------------------------
+  // AUTH SCREEN (Google Stitch UI Spec)
+  // -------------------------------------------------------------
   authContainer: {
     flex: 1,
     backgroundColor: '#060913',
   },
   authScroll: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 30,
     justifyContent: 'center',
     minHeight: '100%',
   },
+  authScreenTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    alignSelf: 'flex-start',
+  },
+  authScreenTagIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  authScreenTagText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
   authCard: {
     backgroundColor: '#0d1326',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 32,
     borderWidth: 1,
     borderColor: '#1e293b',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  authLogoBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    backgroundColor: '#101735',
+    borderWidth: 1,
+    borderColor: '#243260',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 18,
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    elevation: 10,
+    overflow: 'hidden',
   },
   authLogoImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    marginBottom: 16,
+    width: '100%',
+    height: '100%',
   },
   authTitle: {
     fontSize: 24,
     fontWeight: '900',
     color: '#ffffff',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    marginBottom: 8,
   },
   authSubtitle: {
     fontSize: 12,
     color: '#94a3b8',
     textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 20,
+    lineHeight: 18,
+    marginBottom: 24,
   },
   errorText: {
     color: '#ef4444',
     fontSize: 12,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   inputGroup: {
     width: '100%',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   cyberInput: {
     width: '100%',
-    backgroundColor: '#131c38',
-    borderRadius: 10,
+    backgroundColor: '#080d1e',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#192340',
     color: '#ffffff',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 13,
     fontFamily: 'monospace',
     marginBottom: 12,
   },
   forgotPasswordRow: {
     alignSelf: 'flex-end',
+    marginTop: 2,
   },
   forgotPasswordText: {
     color: '#60a5fa',
     fontSize: 11,
     fontFamily: 'monospace',
+    fontWeight: '600',
   },
   gradientLoginButton: {
     width: '100%',
-    backgroundColor: '#3b82f6',
-    borderRadius: 10,
-    paddingVertical: 14,
+    backgroundColor: '#5b82ff',
+    borderRadius: 12,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+    shadowColor: '#5b82ff',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
   },
   gradientLoginButtonText: {
     color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   orDividerRow: {
-    flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     marginVertical: 12,
   },
-  orDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#1e293b',
-  },
   orDividerText: {
-    color: '#6b7280',
+    color: '#64748b',
     fontSize: 10,
-    marginHorizontal: 10,
     fontFamily: 'monospace',
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   googleAuthButton: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#131c38',
-    borderRadius: 10,
+    backgroundColor: '#13192f',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    paddingVertical: 12,
-    marginBottom: 20,
+    borderColor: '#1e2748',
+    paddingVertical: 14,
+    marginBottom: 24,
   },
   googleGLogo: {
     fontSize: 16,
+    fontWeight: '900',
+    color: '#ea4335',
     marginRight: 10,
   },
   googleAuthButtonText: {
     color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
   guestModeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingTop: 10,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#1e293b',
+    borderTopColor: '#17203a',
   },
   guestModeText: {
     color: '#94a3b8',
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 6,
+    backgroundColor: '#1e293b',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#60a5fa',
+    borderRadius: 3,
   },
 
   // ONBOARDING
