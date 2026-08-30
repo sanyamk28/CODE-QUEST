@@ -17,6 +17,7 @@ import {
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import * as DocumentPicker from 'expo-document-picker';
 import { firebaseAuthSignIn } from './firebase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -802,8 +803,76 @@ export default function App() {
   // SCREEN 6: LEARNING ROADMAP TAB
   // -------------------------------------------------------------
   const [sqlModuleExpanded, setSqlModuleExpanded] = useState(true);
+  const [resumeFileName, setResumeFileName] = useState<string | null>(null);
   const [resumeAnalyzing, setResumeAnalyzing] = useState(false);
-  const [resumeScore, setResumeScore] = useState(87);
+  const [resumeAnalysisResult, setResumeAnalysisResult] = useState({
+    score: 87,
+    matchedSkills: ['✓ Python', '✓ React', '✓ Node.js', '✓ SQL'],
+    missingSkills: ['✕ Docker', '✕ CI/CD', '✕ Kubernetes'],
+    predictedQuestions: [
+      'Can you describe a time you optimized a slow-performing SQL query?',
+      'How do you manage state in a complex React application?'
+    ],
+    feedback: 'Strong alignment with Software Engineer track. Good project quantification.'
+  });
+
+  const pickAndAnalyzeResume = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true
+      });
+
+      if (result.type === 'success') {
+        const fileName = result.name || 'Student_Resume.pdf';
+        setResumeFileName(fileName);
+        setResumeAnalyzing(true);
+
+        setTimeout(() => {
+          setResumeAnalyzing(false);
+          const isData = targetRole.toLowerCase().includes('data') || fileName.toLowerCase().includes('data');
+          const isSWE = targetRole.toLowerCase().includes('software') || fileName.toLowerCase().includes('software') || fileName.toLowerCase().includes('swe');
+
+          if (isData) {
+            setResumeAnalysisResult({
+              score: 92,
+              matchedSkills: ['✓ SQL', '✓ Python', '✓ ETL Pipelines', '✓ PostgreSQL', '✓ Pandas'],
+              missingSkills: ['✕ Apache Spark', '✕ Airflow', '✕ Snowflake'],
+              predictedQuestions: [
+                'How do you handle schema drift and deduplication in a daily ETL pipeline?',
+                'Explain how you optimize partitioning and indexing in analytical databases.'
+              ],
+              feedback: 'Outstanding SQL & database experience. Consider adding distributed processing frameworks.'
+            });
+          } else if (isSWE) {
+            setResumeAnalysisResult({
+              score: 89,
+              matchedSkills: ['✓ Python', '✓ JavaScript', '✓ React', '✓ REST APIs', '✓ Git'],
+              missingSkills: ['✕ Docker', '✕ Kubernetes', '✕ CI/CD Pipelines'],
+              predictedQuestions: [
+                'Can you describe a time you optimized a slow-performing database query or algorithmic bottleneck?',
+                'How do you structure microservice communications and error handling?'
+              ],
+              feedback: 'Great architectural and full-stack background. High ATS parsing compatibility.'
+            });
+          } else {
+            setResumeAnalysisResult({
+              score: 86,
+              matchedSkills: ['✓ Docker', '✓ Linux', '✓ AWS Cloud', '✓ Git', '✓ Python'],
+              missingSkills: ['✕ Terraform', '✕ Prometheus', '✕ Helm'],
+              predictedQuestions: [
+                'Describe how you configure rolling deployments with zero downtime in Kubernetes.',
+                'How do you manage infrastructure as code and state locking in production?'
+              ],
+              feedback: 'Solid infrastructure background. Good keyword density.'
+            });
+          }
+        }, 1200);
+      }
+    } catch (err) {
+      console.warn("Document picker error:", err);
+    }
+  };
 
   const renderRoadmap = () => (
     <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
@@ -1005,26 +1074,26 @@ export default function App() {
           <Text style={styles.cardHeaderSmall}>💠  AI Resume ATS Scanner</Text>
         </View>
         
-        <View style={styles.uploadDashedBox}>
+        <TouchableOpacity 
+          style={styles.uploadDashedBox}
+          onPress={pickAndAnalyzeResume}
+          activeOpacity={0.8}
+        >
           <Text style={styles.uploadCloudIcon}>☁️</Text>
-          <Text style={styles.uploadMainText}>Drag and drop your PDF resume here</Text>
-          <Text style={styles.uploadSubText}>Max file size: 5MB</Text>
+          <Text style={styles.uploadMainText}>
+            {resumeFileName ? `Selected: ${resumeFileName}` : 'Drag and drop your PDF resume here'}
+          </Text>
+          <Text style={styles.uploadSubText}>PDF, DOC, DOCX · Max file size: 5MB</Text>
 
           <TouchableOpacity 
             style={styles.browseFilesButton}
-            onPress={() => {
-              setResumeAnalyzing(true);
-              setTimeout(() => {
-                setResumeAnalyzing(false);
-                setResumeScore(87);
-              }, 1200);
-            }}
+            onPress={pickAndAnalyzeResume}
           >
             <Text style={styles.browseFilesButtonText}>
-              {resumeAnalyzing ? 'ANALYZING RESUME...' : 'BROWSE FILES'}
+              {resumeAnalyzing ? 'ANALYZING PROFILE & ATS...' : 'BROWSE FILES'}
             </Text>
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Analysis Results Card */}
@@ -1035,20 +1104,32 @@ export default function App() {
             <Text style={styles.analysisHeaderTitle}>Analysis Results</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.atsScoreLarge}>87<Text style={styles.atsScoreSmall}>/100</Text></Text>
+            <Text style={styles.atsScoreLarge}>
+              {resumeAnalysisResult.score}<Text style={styles.atsScoreSmall}>/100</Text>
+            </Text>
             <Text style={styles.atsScoreLabel}>ATS MATCH SCORE</Text>
           </View>
         </View>
 
         {/* Score Progress Bar */}
         <View style={[styles.progressBarBackground, { marginVertical: 12 }]}>
-          <View style={[styles.progressBarFill, { width: '87%', backgroundColor: '#3b82f6' }]} />
+          <View 
+            style={[
+              styles.progressBarFill, 
+              { width: `${resumeAnalysisResult.score}%`, backgroundColor: '#3b82f6' }
+            ]} 
+          />
         </View>
 
+        {/* Feedback description */}
+        <Text style={[styles.profileBioText, { textAlign: 'left', marginBottom: 12 }]}>
+          💡 {resumeAnalysisResult.feedback}
+        </Text>
+
         {/* Skills Match */}
-        <Text style={styles.atsSectionSubtitle}>SKILLS MATCH</Text>
+        <Text style={styles.atsSectionSubtitle}>SKILLS MATCH ({targetRole})</Text>
         <View style={styles.atsPillGrid}>
-          {['✓ Python', '✓ React', '✓ Node.js', '✓ SQL'].map(skill => (
+          {resumeAnalysisResult.matchedSkills.map(skill => (
             <View key={skill} style={styles.skillMatchedPill}>
               <Text style={styles.skillMatchedPillText}>{skill}</Text>
             </View>
@@ -1058,7 +1139,7 @@ export default function App() {
         {/* Missing Keywords */}
         <Text style={styles.atsSectionSubtitle}>MISSING KEYWORDS</Text>
         <View style={styles.atsPillGrid}>
-          {['✕ Docker', '✕ CI/CD', '✕ Kubernetes'].map(skill => (
+          {resumeAnalysisResult.missingSkills.map(skill => (
             <View key={skill} style={styles.skillMissingPill}>
               <Text style={styles.skillMissingPillText}>{skill}</Text>
             </View>
@@ -1066,17 +1147,12 @@ export default function App() {
         </View>
 
         {/* Predicted Questions */}
-        <Text style={styles.atsSectionSubtitle}>🔮  PREDICTED QUESTIONS</Text>
-        <View style={styles.predictedQuestionCard}>
-          <Text style={styles.predictedQuestionText}>
-            "Can you describe a time you optimized a slow-performing SQL query?"
-          </Text>
-        </View>
-        <View style={styles.predictedQuestionCard}>
-          <Text style={styles.predictedQuestionText}>
-            "How do you manage state in a complex React application?"
-          </Text>
-        </View>
+        <Text style={styles.atsSectionSubtitle}>🔮  AI PREDICTED INTERVIEW QUESTIONS</Text>
+        {resumeAnalysisResult.predictedQuestions.map((q, idx) => (
+          <View key={idx} style={styles.predictedQuestionCard}>
+            <Text style={styles.predictedQuestionText}>"{q}"</Text>
+          </View>
+        ))}
 
         {/* Logout button */}
         <TouchableOpacity 
