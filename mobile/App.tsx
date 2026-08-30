@@ -799,45 +799,286 @@ export default function App() {
   };
 
   // -------------------------------------------------------------
-  // SCREEN 6: ROADMAP TAB
+  // SCREEN 6: LEARNING ROADMAP TAB
   // -------------------------------------------------------------
+  const [sqlModuleExpanded, setSqlModuleExpanded] = useState(true);
+  const [resumeAnalyzing, setResumeAnalyzing] = useState(false);
+  const [resumeScore, setResumeScore] = useState(87);
+
   const renderRoadmap = () => (
     <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
-      <View style={styles.problemBannerCard}>
-        <Text style={styles.problemMainTitle}>🎯 {targetRole} Roadmap</Text>
-        <Text style={styles.descBody}>Master key concepts tailored to crack tech interviews.</Text>
+      {/* Header Bar */}
+      <View style={styles.dashHeader}>
+        <View style={styles.dashBrandRow}>
+          <Image source={require('./assets/icon.png')} style={styles.dashLogoIcon} />
+          <Text style={styles.dashBrandTitle}>CODE QUEST</Text>
+        </View>
+        <TouchableOpacity style={styles.headerIconButton}>
+          <Text style={{ fontSize: 16 }}>🔔</Text>
+        </TouchableOpacity>
       </View>
 
-      {INITIAL_ROADMAPS.find(r => r.role === targetRole)?.steps.map((step, idx) => (
-        <View key={idx} style={styles.roadmapStepCard}>
-          <View style={styles.roadmapNumberCircle}>
-            <Text style={styles.roadmapNumberText}>{idx + 1}</Text>
+      {/* Active Track Banner */}
+      <View style={styles.activeTrackBanner}>
+        <Text style={styles.activeTrackTag}>🧭  ACTIVE TRACK</Text>
+        <Text style={styles.activeTrackTitle}>Current Track: Full-Stack Placement</Text>
+        
+        {/* Overall Progress */}
+        <View style={styles.overallProgressBox}>
+          <View style={styles.overallProgressTextRow}>
+            <Text style={styles.overallProgressLabel}>OVERALL PROGRESS</Text>
+            <Text style={styles.overallProgressPercent}>68%</Text>
+          </View>
+          <View style={styles.progressBarBackground}>
+            <View style={[styles.progressBarFill, { width: '68%', backgroundColor: '#c084fc' }]} />
+          </View>
+        </View>
+      </View>
+
+      {/* Module 1: Frontend Foundations (Completed) */}
+      <View style={styles.moduleCardCompleted}>
+        <View style={styles.moduleCompletedIconCircle}>
+          <Text style={styles.moduleCheckmark}>✓</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.moduleTitle}>Frontend Foundations</Text>
+          <Text style={styles.moduleSubtitle}>HTML, CSS, DOM Manipulation</Text>
+        </View>
+        <View style={styles.moduleProgressPillGreen}>
+          <Text style={styles.moduleProgressPillGreenText}>100%</Text>
+        </View>
+      </View>
+
+      {/* Module 2: SQL Mastery (Expanded Interactive Card) */}
+      <View style={styles.moduleCardActive}>
+        <TouchableOpacity 
+          style={styles.moduleHeaderRow}
+          onPress={() => setSqlModuleExpanded(!sqlModuleExpanded)}
+        >
+          <View style={styles.moduleActiveIconBox}>
+            <Text style={{ fontSize: 16 }}>🗄️</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.roadmapStepTitle}>{step}</Text>
-            <Text style={styles.roadmapStepDesc}>Core curriculum & coding challenges</Text>
+            <Text style={styles.moduleTitle}>SQL Mastery</Text>
+            <Text style={styles.moduleSubtitle}>Complex Queries & Data Modeling</Text>
           </View>
-          <Text style={styles.xpPillText}>+50 XP</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.chevronIcon}>{sqlModuleExpanded ? '▲' : '▼'}</Text>
+            <Text style={styles.modulePercentText}>45%</Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={[styles.progressBarBackground, { marginVertical: 10 }]}>
+          <View style={[styles.progressBarFill, { width: '45%', backgroundColor: '#60a5fa' }]} />
         </View>
-      ))}
+
+        {sqlModuleExpanded && (
+          <View style={styles.subtopicsContainer}>
+            {/* Subtopic 1: Completed */}
+            <View style={styles.subtopicItemCompleted}>
+              <View style={styles.subtopicCheckSquare}>
+                <Text style={styles.checkMark}>✓</Text>
+              </View>
+              <Text style={styles.subtopicTitleCompleted}>Basic Queries & Filtering</Text>
+              <Text style={styles.subtopicXpText}>+50 XP</Text>
+            </View>
+
+            {/* Subtopic 2: Active (Joins) */}
+            <View style={styles.subtopicItemActive}>
+              <View style={styles.subtopicRadioActive} />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.subtopicTitleActive}>Joins</Text>
+                <Text style={styles.subtopicUnlockText}>⭐ Unlock: +150 XP</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.startSubtopicButton}
+                onPress={() => setActiveTab('Arena')}
+              >
+                <Text style={styles.startSubtopicButtonText}>START</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Subtopic 3: Locked */}
+            <View style={styles.subtopicItemLocked}>
+              <Text style={styles.lockIconSmall}>🔒</Text>
+              <Text style={styles.subtopicTitleLocked}>Aggregates</Text>
+              <Text style={styles.subtopicRequiresText}>Requires: Joins</Text>
+            </View>
+
+            {/* Subtopic 4: Locked */}
+            <View style={styles.subtopicItemLocked}>
+              <Text style={styles.lockIconSmall}>🔒</Text>
+              <Text style={styles.subtopicTitleLocked}>Window Functions</Text>
+              <Text style={styles.subtopicRequiresText}>Requires: Aggregates</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Module 3: Backend APIs (Node.js) - Locked */}
+      <View style={styles.moduleCardLocked}>
+        <View style={styles.moduleLockedIconBox}>
+          <Text style={{ fontSize: 16 }}>🔒</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.moduleTitleLocked}>Backend APIs (Node.js)</Text>
+          <Text style={styles.moduleSubtitleLocked}>Express, Routing, Middleware</Text>
+        </View>
+        <Text style={styles.chevronIconLocked}>▼</Text>
+      </View>
+
+      {/* YOUR STATS Card */}
+      <View style={styles.statsOverviewCard}>
+        <Text style={styles.cardHeaderSmall}>YOUR STATS</Text>
+        <View style={styles.statRowItem}>
+          <Text style={styles.statRowLabel}>⭐  Total XP</Text>
+          <Text style={styles.statRowValue}>{xp > 480 ? xp : '12,450'}</Text>
+        </View>
+        <View style={styles.statRowItem}>
+          <Text style={styles.statRowLabel}>🔥  Current Streak</Text>
+          <Text style={styles.statRowValueGreen}>14 Days</Text>
+        </View>
+        <View style={styles.statRowItem}>
+          <Text style={styles.statRowLabel}>🏆  Rank</Text>
+          <Text style={styles.statRowValue}>Adept</Text>
+        </View>
+      </View>
+
+      {/* NEXT MILESTONE Card */}
+      <View style={styles.milestoneCard}>
+        <Text style={styles.cardHeaderSmall}>NEXT MILESTONE</Text>
+        <Text style={styles.milestoneTitle}>Full-Stack Project</Text>
+        <Text style={styles.milestoneBody}>
+          Complete the SQL Mastery module to unlock your first integrated full-stack project build.
+        </Text>
+        <View style={styles.milestoneLockRow}>
+          <Text style={styles.milestoneLockText}>🔒  Unlocks in 3 modules</Text>
+        </View>
+      </View>
     </ScrollView>
   );
 
   // -------------------------------------------------------------
-  // SCREEN 7: PROFILE TAB
+  // SCREEN 7: PROFILE & AI RESUME ATS SCANNER TAB
   // -------------------------------------------------------------
   const renderProfile = () => (
     <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
-      <View style={styles.readinessCard}>
-        <View style={styles.userAvatarCircleLarge}>
-          <Text style={styles.userAvatarTextLarge}>{userName.slice(0, 2).toUpperCase()}</Text>
+      {/* Header Bar */}
+      <View style={styles.dashHeader}>
+        <View style={styles.dashBrandRow}>
+          <Image source={require('./assets/icon.png')} style={styles.dashLogoIcon} />
+          <Text style={styles.dashBrandTitle}>CODE QUEST</Text>
         </View>
-        <Text style={[styles.greetingName, { textAlign: 'center', marginTop: 12 }]}>{userName}</Text>
-        <Text style={[styles.greetingSub, { textAlign: 'center' }]}>{email}</Text>
-        <Text style={[styles.metricStatusStrong, { textAlign: 'center', marginTop: 6 }]}>
-          {targetRole} Track
-        </Text>
+        <TouchableOpacity style={styles.headerIconButton}>
+          <Text style={{ fontSize: 16 }}>🔔</Text>
+        </TouchableOpacity>
+      </View>
 
+      {/* Profile Card */}
+      <View style={styles.profileHeroCard}>
+        <View style={styles.avatarGlowContainer}>
+          <Image 
+            source={require('./assets/icon.png')} 
+            style={styles.profileAvatarImage} 
+          />
+        </View>
+        <Text style={styles.profileNameTitle}>Alex Mercer</Text>
+        <Text style={styles.profileRoleMono}>Target Role: Software Engineer</Text>
+        <Text style={styles.profileBioText}>
+          Specializing in full-stack development, scalable microservices, and high-performance computing. Seeking roles that push the boundary of backend architecture.
+        </Text>
+        
+        {/* Profile Badges */}
+        <View style={styles.profileBadgesRow}>
+          <View style={styles.badgePillTeal}>
+            <Text style={styles.badgePillTealText}>🛡️  SQL Ninja</Text>
+          </View>
+          <View style={styles.badgePillPurple}>
+            <Text style={styles.badgePillPurpleText}>🔥  5-Day Streak</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* AI Resume ATS Scanner Card */}
+      <View style={styles.atsScannerCard}>
+        <View style={styles.atsHeaderRow}>
+          <Text style={styles.cardHeaderSmall}>💠  AI Resume ATS Scanner</Text>
+        </View>
+        
+        <View style={styles.uploadDashedBox}>
+          <Text style={styles.uploadCloudIcon}>☁️</Text>
+          <Text style={styles.uploadMainText}>Drag and drop your PDF resume here</Text>
+          <Text style={styles.uploadSubText}>Max file size: 5MB</Text>
+
+          <TouchableOpacity 
+            style={styles.browseFilesButton}
+            onPress={() => {
+              setResumeAnalyzing(true);
+              setTimeout(() => {
+                setResumeAnalyzing(false);
+                setResumeScore(87);
+              }, 1200);
+            }}
+          >
+            <Text style={styles.browseFilesButtonText}>
+              {resumeAnalyzing ? 'ANALYZING RESUME...' : 'BROWSE FILES'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Analysis Results Card */}
+      <View style={styles.analysisCard}>
+        <View style={styles.analysisHeaderRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, marginRight: 6 }}>📈</Text>
+            <Text style={styles.analysisHeaderTitle}>Analysis Results</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.atsScoreLarge}>87<Text style={styles.atsScoreSmall}>/100</Text></Text>
+            <Text style={styles.atsScoreLabel}>ATS MATCH SCORE</Text>
+          </View>
+        </View>
+
+        {/* Score Progress Bar */}
+        <View style={[styles.progressBarBackground, { marginVertical: 12 }]}>
+          <View style={[styles.progressBarFill, { width: '87%', backgroundColor: '#3b82f6' }]} />
+        </View>
+
+        {/* Skills Match */}
+        <Text style={styles.atsSectionSubtitle}>SKILLS MATCH</Text>
+        <View style={styles.atsPillGrid}>
+          {['✓ Python', '✓ React', '✓ Node.js', '✓ SQL'].map(skill => (
+            <View key={skill} style={styles.skillMatchedPill}>
+              <Text style={styles.skillMatchedPillText}>{skill}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Missing Keywords */}
+        <Text style={styles.atsSectionSubtitle}>MISSING KEYWORDS</Text>
+        <View style={styles.atsPillGrid}>
+          {['✕ Docker', '✕ CI/CD', '✕ Kubernetes'].map(skill => (
+            <View key={skill} style={styles.skillMissingPill}>
+              <Text style={styles.skillMissingPillText}>{skill}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Predicted Questions */}
+        <Text style={styles.atsSectionSubtitle}>🔮  PREDICTED QUESTIONS</Text>
+        <View style={styles.predictedQuestionCard}>
+          <Text style={styles.predictedQuestionText}>
+            "Can you describe a time you optimized a slow-performing SQL query?"
+          </Text>
+        </View>
+        <View style={styles.predictedQuestionCard}>
+          <Text style={styles.predictedQuestionText}>
+            "How do you manage state in a complex React application?"
+          </Text>
+        </View>
+
+        {/* Logout button */}
         <TouchableOpacity 
           style={[styles.gradientLoginButton, { marginTop: 24 }]}
           onPress={() => {
@@ -1879,6 +2120,517 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 24,
     fontWeight: '900',
+  },
+
+  // ROADMAP & MODULES
+  activeTrackBanner: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 14,
+  },
+  activeTrackTag: {
+    color: '#2dd4bf',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  activeTrackTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    marginBottom: 12,
+  },
+  overallProgressBox: {
+    backgroundColor: '#111936',
+    borderRadius: 10,
+    padding: 12,
+  },
+  overallProgressTextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  overallProgressLabel: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  overallProgressPercent: {
+    color: '#c084fc',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  moduleCardCompleted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d1326',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
+    marginBottom: 12,
+  },
+  moduleCompletedIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#064e3b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  moduleCheckmark: {
+    color: '#34d399',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  moduleTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  moduleSubtitle: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  moduleProgressPillGreen: {
+    backgroundColor: '#064e3b',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  moduleProgressPillGreenText: {
+    color: '#34d399',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  moduleCardActive: {
+    backgroundColor: '#0d1326',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#2563eb',
+    padding: 14,
+    marginBottom: 12,
+  },
+  moduleHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  moduleActiveIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#172554',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  chevronIcon: {
+    color: '#94a3b8',
+    fontSize: 10,
+    marginBottom: 4,
+  },
+  modulePercentText: {
+    color: '#60a5fa',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  subtopicsContainer: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+    paddingTop: 10,
+  },
+  subtopicItemCompleted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111936',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+  },
+  subtopicCheckSquare: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  subtopicTitleCompleted: {
+    flex: 1,
+    color: '#94a3b8',
+    fontSize: 12,
+    textDecorationLine: 'line-through',
+  },
+  subtopicXpText: {
+    color: '#60a5fa',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  subtopicItemActive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#172554',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    padding: 10,
+    marginBottom: 6,
+  },
+  subtopicRadioActive: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: '#60a5fa',
+  },
+  subtopicTitleActive: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  subtopicUnlockText: {
+    color: '#c084fc',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  startSubtopicButton: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  startSubtopicButtonText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  subtopicItemLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    opacity: 0.5,
+  },
+  lockIconSmall: {
+    fontSize: 12,
+    marginRight: 10,
+  },
+  subtopicTitleLocked: {
+    flex: 1,
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+  subtopicRequiresText: {
+    color: '#6b7280',
+    fontSize: 10,
+    fontStyle: 'italic',
+  },
+  moduleCardLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d1326',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
+    marginBottom: 12,
+    opacity: 0.6,
+  },
+  moduleLockedIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#1e293b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  moduleTitleLocked: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  moduleSubtitleLocked: {
+    color: '#6b7280',
+    fontSize: 11,
+  },
+  chevronIconLocked: {
+    color: '#6b7280',
+    fontSize: 10,
+  },
+  statsOverviewCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 12,
+  },
+  statRowItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#111936',
+  },
+  statRowLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statRowValue: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  statRowValueGreen: {
+    color: '#34d399',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  milestoneCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 12,
+  },
+  milestoneTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  milestoneBody: {
+    color: '#94a3b8',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 10,
+  },
+  milestoneLockRow: {
+    backgroundColor: '#111936',
+    borderRadius: 6,
+    padding: 8,
+  },
+  milestoneLockText: {
+    color: '#60a5fa',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  // PROFILE & ATS RESUME
+  profileHeroCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 18,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  avatarGlowContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#3b82f6',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  profileAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  profileNameTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  profileRoleMono: {
+    fontSize: 11,
+    color: '#60a5fa',
+    fontFamily: 'monospace',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  profileBioText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 14,
+  },
+  profileBadgesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  badgePillTeal: {
+    backgroundColor: '#042f2e',
+    borderWidth: 1,
+    borderColor: '#0d9488',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgePillTealText: {
+    color: '#2dd4bf',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  badgePillPurple: {
+    backgroundColor: '#3b0764',
+    borderWidth: 1,
+    borderColor: '#9333ea',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgePillPurpleText: {
+    color: '#c084fc',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  atsScannerCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 14,
+  },
+  atsHeaderRow: {
+    marginBottom: 12,
+  },
+  uploadDashedBox: {
+    borderWidth: 1.5,
+    borderColor: '#1e293b',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    backgroundColor: '#090e1f',
+    padding: 20,
+    alignItems: 'center',
+  },
+  uploadCloudIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  uploadMainText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  uploadSubText: {
+    color: '#6b7280',
+    fontSize: 10,
+    marginBottom: 14,
+  },
+  browseFilesButton: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  browseFilesButtonText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  analysisCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 16,
+  },
+  analysisHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  analysisHeaderTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  atsScoreLarge: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  atsScoreSmall: {
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+  atsScoreLabel: {
+    color: '#60a5fa',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  atsSectionSubtitle: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginVertical: 8,
+  },
+  atsPillGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  skillMatchedPill: {
+    backgroundColor: '#064e3b',
+    borderWidth: 1,
+    borderColor: '#059669',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  skillMatchedPillText: {
+    color: '#34d399',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  skillMissingPill: {
+    backgroundColor: '#450a0a',
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  skillMissingPillText: {
+    color: '#f87171',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  predictedQuestionCard: {
+    backgroundColor: '#111936',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  predictedQuestionText: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: 'italic',
   },
 
   // BOTTOM TAB BAR
