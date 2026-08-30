@@ -1,835 +1,701 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// Interfaces for data types
+// Interfaces for Data Types
+interface Student {
+  id: string;
+  name: string;
+  email: string;
+  auth_provider: 'Google' | 'GitHub' | 'Email';
+  enrolled: string;
+  role: string;
+  solved: number;
+  readiness: number;
+  status: 'Active' | 'Suspended';
+}
+
 interface Question {
   id: string;
   title: string;
-  difficulty: string;
-  type: string;
-  xp_reward: number;
-  company_tags: string[];
-  topic_name?: string;
-  subtopic_name?: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  type: 'Coding' | 'SQL' | 'MCQ';
+  tags: string[];
+  status: 'Published' | 'Draft';
+  desc: string;
+  requirements: string[];
+  starterCode?: string;
+  testCases?: string;
 }
 
-interface Student {
+interface Submission {
   id: string;
+  student: string;
+  problem: string;
+  status: 'Accepted' | 'Runtime Error' | 'Time Limit';
+  time: string;
+}
+
+interface SecurityLog {
+  id: string;
+  timestamp: string;
   email: string;
-  auth_provider: string;
-  created_at: string;
-  name: string;
-  college?: string;
-  degree?: string;
-  target_role?: string;
-  xp: number;
-  readiness_score: number;
-  is_active?: boolean;
+  authProvider: 'Google OAuth' | 'GitHub OAuth' | 'Email / Password' | 'API Key';
+  ipAddress: string;
+  deviceLocation: string;
+  status: 'SUCCESSFUL' | 'FAILED AUTH';
 }
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [email, setEmail] = useState('admin@placementforge.com');
-  const [password, setPassword] = useState('adminsecurepass123');
-  const [token, setToken] = useState('');
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [error, setError] = useState('');
-  
-  // State for Admin Data
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [inspectedStudent, setInspectedStudent] = useState<any | null>(null);
-  const [topics, setTopics] = useState<any[]>([]);
-  const [newTopicName, setNewTopicName] = useState('');
-  const [newTopicDesc, setNewTopicDesc] = useState('');
-  const [newSubtopicName, setNewSubtopicName] = useState<{ [key: string]: string }>({});
-  const [newSubtopicDesc, setNewSubtopicDesc] = useState<{ [key: string]: string }>({});
-  const [usersCount, setUsersCount] = useState(154);
-  const [activeUsers, setActiveUsers] = useState(48);
-  const [submissionsCount, setSubmissionsCount] = useState(912);
-  const [completionRate, setCompletionRate] = useState(78.5);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'submissions' | 'curriculum' | 'users' | 'analytics' | 'settings'>('dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
 
-  // Form State for creating new questions
-  const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newType, setNewType] = useState('mcq');
-  const [newDiff, setNewDiff] = useState('Easy');
-  const [newXP, setNewXP] = useState(10);
-  const [newCompanies, setNewCompanies] = useState('Amazon, Google');
+  // Modal State for Edit Problem
+  const [showEditProblemModal, setShowEditProblemModal] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [editorTab, setEditorTab] = useState<'desc' | 'starter' | 'tests'>('desc');
 
-  const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api/v1';
+  // Modal State for Add Topic
+  const [showAddTopicModal, setShowAddTopicModal] = useState(false);
+  const [newTopicTitle, setNewTopicTitle] = useState('');
 
-  // Login handler
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password,
-      });
-      const jwtToken = response.data.access_token;
-      setToken(jwtToken);
-      setIsLoggedIn(true);
-      localStorage.setItem('admin_token', jwtToken);
-      fetchDashboardData(jwtToken);
-    } catch (err: any) {
-      // Fallback for development if backend is not running yet
-      if (email === 'admin@placementforge.com' && password === 'adminsecurepass123') {
-        setIsLoggedIn(true);
-        setToken('mock-admin-token');
-        fetchMockData();
-      } else {
-        setError('Invalid admin credentials. Please try again.');
-      }
+  // Sample Students Data
+  const [students, setStudents] = useState<Student[]>([
+    {
+      id: 'CQ-9921',
+      name: 'Alex Mercer',
+      email: 'alex.m@example.com',
+      auth_provider: 'Google',
+      enrolled: 'Oct 12, 2023',
+      role: 'Software Engineer',
+      solved: 142,
+      readiness: 88,
+      status: 'Active'
+    },
+    {
+      id: 'CQ-8422',
+      name: 'Sarah Chen',
+      email: 'schen.data@example.com',
+      auth_provider: 'GitHub',
+      enrolled: 'Nov 01, 2023',
+      role: 'Data Engineer',
+      solved: 156,
+      readiness: 92,
+      status: 'Active'
+    },
+    {
+      id: 'CQ-1204',
+      name: 'Marcus Johnson',
+      email: 'mj.code@example.com',
+      auth_provider: 'Email',
+      enrolled: 'Jan 15, 2024',
+      role: 'Software Engineer',
+      solved: 43,
+      readiness: 45,
+      status: 'Active'
+    },
+    {
+      id: 'CQ-5519',
+      name: 'Elena Rostova',
+      email: 'elena.r@example.com',
+      auth_provider: 'Google',
+      enrolled: 'Feb 20, 2024',
+      role: 'DevOps',
+      solved: 89,
+      readiness: 76,
+      status: 'Active'
+    }
+  ]);
+
+  // Sample Submissions
+  const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([
+    { id: '1', student: 'usr_8921', problem: 'Binary Tree Inversion', status: 'Accepted', time: 'Just now' },
+    { id: '2', student: 'usr_4430', problem: 'Dynamic Knapsack', status: 'Runtime Error', time: '2m ago' },
+    { id: '3', student: 'usr_1105', problem: 'Graph Traversal BFS', status: 'Accepted', time: '5m ago' },
+    { id: '4', student: 'usr_9023', problem: 'String Anagram', status: 'Time Limit', time: '12m ago' }
+  ]);
+
+  // Sample Questions Data
+  const [questionsList, setQuestionsList] = useState<Question[]>([
+    {
+      id: '1042',
+      title: 'Distributed Task Queue',
+      difficulty: 'Hard',
+      type: 'Coding',
+      tags: ['Redis', 'System Design'],
+      status: 'Draft',
+      desc: '# Distributed Task Queue\n\nDesign and implement a resilient task queue system capable of handling distributed workers. The system should guarantee at-least-once delivery and handle worker node failures gracefully.',
+      requirements: [
+        'Implement `enqueue(task_id, payload)`',
+        'Implement `dequeue()` for workers to fetch tasks',
+        'Implement a mechanism to detect stalled tasks (timeout > 30s) and requeue them.'
+      ],
+      starterCode: 'class DistributedTaskQueue:\n    def __init__(self, redis_client):\n        self.redis = redis_client\n\n    def enqueue(self, task_id: str, payload: dict) -> bool:\n        pass\n\n    def dequeue(self) -> dict:\n        pass',
+      testCases: '[\n  { "input": { "task_id": "t_101", "payload": { "cmd": "send_email" } }, "expected": true },\n  { "input": { "action": "dequeue" }, "expected": "t_101" }\n]'
+    },
+    {
+      id: '1001',
+      title: 'Two Sum',
+      difficulty: 'Easy',
+      type: 'Coding',
+      tags: ['Arrays', 'Hash Map'],
+      status: 'Published',
+      desc: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
+      requirements: ['O(N) time complexity target', 'Single unique solution guarantee']
+    },
+    {
+      id: '1002',
+      title: 'Department Top Three Salaries',
+      difficulty: 'Medium',
+      type: 'SQL',
+      tags: ['SQL', 'Window Functions'],
+      status: 'Published',
+      desc: 'Find the employees who earn the top three unique salaries in each department.',
+      requirements: ['DENSE_RANK() aggregation', 'Partition by Department']
+    }
+  ]);
+
+  // Security Logs
+  const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([
+    {
+      id: 'sec_1',
+      timestamp: '2026-10-27 14:32:01 UTC',
+      email: 'j.doe@example.com',
+      authProvider: 'Google OAuth',
+      ipAddress: '192.168.1.105',
+      deviceLocation: 'Chrome on macOS\nSan Francisco, US',
+      status: 'SUCCESSFUL'
+    },
+    {
+      id: 'sec_2',
+      timestamp: '2026-10-27 14:31:43 UTC',
+      email: 'a.lincoln@domain.co',
+      authProvider: 'Email / Password',
+      ipAddress: '203.0.113.42',
+      deviceLocation: 'Safari on iOS\nLondon, UK',
+      status: 'SUCCESSFUL'
+    },
+    {
+      id: 'sec_3',
+      timestamp: '2026-10-27 14:28:12 UTC',
+      email: 'unknown_user@test.com',
+      authProvider: 'API Key',
+      ipAddress: '45.22.18.100',
+      deviceLocation: 'Unknown Device\nUnknown',
+      status: 'FAILED AUTH'
+    },
+    {
+      id: 'sec_4',
+      timestamp: '2026-10-27 14:25:05 UTC',
+      email: 'm.khan@techcorp.in',
+      authProvider: 'GitHub OAuth',
+      ipAddress: '10.0.0.15',
+      deviceLocation: 'Firefox on Windows\nToronto, CA',
+      status: 'SUCCESSFUL'
+    }
+  ]);
+
+  const openEditModal = (q: Question) => {
+    setSelectedQuestion({ ...q });
+    setShowEditProblemModal(true);
+  };
+
+  const saveEditedProblem = () => {
+    if (selectedQuestion) {
+      setQuestionsList(prev => prev.map(item => item.id === selectedQuestion.id ? selectedQuestion : item));
+      setShowEditProblemModal(false);
     }
   };
-
-  const handleGoogleLogin = async () => {
-    setError('');
-    const mockEmail = 'admin@placementforge.com';
-    try {
-      const response = await axios.post(`${API_URL}/auth/google`, {
-        id_token: `mock-google-token-${mockEmail}`
-      });
-      const jwtToken = response.data.access_token;
-      setToken(jwtToken);
-      setIsLoggedIn(true);
-      localStorage.setItem('admin_token', jwtToken);
-      fetchDashboardData(jwtToken);
-    } catch (err: any) {
-      setIsLoggedIn(true);
-      setToken('mock-admin-token');
-      fetchMockData();
-    }
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setToken('');
-    localStorage.removeItem('admin_token');
-  };
-
-  // Fetch from live API
-  const fetchDashboardData = async (authToken: string) => {
-    try {
-      const headers = { Authorization: `Bearer ${authToken}` };
-      
-      // Fetch stats & questions & students & topics
-      const qRes = await axios.get(`${API_URL}/problems`, { headers });
-      setQuestions(qRes.data || []);
-
-      const sRes = await axios.get(`${API_URL}/auth/students`, { headers });
-      setStudents(sRes.data || []);
-      setUsersCount(sRes.data ? sRes.data.length : 154);
-
-      const tRes = await axios.get(`${API_URL}/problems/topics/all`, { headers });
-      setTopics(tRes.data || []);
-    } catch (err) {
-      console.warn("Backend not active, loading mock dashboard statistics.");
-      fetchMockData();
-    }
-  };
-
-  // Seed mock statistics if backend container is offline
-  const fetchMockData = () => {
-    setQuestions([
-      { id: '1', title: 'Two Sum', difficulty: 'Easy', type: 'coding', xp_reward: 10, company_tags: ['Amazon', 'Google'] },
-      { id: '2', title: 'Valid Parentheses', difficulty: 'Easy', type: 'coding', xp_reward: 10, company_tags: ['Meta', 'Microsoft'] },
-      { id: '3', title: '3Sum', difficulty: 'Medium', type: 'coding', xp_reward: 15, company_tags: ['Google', 'Uber'] },
-      { id: '4', title: 'Department Top Three Salaries', difficulty: 'Medium', type: 'sql', xp_reward: 15, company_tags: ['Netflix'] },
-      { id: '5', title: 'Database Index Structures MCQ', difficulty: 'Easy', type: 'mcq', xp_reward: 5, company_tags: ['TCS'] },
-      { id: '6', title: 'ETL Pipeline Incident Scenario', difficulty: 'Hard', type: 'scenario', xp_reward: 20, company_tags: ['Google'] }
-    ]);
-
-    setStudents([
-      {
-        id: "student-1",
-        email: "sarah.miller@gmail.com",
-        auth_provider: "google",
-        created_at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-        name: "Sarah Miller",
-        college: "Stanford University",
-        degree: "B.S. Computer Science",
-        target_role: "Data Engineer",
-        xp: 320,
-        readiness_score: 84.5
-      },
-      {
-        id: "student-2",
-        email: "alex.chen@gmail.com",
-        auth_provider: "google",
-        created_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-        name: "Alex Chen",
-        college: "MIT",
-        degree: "M.S. Software Engineering",
-        target_role: "Software Engineer",
-        xp: 450,
-        readiness_score: 91.0
-      },
-      {
-        id: "student-3",
-        email: "john.doe@university.edu",
-        auth_provider: "local",
-        created_at: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
-        name: "John Doe",
-        college: "State College",
-        degree: "B.Tech IT",
-        target_role: "Software Engineer",
-        xp: 120,
-        readiness_score: 62.0
-      }
-    ]);
-
-    setTopics([
-      {
-        id: "topic-1",
-        name: "Data Structures & Algorithms",
-        description: "Core algorithms, sorting, searching, and complexity analysis.",
-        subtopics: [
-          { id: "sub-1", name: "Arrays & Hashing", description: "Array manipulations and key-value indices." },
-          { id: "sub-2", name: "Two Pointers", description: "Linear searches with index pointers." }
-        ]
-      },
-      {
-        id: "topic-2",
-        name: "Databases & SQL",
-        description: "Relational database queries and optimization techniques.",
-        subtopics: [
-          { id: "sub-3", name: "Aggregations & Group By", description: "Grouping records and sum/average functions." }
-        ]
-      }
-    ]);
-  };
-
-  useEffect(() => {
-    const savedToken = localStorage.getItem('admin_token');
-    if (savedToken) {
-      setToken(savedToken);
-      setIsLoggedIn(true);
-      fetchDashboardData(savedToken);
-    }
-  }, []);
-
-  const handleAddQuestion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle || !newDesc) return;
-
-    const companiesArray = newCompanies.split(',').map(c => c.trim());
-    const mockId = Math.random().toString(36).substring(2, 9);
-    
-    const item: Question = {
-      id: mockId,
-      title: newTitle,
-      difficulty: newDiff,
-      type: newType,
-      xp_reward: newXP,
-      company_tags: companiesArray
-    };
-
-    setQuestions([item, ...questions]);
-    
-    // Clear Form
-    setNewTitle('');
-    setNewDesc('');
-    setNewXP(10);
-    setNewCompanies('Amazon, Google');
-    
-    alert('Question created successfully (local sync)!');
-  };
-
-  // Student inspection, toggle-active, and deletion
-  const handleInspectStudent = async (studentId: string) => {
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get(`${API_URL}/auth/students/${studentId}/progress`, { headers });
-      setInspectedStudent(res.data);
-    } catch (err) {
-      console.warn("Failed fetching live student progress, generating mock user progress details.");
-      const match = students.find(s => s.id === studentId);
-      if (match) {
-        setInspectedStudent({
-          ...match,
-          is_active: match.is_active !== undefined ? match.is_active : true,
-          dsa_level: match.id === 'student-2' ? 91.0 : match.id === 'student-1' ? 84.5 : 62.0,
-          sql_level: match.id === 'student-1' ? 79.0 : 65.0,
-          cs_fundamentals_level: 70.0,
-          aptitude_level: 75.0,
-          submissions: [
-            {
-              id: "sub-101",
-              question_title: "Two Sum",
-              type: "coding",
-              score: 10,
-              is_correct: true,
-              created_at: new Date(Date.now() - 1 * 3600 * 1000).toISOString()
-            },
-            {
-              id: "sub-102",
-              question_title: "Valid Parentheses",
-              type: "coding",
-              score: 10,
-              is_correct: true,
-              created_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
-            },
-            {
-              id: "sub-103",
-              question_title: "Database Index Structures MCQ",
-              type: "mcq",
-              score: 0,
-              is_correct: false,
-              created_at: new Date(Date.now() - 12 * 3600 * 1000).toISOString()
-            }
-          ],
-          logins: [
-            {
-              id: "log-1",
-              login_time: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-              ip_address: "192.168.1.45",
-              auth_provider: match.auth_provider,
-              device_info: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
-            },
-            {
-              id: "log-2",
-              login_time: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-              ip_address: "192.168.1.45",
-              auth_provider: match.auth_provider,
-              device_info: "Mozilla/5.0 (Linux; Android 13; SM-S908B) AppleWebKit/537.36 Chrome/113.0.0.0 Mobile"
-            }
-          ]
-        });
-      }
-    }
-  };
-
-  const handleToggleStudentActive = async (studentId: string) => {
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.post(`${API_URL}/auth/students/${studentId}/toggle-active`, {}, { headers });
-      setStudents(students.map(s => s.id === studentId ? { ...s, is_active: res.data.is_active } : s));
-      if (inspectedStudent && inspectedStudent.id === studentId) {
-        setInspectedStudent({ ...inspectedStudent, is_active: res.data.is_active });
-      }
-    } catch (err) {
-      setStudents(students.map(s => s.id === studentId ? { ...s, is_active: s.is_active !== undefined ? !s.is_active : false } : s));
-      if (inspectedStudent && inspectedStudent.id === studentId) {
-        setInspectedStudent({ ...inspectedStudent, is_active: !inspectedStudent.is_active });
-      }
-    }
-  };
-
-  const handleDeleteStudent = async (studentId: string) => {
-    if (!confirm("Are you sure you want to delete this student's account and progress?")) return;
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.delete(`${API_URL}/auth/students/${studentId}`, { headers });
-      setStudents(students.filter(s => s.id !== studentId));
-      if (inspectedStudent && inspectedStudent.id === studentId) {
-        setInspectedStudent(null);
-      }
-    } catch (err) {
-      setStudents(students.filter(s => s.id !== studentId));
-      if (inspectedStudent && inspectedStudent.id === studentId) {
-        setInspectedStudent(null);
-      }
-    }
-  };
-
-  // Topics/Subtopics Builder Actions
-  const handleAddTopic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTopicName) return;
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.post(`${API_URL}/problems/topics`, {
-        name: newTopicName,
-        description: newTopicDesc
-      }, { headers });
-      setTopics([...topics, { ...res.data, subtopics: [] }]);
-    } catch (err) {
-      const mockId = Math.random().toString(36).substring(2, 9);
-      setTopics([...topics, { id: mockId, name: newTopicName, description: newTopicDesc, subtopics: [] }]);
-    }
-    setNewTopicName('');
-    setNewTopicDesc('');
-  };
-
-  const handleDeleteTopic = async (topicId: string) => {
-    if (!confirm("Are you sure you want to delete this topic and all nested subtopics?")) return;
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.delete(`${API_URL}/problems/topics/${topicId}`, { headers });
-      setTopics(topics.filter(t => t.id !== topicId));
-    } catch (err) {
-      setTopics(topics.filter(t => t.id !== topicId));
-    }
-  };
-
-  const handleAddSubtopic = async (topicId: string) => {
-    const sName = newSubtopicName[topicId];
-    const sDesc = newSubtopicDesc[topicId] || '';
-    if (!sName) return;
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.post(`${API_URL}/problems/topics/${topicId}/subtopics`, {
-        name: sName,
-        description: sDesc
-      }, { headers });
-      setTopics(topics.map(t => t.id === topicId ? { ...t, subtopics: [...(t.subtopics || []), res.data] } : t));
-    } catch (err) {
-      const mockId = Math.random().toString(36).substring(2, 9);
-      setTopics(topics.map(t => t.id === topicId ? { ...t, subtopics: [...(t.subtopics || []), { id: mockId, name: sName, description: sDesc }] } : t));
-    }
-    setNewSubtopicName({ ...newSubtopicName, [topicId]: '' });
-    setNewSubtopicDesc({ ...newSubtopicDesc, [topicId]: '' });
-  };
-
-  const handleDeleteSubtopic = async (subtopicId: string, topicId: string) => {
-    if (!confirm("Are you sure you want to delete this subtopic?")) return;
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.delete(`${API_URL}/problems/subtopics/${subtopicId}`, { headers });
-      setTopics(topics.map(t => t.id === topicId ? { ...t, subtopics: t.subtopics.filter((st: any) => st.id !== subtopicId) } : t));
-    } catch (err) {
-      setTopics(topics.map(t => t.id === topicId ? { ...t, subtopics: t.subtopics.filter((st: any) => st.id !== subtopicId) } : t));
-    }
-  };
-
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700">
-          <div>
-            <div className="flex justify-center text-4xl font-extrabold text-blue-500 tracking-wide">
-              Code Quest
-            </div>
-            <h2 className="mt-6 text-center text-2xl font-bold text-white">
-              Admin Control Panel
-            </h2>
-            <p className="mt-2 text-center text-sm text-slate-400">
-              Sign in to manage questions, roadmaps, and review analytics
-            </p>
-          </div>
-          
-          {error && (
-            <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded relative text-sm">
-              {error}
-            </div>
-          )}
-
-          <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-            <div className="rounded-md shadow-sm -space-y-px">
-              <div>
-                <label className="sr-only">Email address</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 bg-slate-900 text-white placeholder-slate-500 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Admin Email"
-                />
-              </div>
-              <div>
-                <label className="sr-only">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 bg-slate-900 text-white placeholder-slate-500 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Password"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Sign In
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-4">
-            <div className="relative flex items-center justify-center my-4">
-              <div className="border-t border-slate-700 w-full"></div>
-              <div className="absolute bg-slate-800 px-3 text-xs text-slate-400">OR</div>
-            </div>
-            <button
-              onClick={handleGoogleLogin}
-              type="button"
-              className="w-full flex items-center justify-center py-3 px-4 border border-slate-700 text-sm font-semibold rounded-md text-slate-200 bg-slate-900 hover:bg-slate-950 focus:outline-none border-dashed"
-            >
-              <span className="mr-2">🔵</span> Sign in with Google
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between">
+    <div className="flex h-screen bg-[#070b19] text-gray-100 font-sans overflow-hidden">
+      {/* ------------------------------------------------------------- */}
+      {/* LEFT NAVIGATION SIDEBAR */}
+      {/* ------------------------------------------------------------- */}
+      <aside className="w-64 bg-[#0a0f24] border-r border-[#1a233d] flex flex-col justify-between p-4">
         <div>
-          <div className="h-16 flex items-center px-6 border-b border-slate-800 text-2xl font-bold text-blue-500">
-            Code Quest
+          {/* Platform Title */}
+          <div className="flex items-center space-x-3 px-2 py-4 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-violet-600 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-blue-500/20">
+              CQ
+            </div>
+            <div>
+              <h1 className="font-black text-sm tracking-wider text-white">CODE QUEST</h1>
+              <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">ADMIN PORTAL</p>
+            </div>
           </div>
-          <nav className="mt-6 px-4 space-y-2">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('questions')}
-              className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'questions' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-            >
-              Question Management
-            </button>
-            <button
-              onClick={() => setActiveTab('moderation')}
-              className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'moderation' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-            >
-              Discussions & Flags
-            </button>
-            <button
-              onClick={() => setActiveTab('students')}
-              className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'students' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-            >
-              Student Database
-            </button>
-            <button
-              onClick={() => setActiveTab('topics')}
-              className={`w-full text-left px-4 py-3 rounded-lg font-medium transition ${activeTab === 'topics' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-            >
-              Topic & Roadmap Builder
-            </button>
+
+          {/* Navigation Items */}
+          <nav className="space-y-1.5">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+              { id: 'submissions', label: 'Submissions', icon: '💻' },
+              { id: 'curriculum', label: 'Curriculum', icon: '🗺️' },
+              { id: 'users', label: 'User Management', icon: '👥' },
+              { id: 'analytics', label: 'Analytics', icon: '📈' },
+              { id: 'settings', label: 'Settings', icon: '⚙️' }
+            ].map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeTab === item.id
+                    ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#111833]'
+                }`}
+              >
+                <span className="text-base">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
           </nav>
         </div>
-        
-        <div className="p-4 border-t border-slate-800">
-          <div className="text-sm text-slate-400 mb-2">Logged in as Admin</div>
-          <button
-            onClick={handleLogout}
-            className="w-full py-2 bg-red-900/60 text-red-200 border border-red-800 hover:bg-red-800/80 rounded transition text-sm font-medium"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        <header className="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900/40">
-          <h1 className="text-xl font-bold text-white capitalize">{activeTab} Panel</h1>
-          <div className="flex items-center space-x-4">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-900 text-green-200 border border-green-800">
-              System Online
-            </span>
+        {/* Admin Footer Badge */}
+        <div className="p-3 bg-[#0d1430] rounded-xl border border-[#1a233d] flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white">
+            AD
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-xs font-bold text-white truncate">Administrator</p>
+            <p className="text-[10px] text-emerald-400 flex items-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>
+              Live Sync Active
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* ------------------------------------------------------------- */}
+      {/* MAIN CONTENT AREA */}
+      {/* ------------------------------------------------------------- */}
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        {/* Top App Header */}
+        <header className="h-16 border-b border-[#1a233d] bg-[#090e21]/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center space-x-3">
+            <button className="text-gray-400 hover:text-white text-lg">☰</button>
+            <h2 className="text-sm font-bold text-white tracking-wide">Platform Overview</h2>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="bg-[#0f1738] border border-[#1e2a4a] text-xs text-white placeholder-gray-500 rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-blue-500 w-64"
+              />
+              <span className="absolute left-2.5 top-1.5 text-xs text-gray-500">🔍</span>
+            </div>
+            <button className="px-3 py-1.5 bg-[#0f1738] border border-[#1e2a4a] text-xs font-bold text-gray-300 rounded-lg hover:border-blue-500">
+              🔔
+            </button>
           </div>
         </header>
 
-        <main className="p-8">
-          {/* TAB 1: DASHBOARD */}
+        <div className="p-6 space-y-6 max-w-7xl mx-auto w-full">
+          {/* ========================================================= */}
+          {/* TAB 1: EXECUTIVE OVERVIEW (DASHBOARD)                     */}
+          {/* ========================================================= */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-8">
-              {/* Stat widgets */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                  <div className="text-slate-400 text-sm font-medium">Total Enrolled Students</div>
-                  <div className="text-3xl font-extrabold text-white mt-2">{usersCount}</div>
-                  <div className="text-green-500 text-xs mt-2">↑ 12% increase this month</div>
-                </div>
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                  <div className="text-slate-400 text-sm font-medium">Daily Active Users (DAU)</div>
-                  <div className="text-3xl font-extrabold text-white mt-2">{activeUsers}</div>
-                  <div className="text-blue-500 text-xs mt-2">Active now: 12 users</div>
-                </div>
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                  <div className="text-slate-400 text-sm font-medium">Submissions Checked</div>
-                  <div className="text-3xl font-extrabold text-white mt-2">{submissionsCount}</div>
-                  <div className="text-slate-500 text-xs mt-2">Across DSA, SQL, & MCQs</div>
-                </div>
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                  <div className="text-slate-400 text-sm font-medium">Avg Assessment Accuracy</div>
-                  <div className="text-3xl font-extrabold text-white mt-2">{completionRate}%</div>
-                  <div className="text-yellow-500 text-xs mt-2">Target benchmark: 75%</div>
-                </div>
-              </div>
-
-              {/* Graphic charts mock */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                  <h3 className="font-bold text-white text-lg mb-4">Daily Active User Trend</h3>
-                  <div className="h-64 bg-slate-950 rounded-lg flex items-end justify-between p-6 border border-slate-800">
-                    <div className="w-12 bg-blue-600 rounded-t h-1/5 text-center text-xs pt-1">Mon</div>
-                    <div className="w-12 bg-blue-600 rounded-t h-2/5 text-center text-xs pt-1">Tue</div>
-                    <div className="w-12 bg-blue-600 rounded-t h-3/5 text-center text-xs pt-1">Wed</div>
-                    <div className="w-12 bg-blue-600 rounded-t h-2/4 text-center text-xs pt-1">Thu</div>
-                    <div className="w-12 bg-blue-600 rounded-t h-4/5 text-center text-xs pt-1">Fri</div>
-                    <div className="w-12 bg-blue-500 rounded-t h-5/6 text-center text-xs pt-1">Sat</div>
-                    <div className="w-12 bg-blue-400 rounded-t h-full text-center text-xs pt-1 font-bold">Sun</div>
+            <div className="space-y-6">
+              {/* 4 KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl relative overflow-hidden">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL ENROLLED</p>
+                  <div className="flex items-baseline space-x-2 mt-2">
+                    <h3 className="text-2xl font-black text-white">1,284</h3>
+                    <span className="text-xs font-bold text-emerald-400">+12%</span>
+                  </div>
+                  <div className="h-1 bg-[#151e3d] rounded-full mt-4 overflow-hidden">
+                    <div className="h-full bg-emerald-400 w-3/4"></div>
                   </div>
                 </div>
 
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                  <h3 className="font-bold text-white text-lg mb-4">Question Type Distribution</h3>
-                  <div className="h-64 bg-slate-950 rounded-lg flex items-center justify-around p-6 border border-slate-800">
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-full border-4 border-yellow-500 flex items-center justify-center font-bold">40%</div>
-                      <div className="text-xs text-slate-400 mt-2">Coding Problems</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-full border-4 border-emerald-500 flex items-center justify-center font-bold">35%</div>
-                      <div className="text-xs text-slate-400 mt-2">SQL Practice</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-full border-4 border-purple-500 flex items-center justify-center font-bold">25%</div>
-                      <div className="text-xs text-slate-400 mt-2">MCQs & Puzzles</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: QUESTIONS */}
-          {activeTab === 'questions' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Form Section */}
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-850 h-fit">
-                <h2 className="text-lg font-bold text-white mb-6">Create Prep Question</h2>
-                <form onSubmit={handleAddQuestion} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400">Title</label>
-                    <input
-                      type="text"
-                      required
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      className="mt-1 w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none"
-                      placeholder="e.g. Find Median of Data Stream"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400">Description</label>
-                    <textarea
-                      required
-                      rows={4}
-                      value={newDesc}
-                      onChange={(e) => setNewDesc(e.target.value)}
-                      className="mt-1 w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none"
-                      placeholder="Describe constraints and input/output expectations..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl relative overflow-hidden">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <label className="block text-sm font-medium text-slate-400">Type</label>
-                      <select
-                        value={newType}
-                        onChange={(e) => setNewType(e.target.value)}
-                        className="mt-1 w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none text-white"
-                      >
-                        <option value="coding">Coding Problem</option>
-                        <option value="sql">SQL Challenge</option>
-                        <option value="mcq">MCQ Choice</option>
-                        <option value="scenario">Scenario Interview</option>
-                        <option value="aptitude">Aptitude Question</option>
-                      </select>
+                      <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">ACTIVE TODAY</p>
+                      <h3 className="text-2xl font-black text-white mt-2">432</h3>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400">Difficulty</label>
-                      <select
-                        value={newDiff}
-                        onChange={(e) => setNewDiff(e.target.value)}
-                        className="mt-1 w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none text-white"
-                      >
-                        <option value="Easy">Easy</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                      </select>
-                    </div>
+                    <span className="text-lg">⚡</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400">XP Reward</label>
-                      <input
-                        type="number"
-                        value={newXP}
-                        onChange={(e) => setNewXP(Number(e.target.value))}
-                        className="mt-1 w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-400">Company Tags</label>
-                      <input
-                        type="text"
-                        value={newCompanies}
-                        onChange={(e) => setNewCompanies(e.target.value)}
-                        className="mt-1 w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
-                  >
-                    Save & Publish
-                  </button>
-                </form>
-              </div>
-
-              {/* List Section */}
-              <div className="lg:col-span-2 bg-slate-900 p-6 rounded-xl border border-slate-850">
-                <h2 className="text-lg font-bold text-white mb-6">Current Question Bank ({questions.length})</h2>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                  {questions.map((q) => (
-                    <div key={q.id} className="p-4 bg-slate-950 rounded-lg border border-slate-850 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${q.difficulty === 'Easy' ? 'bg-green-900/60 text-green-200 border border-green-800' : q.difficulty === 'Medium' ? 'bg-yellow-900/60 text-yellow-200 border border-yellow-800' : 'bg-red-900/60 text-red-200 border border-red-800'}`}>
-                            {q.difficulty}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-900/40 text-blue-200 capitalize">
-                            {q.type}
-                          </span>
-                          <h3 className="font-bold text-white text-base">{q.title}</h3>
-                        </div>
-                        <div className="text-xs text-slate-500 mt-2">
-                          Companies: {q.company_tags.join(', ')} | Reward: {q.xp_reward} XP
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this question?')) {
-                            setQuestions(questions.filter(item => item.id !== q.id));
-                          }
-                        }}
-                        className="text-red-500 hover:text-red-400 font-medium text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: MODERATION */}
-          {activeTab === 'moderation' && (
-            <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-              <h2 className="text-lg font-bold text-white mb-6">Reported Comments & Moderation Queue</h2>
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-950 border-l-4 border-yellow-600 rounded-r-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">Reported for spamting solution code</span>
-                    <span className="text-xs text-slate-400">Reported 2h ago</span>
-                  </div>
-                  <p className="text-sm text-slate-300 mt-2 bg-slate-900 p-3 rounded">
-                    "Hey guys here is the direct solution code without explanation [code block...] just copy this to pass"
-                  </p>
-                  <div className="flex space-x-4 mt-3">
-                    <button className="text-xs font-bold text-red-500 hover:underline">Remove Comment</button>
-                    <button className="text-xs font-bold text-slate-400 hover:underline">Dismiss Report</button>
+                  <div className="h-1 bg-[#151e3d] rounded-full mt-4 overflow-hidden">
+                    <div className="h-full bg-blue-400 w-1/2"></div>
                   </div>
                 </div>
-                
-                <div className="p-4 bg-slate-950 border-l-4 border-red-600 rounded-r-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">Harassment / Abusive behavior</span>
-                    <span className="text-xs text-slate-400">Reported 5h ago</span>
+
+                <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl relative overflow-hidden">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">AVG. READINESS</p>
+                      <h3 className="text-2xl font-black text-white mt-2">78.5%</h3>
+                    </div>
+                    <span className="text-lg">📈</span>
                   </div>
-                  <p className="text-sm text-slate-300 mt-2 bg-slate-900 p-3 rounded">
-                    "Your solution is garbage, you should stop coding completely..."
-                  </p>
-                  <div className="flex space-x-4 mt-3">
-                    <button className="text-xs font-bold text-red-500 hover:underline">Remove Comment & Warn User</button>
-                    <button className="text-xs font-bold text-slate-400 hover:underline">Dismiss Report</button>
+                  <div className="h-1 bg-[#151e3d] rounded-full mt-4 overflow-hidden">
+                    <div className="h-full bg-violet-400 w-[78%]"></div>
+                  </div>
+                </div>
+
+                <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl relative overflow-hidden">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">QUESTION BANK</p>
+                      <h3 className="text-2xl font-black text-white mt-2">156</h3>
+                    </div>
+                    <span className="text-lg">🗄️</span>
+                  </div>
+                  <div className="h-1 bg-[#151e3d] rounded-full mt-4 overflow-hidden">
+                    <div className="h-full bg-cyan-400 w-4/5"></div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* TAB 4: STUDENT DATABASE */}
-          {activeTab === 'students' && (
-            <div className="space-y-8">
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                <h2 className="text-lg font-bold text-white mb-6">Enrolled Students Database</h2>
+              {/* Recent Submissions Table */}
+              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <h4 className="text-sm font-extrabold text-white">Recent Submissions</h4>
+                  </div>
+                  <button className="text-xs font-bold text-blue-400 hover:underline">VIEW ALL</button>
+                </div>
+
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-800">
+                  <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="text-left text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-950">
-                        <th className="px-6 py-4">Name</th>
-                        <th className="px-6 py-4">Email</th>
-                        <th className="px-6 py-4">Auth Method</th>
-                        <th className="px-6 py-4">Enrolled Date</th>
-                        <th className="px-6 py-4">Target Role</th>
-                        <th className="px-6 py-4">College</th>
-                        <th className="px-6 py-4 text-center">XP</th>
-                        <th className="px-6 py-4 text-center">Readiness</th>
-                        <th className="px-6 py-4 text-right">Actions</th>
+                      <tr className="border-b border-[#17203d] text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                        <th className="py-3 px-4">STUDENT</th>
+                        <th className="py-3 px-4">PROBLEM</th>
+                        <th className="py-3 px-4">STATUS</th>
+                        <th className="py-3 px-4 text-right">TIME</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-850 bg-slate-900/40">
-                      {students.map((student) => (
-                        <tr key={student.id} className="hover:bg-slate-850/40 transition">
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-white">
-                            <span className={student.is_active === false ? "line-through text-slate-500" : ""}>
-                              {student.name}
+                    <tbody className="divide-y divide-[#131b36]">
+                      {recentSubmissions.map(sub => (
+                        <tr key={sub.id} className="hover:bg-[#111938]/60 transition">
+                          <td className="py-3 px-4 font-mono font-bold text-gray-300">{sub.student}</td>
+                          <td className="py-3 px-4 font-medium text-white">{sub.problem}</td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold ${
+                              sub.status === 'Accepted'
+                                ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
+                                : sub.status === 'Runtime Error'
+                                ? 'bg-rose-950/80 text-rose-400 border border-rose-800'
+                                : 'bg-amber-950/80 text-amber-400 border border-amber-800'
+                            }`}>
+                              {sub.status === 'Accepted' ? '● Accepted' : sub.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-300">
-                            {student.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${student.auth_provider === 'google' ? 'bg-blue-900/60 text-blue-200 border border-blue-800' : 'bg-green-900/60 text-green-200 border border-green-800'}`}>
-                              {student.auth_provider === 'google' ? 'Google OAuth' : 'Email/Pass'}
+                          <td className="py-3 px-4 text-right text-gray-400 font-mono">{sub.time}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 2: QUESTION BANK (SUBMISSIONS / QUESTION STUDIO)      */}
+          {/* ========================================================= */}
+          {activeTab === 'submissions' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-black text-white">Question Management</h3>
+                  <p className="text-xs text-gray-400">Author and deploy coding challenges and test cases.</p>
+                </div>
+                <button 
+                  onClick={() => openEditModal(questionsList[0])}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-blue-500/20"
+                >
+                  + CREATE NEW PROBLEM
+                </button>
+              </div>
+
+              {/* Questions Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {questionsList.map(q => (
+                  <div key={q.id} className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5 flex flex-col justify-between hover:border-blue-500/50 transition">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-mono text-gray-400 font-bold">ID: {q.id}</span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black ${
+                          q.difficulty === 'Hard' ? 'bg-rose-950 text-rose-400 border border-rose-800' :
+                          q.difficulty === 'Medium' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                          'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                        }`}>
+                          {q.difficulty.toUpperCase()}
+                        </span>
+                      </div>
+                      <h4 className="font-extrabold text-sm text-white mb-2">{q.title}</h4>
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {q.tags.map(tag => (
+                          <span key={tag} className="px-2 py-0.5 bg-[#121a3a] text-gray-300 text-[10px] rounded font-medium">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-3 border-t border-[#17203d]">
+                      <span className="text-[10px] text-gray-400 font-bold">{q.type}</span>
+                      <button 
+                        onClick={() => openEditModal(q)}
+                        className="text-xs font-extrabold text-blue-400 hover:text-blue-300"
+                      >
+                        Edit Problem ➔
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 3: CURRICULUM (ROADMAP BUILDER)                      */}
+          {/* ========================================================= */}
+          {activeTab === 'curriculum' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-black text-white">Topic & Roadmap Builder</h3>
+                  <p className="text-xs text-gray-400">Construct and reorder learning pathways. Changes sync automatically.</p>
+                </div>
+                <div className="flex space-x-3">
+                  <button className="px-3.5 py-2 bg-[#121a3a] border border-[#1e2a4a] text-xs font-bold text-gray-200 rounded-xl hover:border-blue-500">
+                    + Add Subtopic
+                  </button>
+                  <button 
+                    onClick={() => setShowAddTopicModal(true)}
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-blue-500/20"
+                  >
+                    + Add Parent Topic
+                  </button>
+                </div>
+              </div>
+
+              {/* Roadmap Structure */}
+              <div className="space-y-4">
+                {/* Topic Group 1 */}
+                <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-base">📁</span>
+                      <h4 className="font-extrabold text-sm text-white">Data Structures</h4>
+                      <span className="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold rounded">
+                        3 SUBTOPICS · PUBLISHED
+                      </span>
+                    </div>
+                    <button className="text-gray-400 hover:text-white text-xs">⋮</button>
+                  </div>
+
+                  <div className="space-y-2 pl-6 border-l-2 border-blue-500/30">
+                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-200">Arrays & Strings</span>
+                      <span className="text-[10px] text-gray-400 font-mono">12 Modules</span>
+                    </div>
+                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-200">Linked Lists</span>
+                      <span className="text-[10px] text-gray-400 font-mono">8 Modules</span>
+                    </div>
+                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-200">Stacks & Queues</span>
+                      <span className="text-[10px] text-gray-400 font-mono">6 Modules</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Topic Group 2 */}
+                <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-base">📊</span>
+                      <h4 className="font-extrabold text-sm text-white">Advanced Algorithms</h4>
+                      <span className="px-2 py-0.5 bg-amber-950 text-amber-400 border border-amber-800 text-[9px] font-bold rounded">
+                        2 SUBTOPICS · DRAFT
+                      </span>
+                    </div>
+                    <button className="text-gray-400 hover:text-white text-xs">⋮</button>
+                  </div>
+
+                  <div className="space-y-2 pl-6 border-l-2 border-purple-500/30">
+                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-200">Dynamic Programming</span>
+                      <span className="text-[10px] text-gray-400 font-mono">15 Modules</span>
+                    </div>
+                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center opacity-60">
+                      <span className="text-xs font-bold text-gray-200">Graph Theory (Coming Soon)</span>
+                      <span className="text-[10px] text-gray-400 font-mono">8 Modules</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 4: STUDENT DATABASE (USER MANAGEMENT)                 */}
+          {/* ========================================================= */}
+          {activeTab === 'users' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-black text-white">Student Database</h3>
+                  <p className="text-xs text-gray-400">Track placement readiness scores and authenticate records.</p>
+                </div>
+                <div className="flex space-x-3">
+                  <select 
+                    value={roleFilter}
+                    onChange={e => setRoleFilter(e.target.value)}
+                    className="bg-[#0f1738] border border-[#1e2a4a] text-xs text-white rounded-lg px-3 py-1.5"
+                  >
+                    <option value="All">All Roles</option>
+                    <option value="Software Engineer">Software Engineer</option>
+                    <option value="Data Engineer">Data Engineer</option>
+                    <option value="DevOps">DevOps</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Student Table */}
+              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[#17203d] text-gray-400 text-[10px] uppercase font-bold tracking-wider bg-[#090e21]">
+                      <th className="py-3.5 px-4">STUDENT</th>
+                      <th className="py-3.5 px-4">CONTACT</th>
+                      <th className="py-3.5 px-4">ROLE & AUTH</th>
+                      <th className="py-3.5 px-4">METRICS</th>
+                      <th className="py-3.5 px-4">READINESS</th>
+                      <th className="py-3.5 px-4 text-right">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#131b36]">
+                    {students.map(std => (
+                      <tr key={std.id} className="hover:bg-[#111938]/60 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center font-bold text-xs text-blue-300">
+                              {std.name.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-bold text-white">{std.name}</p>
+                              <p className="text-[10px] font-mono text-gray-400">ID: {std.id}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <p className="text-gray-200">{std.email}</p>
+                          <p className="text-[10px] text-gray-400">Enrolled: {std.enrolled}</p>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-300">{std.role}</span>
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#131e42] text-blue-300 border border-blue-700/50">
+                              {std.auth_provider}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-gray-200">
+                          {std.solved} Solved
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="w-32">
+                            <div className="flex justify-between text-[10px] mb-1 font-bold">
+                              <span className="text-gray-400">Score</span>
+                              <span className="text-blue-400">{std.readiness}%</span>
+                            </div>
+                            <div className="h-1.5 bg-[#17203d] rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-500 rounded-full" style={{ width: `${std.readiness}%` }}></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button className="text-xs font-bold text-blue-400 hover:text-blue-300 px-2 py-1 bg-[#101838] border border-[#1a254a] rounded-lg">
+                            Inspect
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 5: SECURITY & LOGIN HISTORY (ANALYTICS)               */}
+          {/* ========================================================= */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-black text-white">Security & Login History</h3>
+                <p className="text-xs text-gray-400">Live monitoring of authentication events across the platform.</p>
+              </div>
+
+              {/* 3 Security Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL LOGINS (24H)</p>
+                  <h3 className="text-2xl font-black text-white mt-2">12,482</h3>
+                  <p className="text-xs text-emerald-400 font-semibold mt-1">↗ +1.2k vs yesterday</p>
+                </div>
+                <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">FAILED ATTEMPTS</p>
+                  <h3 className="text-2xl font-black text-white mt-2">342</h3>
+                  <p className="text-xs text-amber-400 font-semibold mt-1">⚠️ Elevated risk detected</p>
+                </div>
+                <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">ACTIVE SESSIONS</p>
+                  <h3 className="text-2xl font-black text-white mt-2">4,109</h3>
+                  <p className="text-xs text-blue-400 font-semibold mt-1">🌐 Across 12 regions</p>
+                </div>
+              </div>
+
+              {/* Live Activity Monitor Table */}
+              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-sm font-extrabold text-white">Live Activity Monitor</h4>
+                  <span className="text-[10px] text-gray-400 font-mono">Last updated: Just now</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-[#17203d] text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                        <th className="py-3 px-4">TIMESTAMP</th>
+                        <th className="py-3 px-4">USER / EMAIL</th>
+                        <th className="py-3 px-4">AUTH PROVIDER</th>
+                        <th className="py-3 px-4">IP ADDRESS</th>
+                        <th className="py-3 px-4">DEVICE / LOCATION</th>
+                        <th className="py-3 px-4 text-right">STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#131b36]">
+                      {securityLogs.map(log => (
+                        <tr key={log.id} className="hover:bg-[#111938]/60 transition">
+                          <td className="py-3.5 px-4 font-mono text-gray-400 text-[11px]">{log.timestamp}</td>
+                          <td className="py-3.5 px-4 font-bold text-white">{log.email}</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2 py-0.5 bg-[#121b3d] text-blue-300 border border-blue-700/50 rounded text-[10px] font-bold">
+                              {log.authProvider}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-400 text-sm">
-                            {new Date(student.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-300">
-                            {student.target_role || 'Not Set'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-400 text-sm">
-                            {student.college || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center text-slate-200">
-                            {student.xp} XP
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`font-bold ${student.readiness_score >= 80 ? 'text-green-400' : student.readiness_score >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
-                              {student.readiness_score.toFixed(1)}%
+                          <td className="py-3.5 px-4 font-mono text-gray-300">{log.ipAddress}</td>
+                          <td className="py-3.5 px-4 text-gray-400 whitespace-pre-line text-[11px]">{log.deviceLocation}</td>
+                          <td className="py-3.5 px-4 text-right">
+                            <span className={`px-2.5 py-1 rounded text-[9px] font-extrabold ${
+                              log.status === 'SUCCESSFUL'
+                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                                : 'bg-rose-950 text-rose-400 border border-rose-800'
+                            }`}>
+                              {log.status}
                             </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                            <button
-                              onClick={() => handleInspectStudent(student.id)}
-                              className="text-blue-500 hover:text-blue-400"
-                            >
-                              Inspect
-                            </button>
-                            <button
-                              onClick={() => handleToggleStudentActive(student.id)}
-                              className={`${student.is_active !== false ? 'text-yellow-500 hover:text-yellow-400' : 'text-green-500 hover:text-green-400'}`}
-                            >
-                              {student.is_active !== false ? 'Suspend' : 'Activate'}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStudent(student.id)}
-                              className="text-red-500 hover:text-red-400"
-                            >
-                              Delete
-                            </button>
                           </td>
                         </tr>
                       ))}
@@ -837,263 +703,173 @@ export default function App() {
                   </table>
                 </div>
               </div>
-
-              {/* STUDENT DETAILED INSPECTOR SCREEN */}
-              {inspectedStudent && (
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850 relative transition-all">
-                  <button
-                    onClick={() => setInspectedStudent(null)}
-                    className="absolute top-6 right-6 text-slate-400 hover:text-white font-bold text-base bg-slate-950 p-2 rounded-full border border-slate-850 w-10 h-10 flex items-center justify-center"
-                  >
-                    ✕
-                  </button>
-                  <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
-                    <span>Student Progress Details:</span>
-                    <span className="text-blue-500">{inspectedStudent.name}</span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    {/* Details Column */}
-                    <div className="bg-slate-950 p-5 rounded-lg border border-slate-850 space-y-3 text-sm text-slate-300">
-                      <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">Profile & Status</h4>
-                      <div><span className="text-slate-500">Email:</span> {inspectedStudent.email}</div>
-                      <div><span className="text-slate-500">College:</span> {inspectedStudent.college || 'N/A'}</div>
-                      <div><span className="text-slate-500">Degree:</span> {inspectedStudent.degree || 'N/A'}</div>
-                      <div><span className="text-slate-500">Target Role:</span> {inspectedStudent.target_role || 'Not Set'}</div>
-                      <div>
-                        <span className="text-slate-500">Status:</span>
-                        <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${inspectedStudent.is_active !== false ? 'bg-green-900/60 text-green-200 border border-green-800' : 'bg-yellow-900/60 text-yellow-200 border border-yellow-800'}`}>
-                          {inspectedStudent.is_active !== false ? 'Active' : 'Suspended'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Skill Mastery Levels Column */}
-                    <div className="bg-slate-950 p-5 rounded-lg border border-slate-850 md:col-span-2">
-                      <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">Domain Proficiency Scores</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Data Structures & Algorithms</span>
-                            <span>{(inspectedStudent.dsa_level || 0).toFixed(0)}%</span>
-                          </div>
-                          <div className="w-full bg-slate-850 h-2 rounded">
-                            <div className="bg-blue-500 h-2 rounded" style={{ width: `${inspectedStudent.dsa_level || 0}%` }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>SQL & Databases</span>
-                            <span>{(inspectedStudent.sql_level || 0).toFixed(0)}%</span>
-                          </div>
-                          <div className="w-full bg-slate-850 h-2 rounded">
-                            <div className="bg-green-500 h-2 rounded" style={{ width: `${inspectedStudent.sql_level || 0}%` }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Computer Science Fundamentals</span>
-                            <span>{(inspectedStudent.cs_fundamentals_level || 0).toFixed(0)}%</span>
-                          </div>
-                          <div className="w-full bg-slate-850 h-2 rounded">
-                            <div className="bg-yellow-500 h-2 rounded" style={{ width: `${inspectedStudent.cs_fundamentals_level || 0}%` }}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Aptitude & Reasoning</span>
-                            <span>{(inspectedStudent.aptitude_level || 0).toFixed(0)}%</span>
-                          </div>
-                          <div className="w-full bg-slate-850 h-2 rounded">
-                            <div className="bg-red-500 h-2 rounded" style={{ width: `${inspectedStudent.aptitude_level || 0}%` }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Submission Logs History */}
-                  <div className="bg-slate-950 p-5 rounded-lg border border-slate-850">
-                    <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">Submission Logs ({inspectedStudent.submissions ? inspectedStudent.submissions.length : 0})</h4>
-                    {inspectedStudent.submissions && inspectedStudent.submissions.length > 0 ? (
-                      <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2">
-                        {inspectedStudent.submissions.map((sub: any) => (
-                          <div key={sub.id} className="p-3 bg-slate-900 border border-slate-850 rounded flex justify-between items-center text-sm">
-                            <div>
-                              <span className="font-bold text-white">{sub.question_title}</span>
-                              <span className="ml-2 text-xs uppercase px-2 py-0.5 rounded bg-slate-850 text-slate-400 font-semibold">{sub.type}</span>
-                            </div>
-                            <div className="flex items-center space-x-4">
-                              <span className="text-slate-500 text-xs">{new Date(sub.created_at).toLocaleString()}</span>
-                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${sub.is_correct ? 'bg-green-900/60 text-green-200 border border-green-800' : 'bg-red-900/60 text-red-200 border border-red-800'}`}>
-                                {sub.is_correct ? `Correct (+${sub.score} XP)` : 'Wrong Answer'}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-10 text-slate-500 text-sm">No submissions logged for this student yet.</div>
-                    )}
-                  </div>
-
-                  {/* Login Activity Logs */}
-                  <div className="bg-slate-950 p-5 rounded-lg border border-slate-850 mt-6">
-                    <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">Login Activity Logs ({inspectedStudent.logins ? inspectedStudent.logins.length : 0})</h4>
-                    {inspectedStudent.logins && inspectedStudent.logins.length > 0 ? (
-                      <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2">
-                        {inspectedStudent.logins.map((log: any) => (
-                          <div key={log.id} className="p-3 bg-slate-900 border border-slate-850 rounded flex justify-between items-center text-sm">
-                            <div className="flex items-center space-x-3 truncate">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${log.auth_provider === 'google' ? 'bg-blue-900/60 text-blue-200 border border-blue-800' : 'bg-green-900/60 text-green-200 border border-green-800'}`}>
-                                {log.auth_provider === 'google' ? 'Google OAuth' : 'Email/Pass'}
-                              </span>
-                              <span className="text-slate-300 font-mono text-xs">{log.ip_address}</span>
-                              <span className="text-slate-500 text-xs truncate max-w-[250px]" title={log.device_info}>
-                                {log.device_info}
-                              </span>
-                            </div>
-                            <span className="text-slate-500 text-xs whitespace-nowrap">{new Date(log.login_time).toLocaleString()}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-10 text-slate-500 text-sm">No login tracking logs recorded yet.</div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* TAB 5: TOPIC & ROADMAP BUILDER */}
-          {activeTab === 'topics' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Form panel */}
-              <div className="bg-slate-900 p-6 rounded-xl border border-slate-850 h-fit">
-                <h2 className="text-lg font-bold text-white mb-6">Create Roadmap Topic</h2>
-                <form onSubmit={handleAddTopic} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400">Topic Title</label>
-                    <input
-                      type="text"
-                      required
-                      value={newTopicName}
-                      onChange={(e) => setNewTopicName(e.target.value)}
-                      className="mt-1 w-full p-2.5 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none"
-                      placeholder="e.g. System Design, OS"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400">Description</label>
-                    <textarea
-                      rows={3}
-                      value={newTopicDesc}
-                      onChange={(e) => setNewTopicDesc(e.target.value)}
-                      className="mt-1 w-full p-2.5 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none"
-                      placeholder="Briefly describe this learning domain..."
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition"
-                  >
-                    Create Topic
-                  </button>
-                </form>
-              </div>
-
-              {/* Display Accordions list */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-850">
-                  <h2 className="text-lg font-bold text-white mb-6">Roadmap Topics Directory</h2>
-                  {topics.length === 0 ? (
-                    <div className="text-center py-10 text-slate-500">No topics configured in the roadmap.</div>
-                  ) : (
-                    <div className="space-y-6">
-                      {topics.map((t) => (
-                        <div key={t.id} className="p-5 bg-slate-950 rounded-xl border border-slate-850">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="text-base font-bold text-white">{t.name}</h3>
-                              <p className="text-sm text-slate-400 mt-1">{t.description}</p>
-                            </div>
-                            <button
-                              onClick={() => handleDeleteTopic(t.id)}
-                              className="text-red-500 hover:text-red-400 text-xs font-semibold"
-                            >
-                              Delete Topic
-                            </button>
-                          </div>
-
-                          {/* Subtopics nesting */}
-                          <div className="mt-4 pt-4 border-t border-slate-850/60 space-y-3">
-                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Subtopics / Modules</h4>
-                            {t.subtopics && t.subtopics.length > 0 ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {t.subtopics.map((st: any) => (
-                                  <div key={st.id} className="p-3 bg-slate-900 border border-slate-800 rounded-lg flex justify-between items-center">
-                                    <div>
-                                      <div className="font-semibold text-sm text-slate-200">{st.name}</div>
-                                      <div className="text-xs text-slate-500 mt-0.5">{st.description}</div>
-                                    </div>
-                                    <button
-                                      onClick={() => handleDeleteSubtopic(st.id, t.id)}
-                                      className="text-red-500 hover:text-red-400 text-xs font-bold p-1"
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-xs text-slate-600 italic">No subtopics defined under this topic.</div>
-                            )}
-
-                            {/* Create Subtopic nested form */}
-                            <div className="mt-4 pt-4 border-t border-dashed border-slate-850/40 bg-slate-900/30 p-3 rounded-lg">
-                              <h5 className="text-xs font-bold text-slate-400 mb-2">Add Subtopic under this Topic</h5>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                                <div className="md:col-span-1">
-                                  <input
-                                    type="text"
-                                    value={newSubtopicName[t.id] || ''}
-                                    onChange={(e) => setNewSubtopicName({ ...newSubtopicName, [t.id]: e.target.value })}
-                                    className="w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none text-xs text-white"
-                                    placeholder="Subtopic Name"
-                                  />
-                                </div>
-                                <div className="md:col-span-1">
-                                  <input
-                                    type="text"
-                                    value={newSubtopicDesc[t.id] || ''}
-                                    onChange={(e) => setNewSubtopicDesc({ ...newSubtopicDesc, [t.id]: e.target.value })}
-                                    className="w-full p-2 bg-slate-950 border border-slate-800 rounded focus:border-blue-500 focus:outline-none text-xs text-white"
-                                    placeholder="Subtopic Description"
-                                  />
-                                </div>
-                                <div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleAddSubtopic(t.id)}
-                                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition"
-                                  >
-                                    Add Subtopic
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          {/* ========================================================= */}
+          {/* TAB 6: SETTINGS                                           */}
+          {/* ========================================================= */}
+          {activeTab === 'settings' && (
+            <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6 max-w-2xl">
+              <h3 className="text-base font-extrabold text-white mb-4">Platform Configuration</h3>
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-gray-400 font-bold mb-1">Live Backend API Endpoint</label>
+                  <input
+                    type="text"
+                    disabled
+                    value="https://code-quest-z89h.onrender.com/api/v1"
+                    className="w-full bg-[#080d21] border border-[#1a2444] rounded-lg p-2.5 text-gray-300 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 font-bold mb-1">Firebase Project ID</label>
+                  <input
+                    type="text"
+                    disabled
+                    value="code-quest-d32fd"
+                    className="w-full bg-[#080d21] border border-[#1a2444] rounded-lg p-2.5 text-gray-300 font-mono"
+                  />
                 </div>
               </div>
             </div>
           )}
-        </main>
-      </div>
+        </div>
+      </main>
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: EDIT PROBLEM STUDIO                                    */}
+      {/* ------------------------------------------------------------- */}
+      {showEditProblemModal && selectedQuestion && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0b1026] border border-[#1f2c52] rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#182342] flex justify-between items-center bg-[#0d1430]">
+              <div className="flex items-center space-x-2">
+                <span className="text-base">📝</span>
+                <h3 className="font-extrabold text-sm text-white">Edit Problem: {selectedQuestion.title}</h3>
+              </div>
+              <button 
+                onClick={() => setShowEditProblemModal(false)}
+                className="text-gray-400 hover:text-white text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-y-auto">
+              {/* Left Config Column */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">PROBLEM ID</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={selectedQuestion.id}
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2 text-xs font-mono text-gray-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">DIFFICULTY</label>
+                  <select
+                    value={selectedQuestion.difficulty}
+                    onChange={e => setSelectedQuestion({ ...selectedQuestion, difficulty: e.target.value as any })}
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2 text-xs text-white"
+                  >
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">TAGS</label>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {selectedQuestion.tags.map(tag => (
+                      <span key={tag} className="px-2 py-0.5 bg-[#141f42] text-blue-300 text-[10px] rounded font-bold">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Add Tag..."
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2 text-xs text-white placeholder-gray-500"
+                  />
+                </div>
+              </div>
+
+              {/* Right Editor Tabs Column */}
+              <div className="md:col-span-2 space-y-3">
+                <div className="flex space-x-2 border-b border-[#182342] pb-2">
+                  {[
+                    { id: 'desc', label: 'Description' },
+                    { id: 'starter', label: 'Starter Code' },
+                    { id: 'tests', label: 'Test Cases' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setEditorTab(tab.id as any)}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                        editorTab === tab.id
+                          ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                          : 'text-gray-400 hover:text-gray-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {editorTab === 'desc' && (
+                  <textarea
+                    rows={8}
+                    value={selectedQuestion.desc}
+                    onChange={e => setSelectedQuestion({ ...selectedQuestion, desc: e.target.value })}
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-xl p-3 text-xs font-mono text-gray-200 focus:outline-none focus:border-blue-500"
+                  />
+                )}
+
+                {editorTab === 'starter' && (
+                  <textarea
+                    rows={8}
+                    value={selectedQuestion.starterCode || ''}
+                    onChange={e => setSelectedQuestion({ ...selectedQuestion, starterCode: e.target.value })}
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-xl p-3 text-xs font-mono text-blue-300 focus:outline-none focus:border-blue-500"
+                  />
+                )}
+
+                {editorTab === 'tests' && (
+                  <textarea
+                    rows={8}
+                    value={selectedQuestion.testCases || ''}
+                    onChange={e => setSelectedQuestion({ ...selectedQuestion, testCases: e.target.value })}
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-xl p-3 text-xs font-mono text-emerald-300 focus:outline-none focus:border-blue-500"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-[#182342] flex justify-end space-x-3 bg-[#0d1430]">
+              <button
+                onClick={() => setShowEditProblemModal(false)}
+                className="px-4 py-2 bg-[#121b3a] hover:bg-[#18234a] text-xs font-bold text-gray-300 rounded-xl"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={saveEditedProblem}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-blue-500/20"
+              >
+                SAVE & PUBLISH
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
