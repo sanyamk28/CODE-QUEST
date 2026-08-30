@@ -18,8 +18,7 @@ import * as Google from 'expo-auth-session/providers/google';
 WebBrowser.maybeCompleteAuthSession();
 
 // --- API CONFIGURATION ---
-// In production, change this to your deployed Render backend URL (e.g. 'https://codequest-api.onrender.com/api/v1')
-export const BACKEND_API_URL = 'http://localhost:8000/api/v1';
+export const BACKEND_API_URL = 'https://code-quest-z89h.onrender.com/api/v1';
 
 // --- DATA MOCKS FOR MOBILE APP ---
 const INITIAL_ROADMAPS = [
