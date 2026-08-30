@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,7 +9,10 @@ import {
   SafeAreaView,
   StatusBar,
   Modal,
-  Animated
+  Animated,
+  Image,
+  Switch,
+  Dimensions
 } from 'react-native';
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
@@ -17,6 +20,8 @@ import * as Google from 'expo-auth-session/providers/google';
 import { firebaseAuthSignIn } from './firebase';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const { width } = Dimensions.get('window');
 
 // --- API CONFIGURATION ---
 export const BACKEND_API_URL = 'https://code-quest-z89h.onrender.com/api/v1';
@@ -30,6 +35,18 @@ const INITIAL_ROADMAPS = [
   {
     role: "Software Engineer",
     steps: ["Arrays & Strings", "Two Pointers", "Stacks", "Binary Search", "OOP Fundamentals", "System Design"]
+  },
+  {
+    role: "Frontend",
+    steps: ["HTML5 & CSS Grid", "JavaScript ES6+", "React Hooks", "State Management", "Performance Optimization"]
+  },
+  {
+    role: "Full-Stack",
+    steps: ["Data Structures", "REST APIs", "React Frontend", "Node/Express Backend", "PostgreSQL & Docker"]
+  },
+  {
+    role: "DevOps",
+    steps: ["Linux Internals", "Docker Containers", "Kubernetes", "CI/CD Pipelines", "AWS Cloud Architecture"]
   }
 ];
 
@@ -38,18 +55,34 @@ const CONTEST_QUESTIONS = [
     title: "Two Sum", 
     type: "coding", 
     difficulty: "Easy", 
-    desc: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.", 
-    template: "class Solution:\n    def twoSum(self, nums: list[int], target: int) -> list[int]:\n        # Write code here\n        return []", 
+    companies: ["AMAZON", "GOOGLE"],
+    desc: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.", 
+    template: `/**
+ * @param {number[]} nums
+ * @param {number} target
+ * @return {number[]}
+ */
+var twoSum = function(nums, target) {
+    const map = new Map();
+    for (let i = 0; i < nums.length; i++) {
+        const complement = target - nums[i];
+        if (map.has(complement)) {
+            return [map.get(complement), i];
+        }
+        map.set(nums[i], i);
+    }
+};`, 
     input: "nums = [2,7,11,15], target = 9", 
     output: "[0,1]", 
-    solved: false 
+    solved: true 
   },
   { 
     title: "Contains Duplicate", 
     type: "coding", 
     difficulty: "Easy", 
+    companies: ["APPLE", "MICROSOFT"],
     desc: "Given an integer array nums, return true if any value appears at least twice in the array, and false if every element is distinct.", 
-    template: "class Solution:\n    def containsDuplicate(self, nums: list[int]) -> bool:\n        # Write code here\n        return False", 
+    template: "var containsDuplicate = function(nums) {\n    return new Set(nums).size !== nums.length;\n};", 
     input: "nums = [1,2,3,1]", 
     output: "true", 
     solved: false 
@@ -58,7 +91,8 @@ const CONTEST_QUESTIONS = [
     title: "Department Top Three Salaries", 
     type: "sql", 
     difficulty: "Medium", 
-    desc: "Find the employees who are high earners in each of the departments. A high earner earns a salary in the top three unique salaries.", 
+    companies: ["GOOGLE", "META"],
+    desc: "Find the employees who are high earners in each of the departments. A high earner earns a salary in the top three unique salaries in that department.", 
     template: "SELECT d.name AS Department, e.name AS Employee, e.salary AS Salary\nFROM Employee e JOIN Department d ON e.departmentId = d.id\nWHERE 3 > (SELECT COUNT(DISTINCT e2.salary) FROM Employee e2 WHERE e2.salary > e.salary AND e2.departmentId = e.departmentId);", 
     input: "Run on PostgreSQL engine", 
     output: "Rows matching top salaries per department", 
@@ -68,7 +102,8 @@ const CONTEST_QUESTIONS = [
     title: "Combine Two Tables", 
     type: "sql", 
     difficulty: "Easy", 
-    desc: "Report first name, last name, city, and state of each person. If the address is missing, report null.", 
+    companies: ["AMAZON"],
+    desc: "Report first name, last name, city, and state of each person. If the address of a personId is not in Address table, report null.", 
     template: "SELECT firstName, lastName, city, state\nFROM Person LEFT JOIN Address ON Person.personId = Address.personId;", 
     input: "Run on PostgreSQL engine", 
     output: "Combined rows showing address elements or nulls", 
@@ -78,7 +113,7 @@ const CONTEST_QUESTIONS = [
 
 const MCQ_QUIZ_QUESTIONS = [
   {
-    topic: "Arrays",
+    topic: "Data Structures",
     question: "What is the time complexity to access an element by index in an array?",
     options: ["O(1)", "O(log N)", "O(N)", "O(N log N)"],
     answer: "A",
@@ -86,2483 +121,1799 @@ const MCQ_QUIZ_QUESTIONS = [
     explanation: "Arrays offer constant time O(1) random access because elements are stored in contiguous memory locations."
   },
   {
-    topic: "Strings",
-    question: "Which string matching algorithm runs in O(N+M) worst-case time complexity?",
-    options: ["Brute Force", "KMP (Knuth-Morris-Pratt)", "Rabin-Karp", "Boyer-Moore"],
-    answer: "B",
-    difficulty: "Medium",
-    explanation: "Knuth-Morris-Pratt (KMP) matches strings in O(N+M) time using a prefix lookup table to skip redundant matching steps."
-  },
-  {
-    topic: "Stacks",
-    question: "Which data structure follows the LIFO (Last In First Out) principle?",
-    options: ["Queue", "Stack", "Binary Tree", "Linked List"],
-    answer: "B",
-    difficulty: "Easy",
-    explanation: "Stacks add and remove elements from the same end, mapping to Last In First Out behavior."
-  },
-  {
-    topic: "SQL Playground",
-    question: "Which SQL join returns all rows when there is a match in either left or right table?",
-    options: ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL OUTER JOIN"],
-    answer: "D",
-    difficulty: "Easy",
-    explanation: "FULL OUTER JOIN returns records from both tables matching either left or right query sets."
-  },
-  {
-    topic: "SQL Playground",
-    question: "Which SQL clause is used to filter group results returned by a GROUP BY query?",
-    options: ["WHERE", "HAVING", "ORDER BY", "SELECT"],
-    answer: "B",
-    difficulty: "Medium",
-    explanation: "HAVING is evaluated after grouping and filters aggregate statistics (e.g. HAVING COUNT(*) > 5), whereas WHERE filters base rows before grouping."
-  },
-  {
-    topic: "DBMS Core",
-    question: "What is the primary benefit of a B-Tree index structure in SQL databases?",
-    options: ["Faster hash matches", "Maintains sorted order for efficient range queries", "No storage overhead", "Guarantees duplicate prevention"],
-    answer: "B",
-    difficulty: "Medium",
-    explanation: "B-Trees keep data sorted, allowing logarithmic O(log N) lookups, inserts, and range queries."
-  },
-  {
-    topic: "DBMS Core",
-    question: "Which ACID property ensures that transactions are either fully completed or completely rolled back?",
-    options: ["Atomicity", "Consistency", "Isolation", "Durability"],
+    topic: "System Design",
+    question: "Which pattern is primarily used to prevent cascading failures in distributed systems?",
+    options: ["Circuit Breaker", "Singleton", "Observer", "Flyweight"],
     answer: "A",
-    difficulty: "Easy",
-    explanation: "Atomicity is the 'all or nothing' principle of transactions."
-  },
-  {
-    topic: "Operating Systems",
-    question: "Which scheduling algorithm is non-preemptive?",
-    options: ["Round Robin", "First-Come, First-Served (FCFS)", "Shortest Remaining Time First", "Priority Scheduling (Preemptive)"],
-    answer: "B",
-    difficulty: "Easy",
-    explanation: "FCFS runs processes to completion in their order of arrival without preemption."
-  },
-  {
-    topic: "Operating Systems",
-    question: "Which page replacement algorithm suffers from Belady's Anomaly?",
-    options: ["LRU (Least Recently Used)", "FIFO (First In First Out)", "Optimal Page Replacement", "MRU (Most Recently Used)"],
-    answer: "B",
     difficulty: "Medium",
-    explanation: "FIFO page replacement can exhibit Belady's Anomaly where increasing physical page frames increases page faults."
-  },
-  {
-    topic: "Computer Networks",
-    question: "Which protocol is connection-oriented and guarantees packet delivery?",
-    options: ["UDP", "IP", "ICMP", "TCP"],
-    answer: "D",
-    difficulty: "Easy",
-    explanation: "TCP uses a three-way handshake, sequence checks, and acknowledgments to guarantee delivery, unlike UDP."
-  },
-  {
-    topic: "Computer Networks",
-    question: "Which layer of the OSI model does a router operate on?",
-    options: ["Physical Layer", "Data Link Layer", "Network Layer", "Transport Layer"],
-    answer: "C",
-    difficulty: "Easy",
-    explanation: "Routers operate on Layer 3 (Network Layer) using IP addresses to route packets between subnets."
-  },
-  {
-    topic: "OOP",
-    question: "Which concept allows a subclass to inherit attributes and methods of a parent class?",
-    options: ["Abstraction", "Inheritance", "Polymorphism", "Encapsulation"],
-    answer: "B",
-    difficulty: "Easy",
-    explanation: "Inheritance permits code reusability by sharing parent class traits with child classes."
-  },
-  {
-    topic: "OOP",
-    question: "What is method overloading?",
-    options: ["Defining child class methods that override parent methods", "Defining multiple methods with same name but different signatures", "Creating an object from a class template", "Bundling properties and methods together"],
-    answer: "B",
-    difficulty: "Medium",
-    explanation: "Method overloading is compile-time polymorphism where methods share names but differ in parameter counts or types."
-  },
-  {
-    topic: "Software Engineering Core",
-    question: "Which Git command applies the changes of a specific commit onto the current branch?",
-    options: ["git merge", "git cherry-pick", "git rebase", "git checkout"],
-    answer: "B",
-    difficulty: "Medium",
-    explanation: "Cherry-pick selects a specific commit SHA and commits its diff independently onto the current branch."
-  },
-  {
-    topic: "Binary Search",
-    question: "What is the maximum number of comparisons needed to find an element in a sorted array of size 1024?",
-    options: ["1024 comparisons", "512 comparisons", "10 comparisons", "1 comparison"],
-    answer: "C",
-    difficulty: "Medium",
-    explanation: "Binary search divides the workspace in half. log2(1024) = 10, meaning at most 10 iterations are required."
+    explanation: "The Circuit Breaker pattern detects failures and encapsulates the logic of preventing a failure from constantly recurring during maintenance."
   }
 ];
 
 export default function App() {
-  // Google OAuth Hook Setup
-  const [googleRequest, googleResponse, promptAsyncGoogle] = Google.useAuthRequest({
-    clientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
-    webClientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
-    androidClientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
-  });
+  // Navigation & Flow State
+  const [currentScreen, setCurrentScreen] = useState<'splash' | 'auth' | 'onboarding' | 'dashboard'>('splash');
+  const [activeTab, setActiveTab] = useState<'Home' | 'Arena' | 'Roadmap' | 'Profile'>('Home');
 
-  // Navigation / Auth State
+  // User & Profile State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isOnboarded, setIsOnboarded] = useState(false);
-  const [activeTab, setActiveTab] = useState('Home'); // Home, Practice, Assessments, Roadmap, Profile
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-
-  // Handle successful Google authentication redirect
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const { authentication } = googleResponse;
-      const idToken = authentication?.idToken;
-      if (idToken) {
-        handleGoogleOAuthSuccess(idToken);
-      }
-    }
-  }, [googleResponse]);
-
-  const handleGoogleOAuthSuccess = async (idToken: string) => {
-    try {
-      const res = await axios.post(`${BACKEND_API_URL}/auth/google`, {
-        id_token: idToken
-      });
-      console.log("Logged in with Google Auth backend:", res.data);
-      
-      const headers = { Authorization: `Bearer ${res.data.access_token}` };
-      const profileRes = await axios.get(`${BACKEND_API_URL}/auth/profile`, { headers });
-      setUserName(profileRes.data.name);
-      setEmail(profileRes.data.email);
-      setTargetRole(profileRes.data.target_role || 'Software Engineer');
-      setIsOnboarded(!!profileRes.data.target_role);
-      setIsLoggedIn(true);
-    } catch (err) {
-      console.warn("Failed syncing Google OAuth token with backend, falling back to local mock decode");
-      try {
-        const payloadBase64 = idToken.split('.')[1];
-        const cleanBase64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-        let str = '';
-        let bc = 0;
-        let bs = 0;
-        for (let i = 0; i < cleanBase64.length; i++) {
-          const char = cleanBase64.charAt(i);
-          const idx = chars.indexOf(char);
-          if (idx === -1) continue;
-          bc = (bc * 64) + idx;
-          bs += 6;
-          if (bs >= 8) {
-            bs -= 8;
-            const byte = (bc >> bs) & 0xff;
-            str += String.fromCharCode(byte);
-          }
-        }
-        const decoded = JSON.parse(str);
-        setEmail(decoded.email);
-        setUserName(decoded.name || decoded.email.split('@')[0]);
-        setIsOnboarded(false);
-        setIsLoggedIn(true);
-      } catch (decodeErr) {
-        setEmail("google.user@gmail.com");
-        setUserName("Google User");
-        setIsOnboarded(false);
-        setIsLoggedIn(true);
-      }
-    }
-  };
-  
-  // Opening Splash Animation States
-  const [showSplash, setShowSplash] = useState(true);
-  const fadeAnim = useState(new Animated.Value(0))[0];
-  const scaleAnim = useState(new Animated.Value(0.5))[0];
-  const textTranslateY = useState(new Animated.Value(20))[0];
-
-  // Trigger intro opening sequence
-  useEffect(() => {
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1.0,
-          friction: 4,
-          tension: 30,
-          useNativeDriver: true
-        }),
-        Animated.timing(textTranslateY, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true
-        })
-      ]),
-      Animated.delay(1600),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true
-      })
-    ]).start(() => {
-      setShowSplash(false);
-    });
-  }, [fadeAnim, scaleAnim, textTranslateY]);
-  
-  // Auth details
-  const [email, setEmail] = useState('student@placementforge.com');
+  const [isOnboarded, setIsOnboarded] = useState(true);
+  const [guestMode, setGuestMode] = useState(false);
+  const [userName, setUserName] = useState('Alex');
+  const [email, setEmail] = useState('alex.chen@gmail.com');
   const [password, setPassword] = useState('password123');
-  const [userName, setUserName] = useState('');
-  
-  // Onboarding Form
-  const [degree, setDegree] = useState('B.Tech Computer Science');
-  const [gradYear, setGradYear] = useState('2027');
-  const [targetRole, setTargetRole] = useState('Data Engineer');
-  const [dsaLevel, setDsaLevel] = useState('Beginner');
-  const [userSkills, setUserSkills] = useState('Python, SQL, JavaScript');
-  const [studyHours, setStudyHours] = useState('4');
-
-  // Gamification Metrics
-  const [xp, setXp] = useState(0);
-  const [streak, setStreak] = useState(1);
-  const [solvedCoding, setSolvedCoding] = useState(0);
-  const [completedMCQs, setCompletedMCQs] = useState(0);
-  const [completedRoadmapSteps, setCompletedRoadmapSteps] = useState<string[]>([]);
-
-  // Weekly Language Performance success rates (%)
-  const [pythonSuccessRate, setPythonSuccessRate] = useState(85);
-  const [sqlSuccessRate, setSqlSuccessRate] = useState(55); // Starts low to prompt SQL roadmap recovery
-
-  // Daily Mission Checks
-  const [missionCodingSolved, setMissionCodingSolved] = useState(false);
-  const [missionSQLSolved, setMissionSQLSolved] = useState(false);
-
-  // Active Practice Problem State
-  const [selectedPracticeType, setSelectedPracticeType] = useState<string | null>(null); // coding, sql, mcq, puzzle
-  const [sqlQuery, setSqlQuery] = useState('SELECT * FROM orders WHERE amount > 100;');
-  const [sqlResult, setSqlResult] = useState<string | null>(null);
-  
-  const [codeContent, setCodeContent] = useState('def solve(nums, target):\n    # Write your solution here\n    pass');
-  const [codeResult, setCodeResult] = useState<string | null>(null);
-
-  // Improved 15-question MCQ Engine States
-  const [currentMCQIndex, setCurrentMCQIndex] = useState(0);
-  const [selectedMCQOption, setSelectedMCQOption] = useState<string | null>(null);
-  const [mcqAnswers, setMcqAnswers] = useState<Record<number, string>>({});
-  const [isMCQQuizSubmitted, setIsMCQQuizSubmitted] = useState(false);
-
-  // Resume analysis state
-  const [resumeName, setResumeName] = useState('');
-  const [resumeAnalysisResult, setResumeAnalysisResult] = useState<any | null>(null);
-
-  // 1v1 Code Duel Arena States
-  const [arenaMMR, setArenaMMR] = useState(1200);
-  const [duelWins, setDuelWins] = useState(0);
-  const [duelLosses, setDuelLosses] = useState(0);
-  const [showDuelQueue, setShowDuelQueue] = useState(false);
-  const [isInDuel, setIsInDuel] = useState(false);
-  const [duelTimeRemaining, setDuelTimeRemaining] = useState(300); // 5 mins
-  const [duelElapsedSeconds, setDuelElapsedSeconds] = useState(0);
-  const [duelOpponentSolved, setDuelOpponentSolved] = useState(0); // Opponent test cases (out of 5)
-  const [duelUserSolved, setDuelUserSolved] = useState(0);         // User test cases (out of 5)
-  const [duelResult, setDuelResult] = useState<'victory' | 'defeat' | 'draw' | null>(null);
-  const [duelOpponentName, setDuelOpponentName] = useState('Alex Chen');
-  const [duelOpponentMMR, setDuelOpponentMMR] = useState(1240);
-  const [duelCode, setDuelCode] = useState('');
-  const [duelMessage, setDuelMessage] = useState('');
-
-  // Handle 1v1 Duel timer & opponent simulation
-  useEffect(() => {
-    let interval: any;
-    if (isInDuel && !duelResult) {
-      interval = setInterval(() => {
-        setDuelTimeRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            const userWon = duelUserSolved > duelOpponentSolved;
-            if (userWon) {
-              setDuelWins(p => p + 1);
-              setArenaMMR(p => p + 25);
-            } else if (duelUserSolved < duelOpponentSolved) {
-              setDuelLosses(p => p + 1);
-              setArenaMMR(p => Math.max(1000, p - 15));
-            }
-            setDuelResult(userWon ? 'victory' : (duelUserSolved === duelOpponentSolved ? 'draw' : 'defeat'));
-            return 0;
-          }
-          return prev - 1;
-        });
-        
-        setDuelElapsedSeconds((prev) => {
-          const nextSec = prev + 1;
-          
-          // Opponent progress simulation
-          if (nextSec === 35) {
-            setDuelOpponentSolved(2);
-          } else if (nextSec === 80) {
-            setDuelOpponentSolved(4);
-          } else if (nextSec === 130) {
-            setDuelOpponentSolved(5);
-            setDuelResult('defeat');
-            setDuelLosses(p => p + 1);
-            setArenaMMR(p => Math.max(1000, p - 15));
-            setDuelMessage("Alex Chen passed 5/5 test cases first! Defeat (-15 MMR).");
-          }
-          
-          return nextSec;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isInDuel, duelResult, duelUserSolved, duelOpponentSolved]);
-
-  // Timed Contest Arena States
-  const [isContestRegistered, setIsContestRegistered] = useState(false);
-  const [isInContestMode, setIsInContestMode] = useState(false);
-  const [contestTimeRemaining, setContestTimeRemaining] = useState(3600); // 60 mins
-  const [contestElapsedSeconds, setContestElapsedSeconds] = useState(0);
-  const [contestQuestions, setContestQuestions] = useState(CONTEST_QUESTIONS);
-  const [selectedContestQIndex, setSelectedContestQIndex] = useState(0);
-  const [contestCode, setContestCode] = useState('');
-  const [contestMsg, setContestMsg] = useState('');
-
-  // Handle countdown interval
-  useEffect(() => {
-    let interval: any;
-    if (isInContestMode) {
-      interval = setInterval(() => {
-        setContestTimeRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            setIsInContestMode(false);
-            alert("Time's up! Your contest answers have been automatically logged.");
-            return 0;
-          }
-          return prev - 1;
-        });
-        setContestElapsedSeconds((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isInContestMode]);
-
-  // Load template code when active question changes
-  useEffect(() => {
-    if (contestQuestions[selectedContestQIndex]) {
-      setContestCode(contestQuestions[selectedContestQIndex].template);
-    }
-  }, [selectedContestQIndex, contestQuestions]);
-
-  const submitContestQuestion = () => {
-    const updated = [...contestQuestions];
-    updated[selectedContestQIndex].solved = true;
-    setContestQuestions(updated);
-    
-    // Award score and update profile metrics
-    setXp((prev) => prev + 25);
-    setContestMsg("Correct! Submission validated. 25 XP awarded.");
-    
-    // Complete corresponding roadmap step based on contest question type!
-    const qType = contestQuestions[selectedContestQIndex].type;
-    const stepToComplete = qType === 'sql' ? "Window Functions" : "Binary Search";
-    setCompletedRoadmapSteps((prev) => {
-      if (!prev.includes(stepToComplete)) {
-        return [...prev, stepToComplete];
-      }
-      return prev;
-    });
-
-    setTimeout(() => {
-      setContestMsg('');
-    }, 2000);
-  };
-
-  const getDynamicLeaderboard = () => {
-    const userScore = contestQuestions.filter(q => q.solved).length * 25;
-    const list = [
-      { name: "Sarah Miller (AI)", score: 75, time: 450 },
-      { name: "John Doe (AI)", score: 50, time: 580 },
-      { name: "Emily Smith (AI)", score: 25, time: 340 },
-      { name: "You (Student)", score: userScore, time: contestElapsedSeconds }
-    ];
-    
-    // Sort by score DESC, tie break by time taken ASC
-    return list.sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      return a.time - b.time;
-    });
-  };
-
-  const formatTimerValue = (totalSeconds: number) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
+  const [targetRole, setTargetRole] = useState('Software Engineer');
+  const [userSkills, setUserSkills] = useState<string[]>(['Python', 'SQL', 'React', 'Docker']);
+  const [studyHours, setStudyHours] = useState('2h');
+  const [targetCollege, setTargetCollege] = useState('Stanford University');
+  const [streak, setStreak] = useState(5);
+  const [xp, setXp] = useState(480);
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  // Quests State
+  const [quests, setQuests] = useState([
+    { id: 1, title: "Solve 1 SQL Challenge", completed: true, xp: 20 },
+    { id: 2, title: "Complete React Hooks Lesson", completed: false, xp: 50 },
+    { id: 3, title: "Review 2 Peer Pull Requests", completed: false, xp: 30 }
+  ]);
+
+  // Arena & Editor State
+  const [arenaMode, setArenaMode] = useState<'coding' | 'sql' | 'mcq'>('coding');
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(0);
+  const [userCode, setUserCode] = useState(CONTEST_QUESTIONS[0].template);
+  const [codeExecutionResult, setCodeExecutionResult] = useState('🟢 Execution: 0.04s | Pass');
+  const [isRunningCode, setIsRunningCode] = useState(false);
+
+  // MCQ state
+  const [selectedMcqOption, setSelectedMcqOption] = useState<string | null>(null);
+  const [showMcqExplanation, setShowMcqExplanation] = useState(false);
+
+  // Animation Refs
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(34)).current;
+  const [progressPercent, setProgressPercent] = useState(34);
+
+  // Setup animations
+  useEffect(() => {
+    // Pulse animation for the glowing sphere
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.15,
+          duration: 1800,
+          useNativeDriver: true
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1.0,
+          duration: 1800,
+          useNativeDriver: true
+        })
+      ])
+    ).start();
+
+    // Progress bar uplink animation
+    Animated.timing(progressAnim, {
+      toValue: 100,
+      duration: 3500,
+      useNativeDriver: false
+    }).start();
+
+    const listener = progressAnim.addListener(({ value }) => {
+      setProgressPercent(Math.floor(value));
+    });
+
+    return () => {
+      progressAnim.removeListener(listener);
+    };
+  }, []);
+
+  // Handle Firebase Login
   const handleLogin = async () => {
     if (!email || !password) {
-      setAuthError('Please enter email and password');
+      setAuthError('Please enter both student email and password');
       return;
     }
     setAuthError('');
     setIsAuthenticating(true);
     try {
-      // 1. Authenticate with pure Firebase
-      const firebaseRes = await firebaseAuthSignIn(email, password);
-      const idToken = firebaseRes.idToken;
-
-      // 2. Sync session with cloud Render backend & Neon Postgres DB
-      try {
-        const res = await axios.post(`${BACKEND_API_URL}/auth/google`, {
-          id_token: idToken
-        });
-        console.log("Synced Firebase session with cloud database:", res.data);
-      } catch (backendErr) {
-        console.log("Session verified locally");
-      }
-
-      setUserName(firebaseRes.displayName || email.split('@')[0]);
-      setEmail(firebaseRes.email || email);
+      const res = await firebaseAuthSignIn(email, password);
+      setUserName(res.displayName || email.split('@')[0]);
       setIsLoggedIn(true);
+      setCurrentScreen('dashboard');
     } catch (err: any) {
-      console.warn("Firebase Auth note:", err.message);
       setUserName(email.split('@')[0]);
       setIsLoggedIn(true);
+      setCurrentScreen('dashboard');
     } finally {
       setIsAuthenticating(false);
     }
   };
 
-  const handleGoogleLogin = async (selectedEmail: string, name: string) => {
-    setShowGoogleModal(false);
-    setIsAuthenticating(true);
-    try {
-      const tokenString = `firebase-google-${selectedEmail}`;
-      try {
-        const response = await axios.post(`${BACKEND_API_URL}/auth/google`, {
-          id_token: tokenString
-        });
-        console.log("Synced Firebase Google Auth with backend:", response.data);
-      } catch (err) {
-        console.log("Continuing with Google session");
+  // Google OAuth Config
+  const [request, response, promptAsyncGoogle] = Google.useAuthRequest({
+    clientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
+    androidClientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
+  });
+
+  const toggleQuest = (id: number) => {
+    setQuests(prev => prev.map(q => {
+      if (q.id === id) {
+        const nextState = !q.completed;
+        if (nextState) setXp(xp + q.xp);
+        return { ...q, completed: nextState };
       }
-
-      setEmail(selectedEmail);
-      setUserName(name);
-    
-      if (selectedEmail === 'new.user@gmail.com') {
-        setIsOnboarded(false);
-      } else {
-        if (selectedEmail.includes('alex')) {
-          setTargetRole('Software Engineer');
-          setUserSkills('Python, JavaScript');
-        } else {
-          setTargetRole('Data Engineer');
-          setUserSkills('SQL, Python');
-        }
-        setIsOnboarded(true);
-      }
-      setIsLoggedIn(true);
-    } finally {
-      setIsAuthenticating(false);
-    }
+      return q;
+    }));
   };
 
-  // Dynamic Placement Readiness Score computed from actual tracking
-  const skillsCount = userSkills ? userSkills.split(',').length : 0;
-  const onboardingBase = (userSkills.toLowerCase().includes('sql') ? 10 : 0) + (skillsCount > 2 ? 5 : 0) + (studyHours === '4' ? 3 : 0);
-  
-  const readinessScore = Math.min(
-    100,
-    onboardingBase +
-    (completedRoadmapSteps.length * 15) + // +15 per completed roadmap step
-    (solvedCoding * 3) +                  // +3 per coding challenge
-    (completedMCQs * 0.5) +               // +0.5 per MCQ
-    (streak * 2) +                        // +2 per streak day
-    (contestQuestions.filter(q => q.solved).length * 5) // +5 per contest submission
-  );
-
-  // Dynamically select roadmap steps based on language performance
-  const getAdaptiveRoadmap = () => {
-    if (sqlSuccessRate < 70 && pythonSuccessRate >= 70) {
-      return {
-        title: "SQL Recovery Track (Focus: Database Queries)",
-        steps: ["SQL Joins", "Aggregations", "Window Functions", "DBMS Indexes"],
-        reason: `Allocated because your SQL Success Rate (${sqlSuccessRate}%) is below 70%.`
-      };
-    } else if (pythonSuccessRate < 70 && sqlSuccessRate >= 70) {
-      return {
-        title: "DSA Recovery Track (Focus: Algorithms)",
-        steps: ["Arrays & Strings", "Two Pointers", "Stacks", "Binary Search"],
-        reason: `Allocated because your Python/DSA Success Rate (${pythonSuccessRate}%) is below 70%.`
-      };
-    } else {
-      return {
-        title: "Balanced Full-Stack Development Track",
-        steps: ["Arrays & Strings", "SQL Joins", "Binary Search", "Window Functions"],
-        reason: `Allocated because your weekly success rates (Python: ${pythonSuccessRate}%, SQL: ${sqlSuccessRate}%) are balanced.`
-      };
-    }
-  };
-
-  const handleOnboard = () => {
-    if (userName) {
-      setIsOnboarded(true);
-    } else {
-      alert("Please enter your name to complete onboarding.");
-    }
-  };
-
-  // Run SQL Playground query simulator
-  const runSQLQuery = () => {
-    if (sqlQuery.toLowerCase().includes('select')) {
-      setSqlResult("Status: Success!\nRows Returned: 3\n[ { id: 104, customer: 'Alice', amount: 150.0 }, ... ]");
-      setXp(xp + 10);
-      setMissionSQLSolved(true);
-      
-      // Auto complete SQL roadmap step
-      setCompletedRoadmapSteps((prev) => {
-        const step = "SQL Joins";
-        if (!prev.includes(step)) {
-          return [...prev, step];
-        }
-        return prev;
-      });
-    } else {
-      setSqlResult("Error: Syntax error near token. Expected SELECT statement.");
-    }
-  };
-
-  // Run Code Editor sandbox simulator
   const runCode = () => {
-    setCodeResult("Status: Running on Sandbox...\nAll Test Cases Passed! (0.04s, 24MB)");
-    setXp(xp + 15);
-    setSolvedCoding(solvedCoding + 1);
-    setMissionCodingSolved(true);
-
-    // Auto complete DSA roadmap step
-    setCompletedRoadmapSteps((prev) => {
-      const step = "Arrays & Strings";
-      if (!prev.includes(step)) {
-        return [...prev, step];
-      }
-      return prev;
-    });
-  };
-
-  const [isAnalyzingResume, setIsAnalyzingResume] = useState(false);
-
-  const simulateUpload = (fileName: string) => {
-    setResumeName(fileName);
-    setIsAnalyzingResume(true);
-    setResumeAnalysisResult(null);
-
-    // Simulate 1.5s AI parsing delay
+    setIsRunningCode(true);
     setTimeout(() => {
-      setIsAnalyzingResume(false);
-      
-      // Select mock scores based on file type
-      if (fileName.includes("Software")) {
-        setResumeAnalysisResult({
-          score: 87,
-          matched: ["React", "TypeScript", "Node.js", "Jest", "Git", "REST APIs"],
-          missing: ["Docker", "Kubernetes", "AWS Cloud"],
-          feedback: "Outstanding layout structure. Highly quantitative metrics. Consider adding details about database sizing or container deployments.",
-          questions: [
-            "How do you design a scalable state architecture in React?",
-            "Explain your testing approach for asynchronous API fetch cycles."
-          ]
-        });
-      } else {
-        setResumeAnalysisResult({
-          score: 64,
-          matched: ["Excel", "SQL", "Tableau", "Python"],
-          missing: ["Pandas", "Airflow", "Data Warehousing", "Window Functions"],
-          feedback: "Good base skill lists. ATS score is slightly low because the resume lacks descriptive metrics showing optimization impact (e.g., % time saved). Add projects highlighting large database queries.",
-          questions: [
-            "How do you write a rolling weekly aggregate in SQL?",
-            "Describe a data ETL pipeline you built and how you handled schema drift."
-          ]
-        });
-      }
-    }, 1500);
+      setIsRunningCode(false);
+      setCodeExecutionResult('🟢 Execution: 0.04s | Pass (All Test Cases Passed)');
+      setXp(xp + 25);
+    }, 600);
   };
 
-  if (showSplash) {
+  // -------------------------------------------------------------
+  // SCREEN 1: SPLASH SCREEN (Google Stitch Wireframe Orb Design)
+  // -------------------------------------------------------------
+  if (currentScreen === 'splash') {
     return (
-      <View style={styles.splashContainer}>
-        <Animated.View style={[styles.splashBox, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-          <Animated.Text style={styles.splashLogo}>Code Quest</Animated.Text>
-          <Animated.Text style={[styles.splashSubtitle, { transform: [{ translateY: textTranslateY }] }]}>
-            Forge Your Coding Journey
-          </Animated.Text>
-        </Animated.View>
-      </View>
-    );
-  }
+      <SafeAreaView style={styles.splashContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#060913" />
+        
+        <View style={styles.splashContent}>
+          {/* Glowing Geometric Geodesic Sphere */}
+          <Animated.View style={[styles.sphereContainer, { transform: [{ scale: pulseAnim }] }]}>
+            <View style={styles.outerGlowOrb}>
+              <View style={styles.innerGlowingCore} />
+              <View style={styles.wireframeRing1} />
+              <View style={styles.wireframeRing2} />
+              <View style={styles.wireframeRing3} />
+            </View>
+          </Animated.View>
 
-  if (!isLoggedIn) {
-    return (
-      <SafeAreaView style={styles.loginContainer}>
-        <StatusBar barStyle="light-content" />
-        <View style={styles.loginBox}>
-          <Text style={styles.logoText}>Code Quest</Text>
-          <Text style={styles.loginSubtitle}>Your complete programming assessment platform</Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Student Email"
-            placeholderTextColor="#888"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#888"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Log In</Text>
-          </TouchableOpacity>
-
-          <View style={styles.separatorRow}>
-            <View style={styles.separatorLine} />
-            <Text style={styles.separatorText}>OR</Text>
-            <View style={styles.separatorLine} />
-          </View>
-
-          <TouchableOpacity 
-            style={styles.googleButton} 
-            onPress={() => {
-              promptAsyncGoogle();
-            }}
-          >
-            <Text style={styles.googleButtonText}>🔵  Sign in with Google</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={{ marginTop: 12, alignItems: 'center' }} 
-            onPress={() => setShowGoogleModal(true)}
-          >
-            <Text style={{ color: '#60a5fa', fontSize: 13, textDecorationLine: 'underline' }}>
-              Or use mock accounts (for testing)
+          {/* Title & Subtitle Card */}
+          <View style={styles.splashCard}>
+            <Text style={styles.splashTitle}>CODE QUEST</Text>
+            <Text style={styles.splashSubtitle}>
+              <Text style={styles.splashSubtitleHighlight}>Forge Your Coding Journey</Text>{'\n'}
+              through immersive challenges and algorithmic battles.
             </Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Google Account Selector Modal */}
-        <Modal
-          visible={showGoogleModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowGoogleModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.googleSheet}>
-              <View style={styles.googleSheetHeader}>
-                <Text style={styles.googleSheetTitle}>Sign in with Google</Text>
-                <Text style={styles.googleSheetSubtitle}>to continue to Code Quest</Text>
+            {/* Action CTA Buttons */}
+            <TouchableOpacity 
+              style={styles.systemInitButton}
+              onPress={() => setCurrentScreen('onboarding')}
+            >
+              <Text style={styles.systemInitButtonText}>🚀  INITIALIZE SYSTEM</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.authenticateButton}
+              onPress={() => setCurrentScreen('auth')}
+            >
+              <Text style={styles.authenticateButtonText}>➔  AUTHENTICATE</Text>
+            </TouchableOpacity>
+
+            {/* Uplink Progress Bar */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBarBackground}>
+                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
               </View>
-              
-              <ScrollView style={styles.accountsList}>
-                <TouchableOpacity 
-                  style={styles.accountRow} 
-                  onPress={() => handleGoogleLogin('alex.chen@gmail.com', 'Alex Chen')}
-                >
-                  <View style={styles.avatarCircle}>
-                    <Text style={styles.avatarText}>AC</Text>
-                  </View>
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountName}>Alex Chen</Text>
-                    <Text style={styles.accountEmail}>alex.chen@gmail.com</Text>
-                    <Text style={styles.accountBadge}>Software Engineer Track</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.accountRow} 
-                  onPress={() => handleGoogleLogin('sarah.miller@gmail.com', 'Sarah Miller')}
-                >
-                  <View style={styles.avatarCircle}>
-                    <Text style={styles.avatarText}>SM</Text>
-                  </View>
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountName}>Sarah Miller</Text>
-                    <Text style={styles.accountEmail}>sarah.miller@gmail.com</Text>
-                    <Text style={styles.accountBadge}>Data Engineer Track</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={styles.accountRow} 
-                  onPress={() => handleGoogleLogin('new.user@gmail.com', 'New User')}
-                >
-                  <View style={[styles.avatarCircle, { backgroundColor: '#10b981' }]}>
-                    <Text style={styles.avatarText}>NU</Text>
-                  </View>
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountName}>New User</Text>
-                    <Text style={styles.accountEmail}>new.user@gmail.com</Text>
-                    <Text style={styles.accountBadge}>Start Personalization</Text>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Custom User Entry */}
-                <View style={styles.customEmailBox}>
-                  <Text style={styles.customEmailLabel}>Use another account</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter custom gmail address"
-                    placeholderTextColor="#888"
-                    value={customGoogleEmail}
-                    onChangeText={setCustomGoogleEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                  />
-                  <TouchableOpacity 
-                    style={[styles.primaryButton, { marginTop: 8, paddingVertical: 10 }]}
-                    onPress={() => {
-                      if (!customGoogleEmail.includes('@')) {
-                        alert("Please enter a valid email address");
-                        return;
-                      }
-                      const cleanName = customGoogleEmail.split('@')[0].split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                      handleGoogleLogin(customGoogleEmail, cleanName);
-                    }}
-                  >
-                    <Text style={styles.buttonText}>Continue with custom email</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-
-              <TouchableOpacity 
-                style={styles.cancelGoogleBtn} 
-                onPress={() => setShowGoogleModal(false)}
-              >
-                <Text style={styles.cancelGoogleText}>Cancel</Text>
-              </TouchableOpacity>
+              <Text style={styles.progressText}>ESTABLISHING UPLINK... {progressPercent}%</Text>
             </View>
           </View>
-        </Modal>
+        </View>
       </SafeAreaView>
     );
   }
 
-  if (!isOnboarded) {
+  // -------------------------------------------------------------
+  // SCREEN 2: AUTHENTICATION SCREEN
+  // -------------------------------------------------------------
+  if (currentScreen === 'auth' && !isLoggedIn) {
     return (
-      <SafeAreaView style={styles.loginContainer}>
+      <SafeAreaView style={styles.authContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#080c18" />
+        <ScrollView contentContainerStyle={styles.authScroll}>
+          <View style={styles.authCard}>
+            {/* CQ Code Quest Logo */}
+            <Image 
+              source={require('./assets/icon.png')} 
+              style={styles.authLogoImage}
+              resizeMode="contain"
+            />
+
+            <Text style={styles.authTitle}>CODE QUEST</Text>
+            <Text style={styles.authSubtitle}>Your complete programming assessment platform</Text>
+
+            {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
+
+            {/* Input fields */}
+            <View style={styles.inputGroup}>
+              <TextInput
+                style={styles.cyberInput}
+                placeholder="Student Email"
+                placeholderTextColor="#6b7280"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={styles.cyberInput}
+                placeholder="Password"
+                placeholderTextColor="#6b7280"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity style={styles.forgotPasswordRow}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Primary Login Button */}
+            <TouchableOpacity 
+              style={styles.gradientLoginButton} 
+              onPress={handleLogin}
+              disabled={isAuthenticating}
+            >
+              <Text style={styles.gradientLoginButtonText}>
+                {isAuthenticating ? 'Authenticating...' : 'Log In  ➔'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.orDividerRow}>
+              <View style={styles.orDividerLine} />
+              <Text style={styles.orDividerText}>OR</Text>
+              <View style={styles.orDividerLine} />
+            </View>
+
+            {/* Google Sign In Button */}
+            <TouchableOpacity 
+              style={styles.googleAuthButton}
+              onPress={() => {
+                setIsLoggedIn(true);
+                setCurrentScreen('dashboard');
+              }}
+            >
+              <Text style={styles.googleGLogo}>🔵</Text>
+              <Text style={styles.googleAuthButtonText}>Sign in with Google</Text>
+            </TouchableOpacity>
+
+            {/* Guest Mode Switch */}
+            <View style={styles.guestModeRow}>
+              <Text style={styles.guestModeText}>Guest Mode</Text>
+              <Switch
+                value={guestMode}
+                onValueChange={(val) => {
+                  setGuestMode(val);
+                  if (val) {
+                    setIsLoggedIn(true);
+                    setCurrentScreen('dashboard');
+                  }
+                }}
+                trackColor={{ false: '#1f2937', true: '#3b82f6' }}
+                thumbColor={guestMode ? '#ffffff' : '#9ca3af'}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // SCREEN 3: ONBOARDING / INITIALIZE SEQUENCE
+  // -------------------------------------------------------------
+  if (currentScreen === 'onboarding') {
+    const roles = [
+      { id: 'Software Engineer', title: 'Software\nEngineer', desc: 'Core logic, algorithms, and system design' },
+      { id: 'Data Engineer', title: 'Data\nEngineer', desc: 'Pipelines, storage, SQL aggregations' },
+      { id: 'Frontend', title: 'Frontend', desc: 'User interfaces, client-side logic & React' },
+      { id: 'Full-Stack', title: 'Full-Stack', desc: 'End-to-end development & cloud architecture' },
+      { id: 'DevOps', title: 'DevOps', desc: 'Deployment, infrastructure & CI/CD' }
+    ];
+
+    const competencies = ['Python', 'SQL', 'React', 'Docker', 'AWS', 'TypeScript', 'Node.js', 'Kubernetes'];
+
+    return (
+      <SafeAreaView style={styles.onboardContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#060913" />
         <ScrollView contentContainerStyle={styles.onboardScroll}>
-          <Text style={styles.headerText}>Personalize Your Path</Text>
-          <Text style={styles.subheadText}>Answer 6 questions to build your study roadmap</Text>
-          
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your name"
-            placeholderTextColor="#888"
-            value={userName}
-            onChangeText={setUserName}
-          />
+          <Text style={styles.onboardMainTitle}>INITIALIZE{'\n'}SEQUENCE</Text>
+          <Text style={styles.onboardSubDesc}>
+            Configure your neural pathway to optimize the learning protocol.
+          </Text>
 
-          <Text style={styles.label}>What degree are you pursuing?</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. B.Tech Computer Science"
-            placeholderTextColor="#888"
-            value={degree}
-            onChangeText={setDegree}
-          />
+          {/* Phase Tabs */}
+          <View style={styles.phaseRow}>
+            <View style={[styles.phaseItem, styles.phaseActive]}>
+              <Text style={styles.phaseTextActive}>PHASE 1</Text>
+              <View style={styles.phaseActiveBar} />
+            </View>
+            <View style={styles.phaseItem}>
+              <Text style={styles.phaseText}>PHASE 2</Text>
+            </View>
+            <View style={styles.phaseItem}>
+              <Text style={styles.phaseText}>PHASE 3</Text>
+            </View>
+          </View>
 
-          <Text style={styles.label}>Graduation Year</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 2027"
-            placeholderTextColor="#888"
-            value={gradYear}
-            onChangeText={setGradYear}
-          />
+          {/* Select Target Role */}
+          <Text style={styles.sectionHeaderTitle}>🌐  Select Target Role</Text>
+          <View style={styles.roleGrid}>
+            {roles.map(r => (
+              <TouchableOpacity
+                key={r.id}
+                style={[
+                  styles.roleCard,
+                  targetRole === r.id && styles.roleCardSelected
+                ]}
+                onPress={() => setTargetRole(r.id)}
+              >
+                <Text style={styles.roleCardIcon}>💻</Text>
+                <Text style={styles.roleCardTitle}>{r.title}</Text>
+                <Text style={styles.roleCardDesc} numberOfLines={2}>{r.desc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-          <Text style={styles.label}>Target Job Role</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Data Scientist, DevOps, Full Stack Developer"
-            placeholderTextColor="#888"
-            value={targetRole}
-            onChangeText={setTargetRole}
-          />
+          {/* Base Competencies */}
+          <Text style={styles.sectionHeaderTitle}>💠  Base Competencies</Text>
+          <View style={styles.skillsTagRow}>
+            {competencies.map(s => {
+              const selected = userSkills.includes(s);
+              return (
+                <TouchableOpacity
+                  key={s}
+                  style={[styles.skillTag, selected && styles.skillTagActive]}
+                  onPress={() => {
+                    if (selected) {
+                      setUserSkills(userSkills.filter(item => item !== s));
+                    } else {
+                      setUserSkills([...userSkills, s]);
+                    }
+                  }}
+                >
+                  <Text style={[styles.skillTagText, selected && styles.skillTagTextActive]}>{s}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
-          <Text style={styles.label}>What skills do you have?</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Python, SQL, JavaScript, Java"
-            placeholderTextColor="#888"
-            value={userSkills}
-            onChangeText={setUserSkills}
-          />
+          {/* Daily Time Allocation */}
+          <Text style={styles.sectionHeaderTitle}>⏱️  Daily Time Allocation</Text>
+          <View style={styles.timeAllocRow}>
+            {[
+              { time: '1h', label: 'MAINTENANCE' },
+              { time: '2h', label: 'ACCELERATED' },
+              { time: '4h+', label: 'OVERCLOCK' }
+            ].map(t => (
+              <TouchableOpacity
+                key={t.time}
+                style={[styles.timeBox, studyHours === t.time && styles.timeBoxActive]}
+                onPress={() => setStudyHours(t.time)}
+              >
+                <Text style={[styles.timeNumber, studyHours === t.time && styles.timeNumberActive]}>{t.time}</Text>
+                <Text style={styles.timeLabel}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-          <Text style={styles.label}>Daily target study hours?</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Hours per day (e.g. 3)"
-            placeholderTextColor="#888"
-            value={studyHours}
-            onChangeText={setStudyHours}
-          />
-
-          <TouchableOpacity style={styles.primaryButton} onPress={handleOnboard}>
-            <Text style={styles.buttonText}>Generate Roadmap</Text>
+          {/* Bottom Launch Button */}
+          <TouchableOpacity 
+            style={styles.launchRoadmapButton}
+            onPress={() => {
+              setIsOnboarded(true);
+              setIsLoggedIn(true);
+              setCurrentScreen('dashboard');
+            }}
+          >
+            <Text style={styles.launchRoadmapButtonText}>COMPLETE SETUP & LAUNCH ROADMAP  🚀</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
-      {/* Header */}
-      <View style={styles.header}>
+  // -------------------------------------------------------------
+  // SCREEN 4: STUDENT DASHBOARD (Home Tab)
+  // -------------------------------------------------------------
+  const renderDashboard = () => (
+    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
+      {/* Header Bar */}
+      <View style={styles.dashHeader}>
+        <View style={styles.dashBrandRow}>
+          <Image source={require('./assets/icon.png')} style={styles.dashLogoIcon} />
+          <Text style={styles.dashBrandTitle}>CODE QUEST</Text>
+        </View>
+        <View style={styles.dashHeaderActions}>
+          <TouchableOpacity style={styles.headerIconButton}>
+            <Text style={{ fontSize: 16 }}>🔔</Text>
+          </TouchableOpacity>
+          <View style={styles.userAvatarCircle}>
+            <Text style={styles.userAvatarText}>{userName.slice(0, 2).toUpperCase()}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* User Greeting & Stats Banner */}
+      <View style={styles.greetingBox}>
         <View>
-          <Text style={styles.welcomeText}>Hello, {userName}!</Text>
-          <Text style={styles.roleTagText}>{targetRole} Track</Text>
+          <Text style={styles.greetingName}>Hello, {userName} 🚀</Text>
+          <Text style={styles.greetingSub}>Ready to level up your code today?</Text>
         </View>
-        <View style={styles.headerMetrics}>
-          <Text style={styles.streakBadge}>🔥 {streak} Days</Text>
-          <Text style={styles.xpBadge}>⭐ {xp} XP</Text>
+        <View style={styles.statsBadgeRow}>
+          <View style={styles.statPill}>
+            <Text style={styles.statPillText}>🔥 {streak}</Text>
+          </View>
+          <View style={[styles.statPill, { backgroundColor: '#312e81' }]}>
+            <Text style={styles.statPillText}>⚡ {xp}</Text>
+          </View>
         </View>
       </View>
 
-      {/* Main Tab Views */}
-      <ScrollView style={styles.mainContent}>
+      {/* Placement Readiness Card */}
+      <View style={styles.readinessCard}>
+        <Text style={styles.cardHeaderSmall}>PLACEMENT READINESS</Text>
         
-        {/* HOME DASHBOARD */}
-        {activeTab === 'Home' && (
-          <View style={styles.tabContent}>
-            
-            {/* Placement Readiness Score */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Placement Readiness Score</Text>
-              <View style={styles.readinessContainer}>
-                <Text style={styles.scoreNumber}>{readinessScore}<Text style={styles.scoreMax}>/100</Text></Text>
-                <Text style={styles.scoreGrade}>Ready status: Intermediate</Text>
-              </View>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${readinessScore}%` }]} />
-              </View>
-              <Text style={styles.weakText}>Weak: DBMS & Airflow Orchestration (Need review)</Text>
-            </View>
-
-            {/* Daily Mission Card */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Today's Adaptive Mission</Text>
-              <View style={styles.missionItem}>
-                <Text style={[styles.missionText, missionCodingSolved && styles.missionDone]}>
-                  {missionCodingSolved ? "✅" : "⬜"} Solve 1 Medium DSA Problem
-                </Text>
-              </View>
-              <View style={styles.missionItem}>
-                <Text style={[styles.missionText, missionSQLSolved && styles.missionDone]}>
-                  {missionSQLSolved ? "✅" : "⬜"} Write 1 Analytical SQL Query
-                </Text>
-              </View>
-              <View style={styles.missionItem}>
-                <Text style={styles.missionText}>⬜ Complete 10 DBMS MCQs</Text>
-              </View>
-            </View>
-
-            {/* Preparation Statistics */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Solved DSA</Text>
-                <Text style={styles.statValue}>{solvedCoding}</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>MCQs Checked</Text>
-                <Text style={styles.statValue}>{completedMCQs}</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.quickPracticeBtn} onPress={() => setActiveTab('Practice')}>
-              <Text style={styles.quickPracticeText}>Start Daily Prep Session</Text>
-            </TouchableOpacity>
-
+        {/* Circular Progress Gauge */}
+        <View style={styles.gaugeContainer}>
+          <View style={styles.circularGaugeRing}>
+            <Text style={styles.gaugeScoreNumber}>78%</Text>
+            <Text style={styles.gaugeScoreLabel}>SCORE</Text>
           </View>
-        )}
+        </View>
 
-        {/* PRACTICE TAB */}
-        {activeTab === 'Practice' && (
-          <View style={styles.tabContent}>
-            <Text style={styles.sectionHeader}>Practice Playground</Text>
-            
-            {/* Show Category List or active Practice details */}
-            {!selectedPracticeType ? (
-              <View style={styles.practiceSelectorGrid}>
-                
-                <TouchableOpacity style={styles.practiceCard} onPress={() => setSelectedPracticeType('coding')}>
-                  <Text style={styles.practiceCardIcon}>💻</Text>
-                  <Text style={styles.practiceCardTitle}>DSA Code Editor</Text>
-                  <Text style={styles.practiceCardDesc}>Solve coding challenges in Python, C++, Java</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.practiceCard} onPress={() => setSelectedPracticeType('sql')}>
-                  <Text style={styles.practiceCardIcon}>📊</Text>
-                  <Text style={styles.practiceCardTitle}>SQL Sandbox</Text>
-                  <Text style={styles.practiceCardDesc}>Practice writing analytical queries against datasets</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.practiceCard} onPress={() => setSelectedPracticeType('mcq')}>
-                  <Text style={styles.practiceCardIcon}>📝</Text>
-                  <Text style={styles.practiceCardTitle}>MCQ Quiz Engine</Text>
-                  <Text style={styles.practiceCardDesc}>Test your knowledge in CS Core & Aptitude concepts</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.practiceCard} onPress={() => setSelectedPracticeType('puzzle')}>
-                  <Text style={styles.practiceCardIcon}>🧩</Text>
-                  <Text style={styles.practiceCardTitle}>Interview Puzzles</Text>
-                  <Text style={styles.practiceCardDesc}>Train on logical brainteasers and estimation riddles</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.practiceCard} onPress={() => setSelectedPracticeType('duel')}>
-                  <Text style={styles.practiceCardIcon}>⚔️</Text>
-                  <Text style={styles.practiceCardTitle}>1v1 Code Duels</Text>
-                  <Text style={styles.practiceCardDesc}>Enter matchmaking and race against an opponent</Text>
-                </TouchableOpacity>
-
-              </View>
-            ) : (
-              <View>
-                <TouchableOpacity style={styles.backBtn} onPress={() => { setSelectedPracticeType(null); setSqlResult(null); setCodeResult(null); }}>
-                  <Text style={styles.backBtnText}>← Back to Playground</Text>
-                </TouchableOpacity>
-
-                {/* CODING PANEL */}
-                {selectedPracticeType === 'coding' && (
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Problem: Reverse Linked List</Text>
-                    <Text style={styles.problemDesc}>
-                      Given the head of a singly linked list, reverse the list, and return its head.
-                    </Text>
-                    <Text style={styles.label}>Write your Code (Python/Java):</Text>
-                    <TextInput
-                      multiline
-                      numberOfLines={8}
-                      style={styles.codeArea}
-                      value={codeContent}
-                      onChangeText={setCodeContent}
-                    />
-                    <TouchableOpacity style={styles.runBtn} onPress={runCode}>
-                      <Text style={styles.runBtnText}>Run on Secure Sandbox</Text>
-                    </TouchableOpacity>
-                    {codeResult && (
-                      <View style={styles.resultBox}>
-                        <Text style={styles.resultText}>{codeResult}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* SQL PANEL */}
-                {selectedPracticeType === 'sql' && (
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Challenge: Combine Two Tables</Text>
-                    <Text style={styles.problemDesc}>
-                      Report Person details with City/State. Show nulls if address is missing.
-                    </Text>
-                    <Text style={styles.label}>Write SQL Query:</Text>
-                    <TextInput
-                      multiline
-                      numberOfLines={5}
-                      style={styles.codeArea}
-                      value={sqlQuery}
-                      onChangeText={setSqlQuery}
-                    />
-                    <TouchableOpacity style={styles.runBtn} onPress={runSQLQuery}>
-                      <Text style={styles.runBtnText}>Execute Transaction</Text>
-                    </TouchableOpacity>
-                    {sqlResult && (
-                      <View style={styles.resultBox}>
-                        <Text style={styles.resultText}>{sqlResult}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* IMPROVED 15-QUESTION MCQ QUIZ ENGINE */}
-                {selectedPracticeType === 'mcq' && (
-                  <View>
-                    {!isMCQQuizSubmitted ? (
-                      // ACTIVE QUIZ INTERFACE
-                      <View style={styles.card}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                          <Text style={{ color: '#818cf8', fontWeight: 'bold', fontSize: 12 }}>
-                            📂 {MCQ_QUIZ_QUESTIONS[currentMCQIndex].topic}
-                          </Text>
-                          <Text style={{ color: '#9ca3af', fontSize: 12 }}>
-                            Question {currentMCQIndex + 1} of {MCQ_QUIZ_QUESTIONS.length}
-                          </Text>
-                        </View>
-                        
-                        <Text style={styles.contestQTitle}>
-                          {MCQ_QUIZ_QUESTIONS[currentMCQIndex].question}
-                        </Text>
-                        <View style={{ alignSelf: 'flex-start', backgroundColor: MCQ_QUIZ_QUESTIONS[currentMCQIndex].difficulty === 'Easy' ? '#064e3b' : '#78350f', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginBottom: 16 }}>
-                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>
-                            {MCQ_QUIZ_QUESTIONS[currentMCQIndex].difficulty}
-                          </Text>
-                        </View>
-
-                        {/* Options buttons */}
-                        {MCQ_QUIZ_QUESTIONS[currentMCQIndex].options.map((opt, i) => {
-                          const letter = ['A', 'B', 'C', 'D'][i];
-                          const isSelected = selectedMCQOption === letter || mcqAnswers[currentMCQIndex] === letter;
-                          return (
-                            <TouchableOpacity 
-                              key={letter}
-                              style={[styles.mcqOptionBtn, isSelected && styles.mcqOptionActive]} 
-                              onPress={() => {
-                                setSelectedMCQOption(letter);
-                                setMcqAnswers(prev => ({ ...prev, [currentMCQIndex]: letter }));
-                              }}
-                            >
-                              <Text style={styles.mcqOptionText}>{letter}. {opt}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-
-                        {/* Action buttons */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
-                          {currentMCQIndex > 0 ? (
-                            <TouchableOpacity 
-                              style={[styles.secondaryButton, { flex: 1, marginRight: 6 }]} 
-                              onPress={() => {
-                                const prevIdx = currentMCQIndex - 1;
-                                setCurrentMCQIndex(prevIdx);
-                                setSelectedMCQOption(mcqAnswers[prevIdx] || null);
-                              }}
-                            >
-                              <Text style={styles.buttonText}>Previous</Text>
-                            </TouchableOpacity>
-                          ) : null}
-
-                          <TouchableOpacity 
-                            style={[styles.runBtn, { flex: 2, marginTop: 0 }]} 
-                            onPress={() => {
-                              if (!selectedMCQOption && !mcqAnswers[currentMCQIndex]) {
-                                alert("Please select an option before proceeding.");
-                                return;
-                              }
-                              if (currentMCQIndex < MCQ_QUIZ_QUESTIONS.length - 1) {
-                                const nextIdx = currentMCQIndex + 1;
-                                setCurrentMCQIndex(nextIdx);
-                                setSelectedMCQOption(mcqAnswers[nextIdx] || null);
-                              } else {
-                                // Calculate total score and submit quiz
-                                let correct = 0;
-                                MCQ_QUIZ_QUESTIONS.forEach((q, idx) => {
-                                  if (mcqAnswers[idx] === q.answer) {
-                                    correct++;
-                                  }
-                                });
-                                setCompletedMCQs(prev => prev + MCQ_QUIZ_QUESTIONS.length);
-                                setXp(prev => prev + (correct * 5));
-                                
-                                // Auto complete corresponding roadmap step!
-                                setCompletedRoadmapSteps((prev) => {
-                                  const step = "DBMS Indexes";
-                                  if (!prev.includes(step)) {
-                                    return [...prev, step];
-                                  }
-                                  return prev;
-                                });
-
-                                setIsMCQQuizSubmitted(true);
-                              }
-                            }}
-                          >
-                            <Text style={styles.runBtnText}>
-                              {currentMCQIndex === MCQ_QUIZ_QUESTIONS.length - 1 ? "Finish Quiz & Grade" : "Next Question"}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ) : (
-                      // QUIZ SCORE REPORT CARD DISPLAY
-                      <View>
-                        {(() => {
-                          let correctCount = 0;
-                          MCQ_QUIZ_QUESTIONS.forEach((q, idx) => {
-                            if (mcqAnswers[idx] === q.answer) {
-                              correctCount++;
-                            }
-                          });
-                          const percentage = Math.round((correctCount / MCQ_QUIZ_QUESTIONS.length) * 100);
-                          return (
-                            <View>
-                              {/* Score Card */}
-                              <View style={styles.card}>
-                                <Text style={styles.cardTitle}>Roadmap Assessment Report Card</Text>
-                                <View style={{ alignItems: 'center', marginVertical: 16 }}>
-                                  <View style={{ width: 90, height: 90, borderRadius: 45, borderColor: '#10b981', borderWidth: 4, justifyContent: 'center', alignItems: 'center' }}>
-                                    <Text style={{ color: '#fff', fontSize: 24, fontWeight: 'bold' }}>
-                                      {correctCount}/{MCQ_QUIZ_QUESTIONS.length}
-                                    </Text>
-                                    <Text style={{ color: '#9ca3af', fontSize: 10 }}>Score</Text>
-                                  </View>
-                                  <Text style={{ color: '#10b981', fontSize: 16, fontWeight: 'bold', marginTop: 12 }}>
-                                    Quiz Grade: {percentage}%
-                                  </Text>
-                                  <Text style={{ color: '#f59e0b', fontSize: 12, marginTop: 4 }}>
-                                    ⭐ +{correctCount * 5} XP Awarded!
-                                  </Text>
-                                </View>
-                                
-                                <TouchableOpacity 
-                                  style={styles.primaryButton} 
-                                  onPress={() => {
-                                    setCurrentMCQIndex(0);
-                                    setSelectedMCQOption(null);
-                                    setMcqAnswers({});
-                                    setIsMCQQuizSubmitted(false);
-                                  }}
-                                >
-                                  <Text style={styles.buttonText}>Retake Quiz from Scratch</Text>
-                                </TouchableOpacity>
-                              </View>
-
-                              {/* Question Review */}
-                              <Text style={styles.sectionHeader}>Question Review & Explanations</Text>
-                              {MCQ_QUIZ_QUESTIONS.map((q, idx) => {
-                                const isCorrect = mcqAnswers[idx] === q.answer;
-                                return (
-                                  <View key={idx} style={[styles.card, { borderColor: isCorrect ? '#064e3b' : '#7f1d1d', borderWidth: 1 }]}>
-                                    <Text style={{ color: isCorrect ? '#10b981' : '#f87171', fontWeight: 'bold', marginBottom: 6 }}>
-                                      Q{idx + 1}: {isCorrect ? "✅ Correct" : "❌ Incorrect"}
-                                    </Text>
-                                    <Text style={{ color: '#fff', fontWeight: '500', fontSize: 13, marginBottom: 8 }}>
-                                      {q.question}
-                                    </Text>
-                                    <Text style={{ color: '#9ca3af', fontSize: 12 }}>
-                                      Your Answer: {mcqAnswers[idx] || "Unanswered"} | Correct Answer: {q.answer}
-                                    </Text>
-                                    <View style={{ backgroundColor: '#111827', padding: 10, borderRadius: 6, marginTop: 8 }}>
-                                      <Text style={{ color: '#60a5fa', fontSize: 11, fontWeight: 'bold', marginBottom: 2 }}>
-                                        Explanation:
-                                      </Text>
-                                      <Text style={{ color: '#d1d5db', fontSize: 11 }}>
-                                        {q.explanation}
-                                      </Text>
-                                    </View>
-                                  </View>
-                                );
-                              })}
-                            </View>
-                          );
-                        })()}
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* PUZZLE PANEL */}
-                {selectedPracticeType === 'puzzle' && (
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Puzzle: 3 Bulbs and 3 Switches</Text>
-                    <Text style={styles.problemDesc}>
-                      You have 3 switches downstairs and 3 bulbs upstairs. How do you find which matches which in exactly one trip?
-                    </Text>
-                    <TouchableOpacity style={styles.hintBtn} onPress={() => alert("Hint: Think about heat!")}>
-                      <Text style={styles.hintBtnText}>Show Hint</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.runBtn} onPress={() => alert("Solution: Turn switch 1 ON for 10 minutes, turn it off. Turn switch 2 ON. Go upstairs. Hot = 1, Lit = 2, Cold/Off = 3.")}>
-                      <Text style={styles.runBtnText}>Reveal Solution & Explanation</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* 1v1 LIVE CODE DUEL ARENA */}
-                {selectedPracticeType === 'duel' && (
-                  <View>
-                    {!isInDuel && !showDuelQueue ? (
-                      // ARENA LOBBY SCREEN
-                      <View>
-                        <View style={styles.card}>
-                          <Text style={styles.cardTitle}>⚔️ 1v1 Live Code Duels</Text>
-                          <Text style={styles.cardMeta}>
-                            Your Arena Rating: {arenaMMR} MMR | Record: {duelWins}W - {duelLosses}L
-                          </Text>
-                          <Text style={styles.problemDesc}>
-                            Enter matchmaking to duel a live opponent. The first to solve the coding challenge under a 5-minute limit wins rating points and bonus XP!
-                          </Text>
-                          
-                          <TouchableOpacity 
-                            style={styles.primaryButton}
-                            onPress={() => {
-                              setShowDuelQueue(true);
-                              setDuelResult(null);
-                              setDuelUserSolved(0);
-                              setDuelOpponentSolved(0);
-                              setDuelElapsedSeconds(0);
-                              setDuelTimeRemaining(300);
-                              setDuelMessage('');
-                              
-                              // Matchmaking delay
-                              setTimeout(() => {
-                                setShowDuelQueue(false);
-                                setIsInDuel(true);
-                                setDuelCode("class Solution:\n    def containsDuplicate(self, nums: list[int]) -> bool:\n        # Solve before Alex Chen does!\n        return False");
-                              }, 2000);
-                            }}
-                          >
-                            <Text style={styles.buttonText}>🚀 Find Opponent (Join Queue)</Text>
-                          </TouchableOpacity>
-                        </View>
-
-                        {/* GLOBAL DUEL LEADERBOARD PANEL */}
-                        <View style={styles.card}>
-                          <Text style={styles.cardTitle}>Global Duel Arena Standings</Text>
-                          {(() => {
-                            const leaderboardData = [
-                              { name: "Sarah Miller (AI)", mmr: 1420, record: "18W - 2L", streak: "🔥 5" },
-                              { name: "Alex Chen (AI)", mmr: 1240, record: "12W - 4L", streak: "🔥 2" },
-                              { name: "You (Student)", mmr: arenaMMR, record: `${duelWins}W - ${duelLosses}L`, streak: duelWins > 0 ? `🔥 ${duelWins}` : "0" },
-                              { name: "John Doe (AI)", mmr: 1180, record: "8W - 7L", streak: "0" },
-                              { name: "Emily Smith (AI)", mmr: 1100, record: "5W - 8L", streak: "0" }
-                            ];
-
-                            // Sort dynamically by MMR DESC
-                            const sorted = leaderboardData.sort((a, b) => b.mmr - a.mmr);
-
-                            return sorted.map((player, idx) => {
-                              const isUser = player.name.includes("You");
-                              return (
-                                <View key={idx} style={[styles.leaderboardRow, isUser && styles.leaderboardUserRow]}>
-                                  <Text style={styles.leaderboardRank}>#{idx + 1}</Text>
-                                  <Text style={styles.leaderboardName}>{player.name}</Text>
-                                  <Text style={{ color: '#f59e0b', fontWeight: 'bold', width: 85, textAlign: 'right' }}>
-                                    {player.mmr} MMR
-                                  </Text>
-                                  <Text style={{ color: '#9ca3af', width: 60, textAlign: 'right', fontSize: 11 }}>
-                                    {player.record}
-                                  </Text>
-                                </View>
-                              );
-                            });
-                          })()}
-                        </View>
-                      </View>
-                    ) : showDuelQueue ? (
-                      // MATCHMAKING LOADER SCREEN
-                      <View style={styles.card}>
-                        <Text style={{ fontSize: 32, textAlign: 'center', marginBottom: 12 }}>🔍</Text>
-                        <Text style={[styles.cardTitle, { textAlign: 'center' }]}>1v1 Matchmaking Queue</Text>
-                        <Text style={{ color: '#9ca3af', textAlign: 'center', marginVertical: 8 }}>
-                          Searching for opponents near {arenaMMR} MMR...
-                        </Text>
-                        <Text style={{ color: '#60a5fa', fontSize: 12, fontWeight: 'bold', textAlign: 'center' }}>
-                          Connecting to server socket...
-                        </Text>
-                      </View>
-                    ) : (
-                      // DUEL ARENA INTERACTIVE MATCH
-                      <View style={styles.arenaContainer}>
-                        <View style={styles.arenaHeader}>
-                          <Text style={styles.arenaTitle}>⚔️ vs {duelOpponentName} ({duelOpponentMMR} MMR)</Text>
-                          <Text style={styles.arenaTimer}>⏰ Time Left: {formatTimerValue(duelTimeRemaining)}</Text>
-                        </View>
-
-                        {/* LIVE PROGRESS RACE INDICATOR */}
-                        <View style={[styles.card, { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#1f2937' }]}>
-                          <View style={{ flex: 1, alignItems: 'center' }}>
-                            <Text style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: 12 }}>YOU</Text>
-                            <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 4 }}>
-                              {duelUserSolved}/5 cases
-                            </Text>
-                          </View>
-                          <View style={{ width: 1, backgroundColor: '#374151', marginHorizontal: 12 }} />
-                          <View style={{ flex: 1, alignItems: 'center' }}>
-                            <Text style={{ color: '#f87171', fontWeight: 'bold', fontSize: 12 }}>{duelOpponentName.toUpperCase()}</Text>
-                            <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 4 }}>
-                              {duelOpponentSolved}/5 cases
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* PROBLEM DISPLAY */}
-                        <View style={styles.card}>
-                          <Text style={styles.contestQTitle}>Contains Duplicate (Easy)</Text>
-                          <Text style={styles.problemDesc}>
-                            Given an integer array nums, return true if any value appears at least twice in the array, and false if every element is distinct.
-                          </Text>
-                          
-                          <Text style={styles.label}>Solve in Python Console:</Text>
-                          <TextInput
-                            multiline
-                            numberOfLines={8}
-                            style={styles.codeArea}
-                            value={duelCode}
-                            onChangeText={setDuelCode}
-                          />
-
-                          {duelMessage ? <Text style={[styles.successMsg, { color: duelResult === 'defeat' ? '#f87171' : '#10b981' }]}>{duelMessage}</Text> : null}
-
-                          {!duelResult ? (
-                            <TouchableOpacity 
-                              style={styles.runBtn}
-                              onPress={() => {
-                                const nextSolved = Math.min(5, duelUserSolved + 2);
-                                setDuelUserSolved(nextSolved);
-                                if (nextSolved === 5) {
-                                  setDuelResult('victory');
-                                  setArenaMMR(prev => prev + 25);
-                                  setXp(prev => prev + 30);
-                                  setDuelWins(prev => prev + 1);
-                                  setDuelMessage("VICTORY! You solved all test cases first! +25 MMR, +30 XP awarded.");
-                                } else {
-                                  setDuelMessage(`Submitting... Passed ${nextSolved}/5 test cases! Speed up!`);
-                                  setTimeout(() => setDuelMessage(''), 2000);
-                                }
-                              }}
-                            >
-                              <Text style={styles.runBtnText}>Submit Code & Run Tests</Text>
-                            </TouchableOpacity>
-                          ) : (
-                            <View style={{ marginTop: 12, alignItems: 'center' }}>
-                              <Text style={{ fontSize: 24, fontWeight: 'bold', color: duelResult === 'victory' ? '#10b981' : '#f87171', marginBottom: 8 }}>
-                                {duelResult === 'victory' ? "🏆 VICTORY!" : "❌ DEFEAT!"}
-                              </Text>
-                              <TouchableOpacity 
-                                style={styles.primaryButton}
-                                onPress={() => {
-                                  setIsInDuel(false);
-                                  setDuelResult(null);
-                                  setSelectedPracticeType(null);
-                                }}
-                              >
-                                <Text style={styles.buttonText}>Exit Duel Lobby</Text>
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-              </View>
-            )}
+        {/* Sub-Metrics Breakdown */}
+        <View style={styles.metricsSplitRow}>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>Data Structures</Text>
+            <Text style={styles.metricStatusStrong}>STRONG</Text>
           </View>
-        )}
-         {/* ASSESSMENTS TAB */}
-        {activeTab === 'Assessments' && (
-          <View style={styles.tabContent}>
-            {!isInContestMode ? (
-              <View>
-                <Text style={styles.sectionHeader}>Online Assessments</Text>
-                
-                {/* TIMED CONTEST CARD */}
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Weekly Timed Coding Arena #1</Text>
-                  <Text style={styles.cardMeta}>Duration: 60 mins | 2 DSA Problems, 2 SQL Queries</Text>
-                  <Text style={styles.problemDesc}>
-                    Compete live with other developers. Your score is based on correctness, and ties are broken by compilation speed.
-                  </Text>
-                  
-                  {!isContestRegistered ? (
-                    <TouchableOpacity style={styles.primaryButton} onPress={() => { setIsContestRegistered(true); alert("Registered! You can now enter the arena when ready."); }}>
-                      <Text style={styles.buttonText}>Register for Timed Arena</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity 
-                      style={[styles.primaryButton, { backgroundColor: '#10b981' }]} 
-                      onPress={() => {
-                        // Reset contest scores
-                        const resetQs = contestQuestions.map(q => ({ ...q, solved: false }));
-                        setContestQuestions(resetQs);
-                        setContestTimeRemaining(3600);
-                        setContestElapsedSeconds(0);
-                        setSelectedContestQIndex(0);
-                        setContestCode(resetQs[0].template);
-                        setIsInContestMode(true);
-                      }}
-                    >
-                      <Text style={styles.buttonText}>🔥 Enter Timed Arena (Live)</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* PRACTICE TEST CARDS */}
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Amazon mock OA (Coding + MCQs)</Text>
-                  <Text style={styles.cardMeta}>Duration: 60 mins | 2 Coding, 10 Core MCQs</Text>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => alert("Launching Secure Fullscreen Assessment...")}>
-                    <Text style={styles.buttonText}>Launch Mock Test</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              // LIVE TIMED CONTEST ARENA SCREEN
-              <View style={styles.arenaContainer}>
-                <View style={styles.arenaHeader}>
-                  <Text style={styles.arenaTitle}>Weekly Arena Challenge #1</Text>
-                  <Text style={styles.arenaTimer}>⏰ Time Remaining: {formatTimerValue(contestTimeRemaining)}</Text>
-                </View>
-                
-                {/* Question index buttons */}
-                <View style={styles.contestQRow}>
-                  {contestQuestions.map((q, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={[styles.contestQBtn, selectedContestQIndex === idx && styles.contestQBtnActive]}
-                      onPress={() => setSelectedContestQIndex(idx)}
-                    >
-                      <Text style={styles.contestQText}>Q{idx + 1} {q.solved ? "✅" : ""}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Selected Question Details */}
-                <View style={styles.card}>
-                  <Text style={styles.contestQTitle}>
-                    {selectedContestQIndex + 1}. {contestQuestions[selectedContestQIndex].title} ({contestQuestions[selectedContestQIndex].difficulty})
-                  </Text>
-                  <Text style={styles.problemDesc}>{contestQuestions[selectedContestQIndex].desc}</Text>
-                  
-                  <Text style={styles.label}>Solve in Code/Query Workspace:</Text>
-                  <TextInput
-                    multiline
-                    numberOfLines={8}
-                    style={styles.codeArea}
-                    value={contestCode}
-                    onChangeText={setContestCode}
-                  />
-
-                  {contestMsg ? <Text style={styles.successMsg}>{contestMsg}</Text> : null}
-
-                  <TouchableOpacity style={styles.runBtn} onPress={submitContestQuestion}>
-                    <Text style={styles.runBtnText}>Submit to Contest Leaderboard</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Live Standings Leaderboard */}
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Live Leaderboard Standings (Penalty Sorting)</Text>
-                  {getDynamicLeaderboard().map((player, idx) => {
-                    const isUser = player.name.includes("You");
-                    return (
-                      <View key={idx} style={[styles.leaderboardRow, isUser && styles.leaderboardUserRow]}>
-                        <Text style={styles.leaderboardRank}>#{idx + 1}</Text>
-                        <Text style={styles.leaderboardName}>{player.name}</Text>
-                        <Text style={styles.leaderboardScore}>{player.score} pts</Text>
-                        <Text style={styles.leaderboardTime}>{player.time}s</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-
-                <TouchableOpacity 
-                  style={[styles.secondaryButton, { marginTop: 10, borderColor: '#ef4444' }]} 
-                  onPress={() => {
-                    if (confirm("Are you sure you want to exit? Your active progress will remain, but the clock keeps ticking!")) {
-                      setIsInContestMode(false);
-                    }
-                  }}
-                >
-                  <Text style={[styles.buttonText, { color: '#ef4444' }]}>Exit Coding Arena</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+          <View style={styles.metricDivider} />
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>System Design</Text>
+            <Text style={styles.metricStatusImproving}>IMPROVING</Text>
           </View>
-        )}
-
-        {/* GAMIFICATION TAB */}
-        {activeTab === 'Gamification' && (
-          <View style={styles.tabContent}>
-            <Text style={styles.sectionHeader}>Your Gamification Center Center</Text>
-            
-            {/* Level & Title */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Level {Math.floor(xp / 150) + 1} - Code Warrior</Text>
-              <Text style={styles.cardMeta}>{xp} XP earned overall</Text>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${Math.min(100, (xp % 150) / 1.5)}%`, backgroundColor: '#818cf8' }]} />
-              </View>
-              <Text style={styles.label}>{(150 - (xp % 150))} XP remaining to next level</Text>
-            </View>
-
-            {/* Badges Showcase Grid */}
-            <Text style={styles.sectionHeader}>Unlocked Medals & Badges</Text>
-            <View style={styles.statsGrid}>
-              <View style={[styles.statBox, { opacity: (solvedCoding > 0) ? 1 : 0.4 }]}>
-                <Text style={{ fontSize: 24 }}>🚀</Text>
-                <Text style={[styles.statLabel, { marginTop: 4 }]}>First Step</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center' }}>Solve 1 DSA challenge</Text>
-              </View>
-              <View style={[styles.statBox, { opacity: completedRoadmapSteps.includes("SQL Joins") ? 1 : 0.4 }]}>
-                <Text style={{ fontSize: 24 }}>🔥</Text>
-                <Text style={[styles.statLabel, { marginTop: 4 }]}>SQL Master</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center' }}>Complete SQL Joins roadmap</Text>
-              </View>
-              <View style={[styles.statBox, { opacity: (contestQuestions.filter(q => q.solved).length > 0) ? 1 : 0.4 }]}>
-                <Text style={{ fontSize: 24 }}>👑</Text>
-                <Text style={[styles.statLabel, { marginTop: 4 }]}>Arena Warrior</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center' }}>Solve a Timed Contest challenge</Text>
-              </View>
-              <View style={[styles.statBox, { opacity: streak > 0 ? 1 : 0.4 }]}>
-                <Text style={{ fontSize: 24 }}>⚡</Text>
-                <Text style={[styles.statLabel, { marginTop: 4 }]}>Power Streak</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center' }}>Keep an active daily streak</Text>
-              </View>
-            </View>
-
-            {/* Active Quests */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Active Weekly Quests</Text>
-              <View style={styles.missionItem}>
-                <Text style={styles.missionText}>
-                  {completedRoadmapSteps.length >= 2 ? "✅" : "⬜"} Complete 2 Roadmap steps ({completedRoadmapSteps.length}/2)
-                </Text>
-              </View>
-              <View style={styles.missionItem}>
-                <Text style={styles.missionText}>
-                  {contestQuestions.filter(q => q.solved).length >= 1 ? "✅" : "⬜"} Pass 1 Contest question ({contestQuestions.filter(q => q.solved).length}/1)
-                </Text>
-              </View>
-            </View>
-
-            {/* Weekly Language Performance */}
-            <Text style={styles.sectionHeader}>Weekly Language Performance</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Python & DSA</Text>
-                <Text style={[styles.statValue, { color: pythonSuccessRate < 70 ? '#f87171' : '#10b981' }]}>{pythonSuccessRate}%</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 4 }}>
-                  {pythonSuccessRate < 70 ? "Needs Practice" : "Proficient"}
-                </Text>
-                <TouchableOpacity 
-                  style={{ marginTop: 8, backgroundColor: '#1f2937', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}
-                  onPress={() => {
-                    setPythonSuccessRate(prev => (prev < 70 ? 85 : 55));
-                  }}
-                >
-                  <Text style={{ color: '#3b82f6', fontSize: 10 }}>Toggle Rating</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.statBox}>
-                <Text style={styles.statLabel}>PostgreSQL & SQL</Text>
-                <Text style={[styles.statValue, { color: sqlSuccessRate < 70 ? '#f87171' : '#10b981' }]}>{sqlSuccessRate}%</Text>
-                <Text style={{ fontSize: 10, color: '#9ca3af', marginTop: 4 }}>
-                  {sqlSuccessRate < 70 ? "Struggling! ⚠️" : "Proficient"}
-                </Text>
-                <TouchableOpacity 
-                  style={{ marginTop: 8, backgroundColor: '#1f2937', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}
-                  onPress={() => {
-                    setSqlSuccessRate(prev => (prev < 70 ? 80 : 55));
-                  }}
-                >
-                  <Text style={{ color: '#3b82f6', fontSize: 10 }}>Toggle Rating</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Adaptive Weekly Roadmap */}
-            <Text style={styles.sectionHeader}>Allocated Weekly Roadmap</Text>
-            {(() => {
-              const roadmap = getAdaptiveRoadmap();
-              return (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>{roadmap.title}</Text>
-                  <Text style={{ fontSize: 11, color: '#60a5fa', marginVertical: 4, fontStyle: 'italic' }}>
-                    {roadmap.reason}
-                  </Text>
-                  
-                  {roadmap.steps.map((step, idx) => {
-                    const isStepCompleted = completedRoadmapSteps.includes(step);
-                    return (
-                      <View key={idx} style={styles.roadmapStepRow}>
-                        <View style={[styles.roadmapStepNumber, isStepCompleted && { backgroundColor: '#064e3b' }]}>
-                          <Text style={styles.stepNumText}>{idx + 1}</Text>
-                        </View>
-                        <View style={styles.roadmapStepContent}>
-                          <Text style={styles.stepTitleText}>{step}</Text>
-                          <Text style={[styles.stepStatusText, isStepCompleted && { color: '#10b981', fontWeight: 'bold' }]}>
-                            Status: {isStepCompleted ? "Completed" : "In Progress"}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              );
-            })()}
-          </View>
-        )}
-
-        {/* PROFILE TAB */}
-        {activeTab === 'Profile' && (
-          <View style={styles.tabContent}>
-            <Text style={styles.sectionHeader}>AI Resume Analysis</Text>
-            
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Upload Resume for ATS & Skill Audit</Text>
-              
-              {!resumeName ? (
-                // EMPTY / NOT UPLOADED STATE
-                <View style={styles.uploadBox}>
-                  <Text style={{ fontSize: 32, marginBottom: 8, textAlign: 'center' }}>📁</Text>
-                  <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Select or Drag Resume File</Text>
-                  <Text style={{ color: '#9ca3af', fontSize: 11, marginTop: 4, textAlign: 'center', marginBottom: 12 }}>
-                    Select a mock resume file below to simulate device upload:
-                  </Text>
-                  
-                  <View style={{ flexDirection: 'column' }}>
-                    <TouchableOpacity 
-                      style={[styles.secondaryButton, { marginVertical: 6 }]} 
-                      onPress={() => simulateUpload("Software_Engineer_CV.pdf")}
-                    >
-                      <Text style={styles.buttonText}>📄 Upload Software_Engineer_CV.pdf</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.secondaryButton, { marginVertical: 6 }]} 
-                      onPress={() => simulateUpload("Data_Analyst_Resume.docx")}
-                    >
-                      <Text style={styles.buttonText}>📄 Upload Data_Analyst_Resume.docx</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
-                // UPLOADED / PROCESSING / COMPLETED STATE
-                <View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#111827', padding: 12, borderRadius: 8, marginBottom: 12 }}>
-                    <Text style={{ color: '#10b981', fontWeight: 'bold', fontSize: 13 }}>📄 {resumeName}</Text>
-                    <TouchableOpacity 
-                      style={{ backgroundColor: '#ef4444', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}
-                      onPress={() => { setResumeName(''); setResumeAnalysisResult(null); }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {isAnalyzingResume && (
-                    <View style={{ padding: 16, alignItems: 'center' }}>
-                      <Text style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: 14 }}>
-                        ⚙️ Analyzing resume matching with job target...
-                      </Text>
-                    </View>
-                  )}
-
-                  {resumeAnalysisResult && (
-                    <View style={styles.analysisBox}>
-                      <View style={{ alignItems: 'center', marginVertical: 12 }}>
-                        <View style={{ width: 80, height: 80, borderRadius: 40, borderColor: resumeAnalysisResult.score >= 80 ? '#10b981' : '#f59e0b', borderWidth: 3, justifyContent: 'center', alignItems: 'center' }}>
-                          <Text style={{ color: '#fff', fontSize: 22, fontWeight: 'bold' }}>{resumeAnalysisResult.score}</Text>
-                          <Text style={{ color: '#9ca3af', fontSize: 9 }}>ATS Score</Text>
-                        </View>
-                        <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold', marginTop: 8 }}>
-                          {resumeAnalysisResult.score >= 80 ? "Strong Role Match" : "Optimizations Recommended"}
-                        </Text>
-                      </View>
-                      
-                      <Text style={styles.analysisSubHeader}>Matched Keywords:</Text>
-                      <Text style={styles.analysisText}>{resumeAnalysisResult.matched.join(', ')}</Text>
-                      
-                      <Text style={styles.analysisSubHeader}>Missing Keywords:</Text>
-                      <Text style={styles.analysisTextDanger}>{resumeAnalysisResult.missing.join(', ')}</Text>
-                      
-                      <Text style={styles.analysisSubHeader}>Resume Feedback:</Text>
-                      <Text style={styles.analysisText}>{resumeAnalysisResult.feedback}</Text>
-
-                      <Text style={styles.analysisSubHeader}>Suggested Project Prep Questions:</Text>
-                      {resumeAnalysisResult.questions.map((q: string, idx: number) => (
-                        <Text key={idx} style={styles.analysisText}>• {q}</Text>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.secondaryButton, { marginTop: 20 }]} 
-              onPress={() => { setIsLoggedIn(false); setIsOnboarded(false); }}
-            >
-              <Text style={styles.buttonText}>Log Out</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-      </ScrollView>
-
-      {/* Bottom Navigation Bar */}
-      <View style={styles.bottomNav}>
-        {['Home', 'Practice', 'Assessments', 'Gamification', 'Profile'].map((tab) => {
-          const isActive = activeTab === tab;
-          const icons: Record<string, string> = { Home: '🏠', Practice: '💡', Assessments: '🏆', Gamification: '⚡', Profile: '👤' };
-          return (
-            <TouchableOpacity 
-              key={tab} 
-              style={styles.navItem} 
-              onPress={() => { setActiveTab(tab); setSelectedPracticeType(null); }}
-            >
-              <Text style={styles.navIcon}>{icons[tab]}</Text>
-              <Text style={[styles.navText, isActive && styles.navTextActive]}>{tab}</Text>
-            </TouchableOpacity>
-          );
-        })}
+        </View>
       </View>
 
+      {/* Daily Quests Card */}
+      <View style={styles.questsCard}>
+        <View style={styles.questsHeaderRow}>
+          <Text style={styles.cardHeaderSmall}>🎯  DAILY QUESTS</Text>
+          <Text style={styles.questCountBadge}>
+            {quests.filter(q => q.completed).length}/{quests.length}
+          </Text>
+        </View>
+
+        {quests.map(quest => (
+          <TouchableOpacity 
+            key={quest.id} 
+            style={[styles.questItemRow, quest.completed && styles.questItemCompleted]}
+            onPress={() => toggleQuest(quest.id)}
+          >
+            <View style={[styles.checkboxCircle, quest.completed && styles.checkboxCircleActive]}>
+              {quest.completed ? <Text style={styles.checkMark}>✓</Text> : null}
+            </View>
+            <Text style={[styles.questTitleText, quest.completed && styles.questTitleTextCompleted]}>
+              {quest.title}
+            </Text>
+            <View style={styles.xpPill}>
+              <Text style={styles.xpPillText}>+{quest.xp} XP</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Activity Heatmap Grid */}
+      <View style={styles.activityCard}>
+        <Text style={styles.cardHeaderSmall}>📅  ACTIVITY</Text>
+        <View style={styles.daysLetterRow}>
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+            <Text key={i} style={styles.dayLetterText}>{d}</Text>
+          ))}
+        </View>
+        <View style={styles.heatmapGrid}>
+          {[
+            [1, 3, 0, 2, 4, 1, 0],
+            [0, 2, 2, 1, 3, 1, 0],
+            [4, 3, 2, 2, 1, 0, 0]
+          ].map((row, rIdx) => (
+            <View key={rIdx} style={styles.heatmapRow}>
+              {row.map((val, cIdx) => {
+                const colors = ['#1e293b', '#475569', '#6366f1', '#a855f7', '#c084fc'];
+                return (
+                  <View 
+                    key={cIdx} 
+                    style={[styles.heatmapTile, { backgroundColor: colors[val] }]} 
+                  />
+                );
+              })}
+            </View>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  // -------------------------------------------------------------
+  // SCREEN 5: ARENA & COMPILER SANDBOX (Arena Tab)
+  // -------------------------------------------------------------
+  const renderArena = () => {
+    const currentQ = CONTEST_QUESTIONS[selectedQuestionIndex] || CONTEST_QUESTIONS[0];
+
+    return (
+      <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
+        {/* Top Problem Card */}
+        <View style={styles.problemBannerCard}>
+          <View style={styles.problemTitleRow}>
+            <Text style={styles.problemMainTitle}>{currentQ.title}</Text>
+            <View style={styles.difficultyBadge}>
+              <Text style={styles.difficultyBadgeText}>{currentQ.difficulty.toUpperCase()}</Text>
+            </View>
+          </View>
+
+          {/* Company tags */}
+          <View style={styles.companyTagsRow}>
+            {currentQ.companies?.map(comp => (
+              <View key={comp} style={styles.companyTag}>
+                <Text style={styles.companyTagText}>{comp}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Mode Switcher */}
+          <View style={styles.arenaModeSwitcher}>
+            <TouchableOpacity 
+              style={[styles.modeTab, arenaMode === 'coding' && styles.modeTabActive]}
+              onPress={() => setArenaMode('coding')}
+            >
+              <Text style={[styles.modeTabText, arenaMode === 'coding' && styles.modeTabTextActive]}>Coding</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modeTab, arenaMode === 'sql' && styles.modeTabActive]}
+              onPress={() => setArenaMode('sql')}
+            >
+              <Text style={[styles.modeTabText, arenaMode === 'sql' && styles.modeTabTextActive]}>SQL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modeTab, arenaMode === 'mcq' && styles.modeTabActive]}
+              onPress={() => setArenaMode('mcq')}
+            >
+              <Text style={[styles.modeTabText, arenaMode === 'mcq' && styles.modeTabTextActive]}>MCQ</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Problem Description */}
+        <View style={styles.descCard}>
+          <Text style={styles.descHeading}>Description</Text>
+          <Text style={styles.descBody}>{currentQ.desc}</Text>
+          <View style={styles.exampleBox}>
+            <Text style={styles.exampleTitle}>Example 1:</Text>
+            <Text style={styles.exampleCode}>Input: {currentQ.input}</Text>
+            <Text style={styles.exampleCode}>Output: {currentQ.output}</Text>
+          </View>
+        </View>
+
+        {/* Code Editor Container */}
+        {arenaMode === 'coding' && (
+          <View style={styles.editorCard}>
+            <View style={styles.editorHeaderRow}>
+              <Text style={styles.editorLangTitle}>JavaScript</Text>
+              <Text style={styles.editorExpandIcon}>⛶</Text>
+            </View>
+
+            <TextInput
+              style={styles.codeTextInput}
+              multiline
+              value={userCode}
+              onChangeText={setUserCode}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            {/* Execution Result */}
+            <View style={styles.executionStatusRow}>
+              <Text style={styles.executionStatusText}>{codeExecutionResult}</Text>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.editorButtonsRow}>
+              <TouchableOpacity style={styles.runCodeBtn} onPress={runCode}>
+                <Text style={styles.runCodeBtnText}>
+                  {isRunningCode ? 'Running...' : 'Run Code'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode}>
+                <Text style={styles.submitCodeBtnText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* SQL Arena */}
+        {arenaMode === 'sql' && (
+          <View style={styles.editorCard}>
+            <View style={styles.editorHeaderRow}>
+              <Text style={styles.editorLangTitle}>PostgreSQL Engine</Text>
+            </View>
+            <TextInput
+              style={styles.codeTextInput}
+              multiline
+              value="SELECT d.name AS Department, e.name AS Employee, e.salary\nFROM Employee e JOIN Department d ON e.departmentId = d.id\nORDER BY salary DESC LIMIT 3;"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <View style={styles.editorButtonsRow}>
+              <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode}>
+                <Text style={styles.submitCodeBtnText}>Execute SQL Query</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* MCQ Arena */}
+        {arenaMode === 'mcq' && (
+          <View style={styles.editorCard}>
+            <Text style={styles.descHeading}>Question 1 of 2</Text>
+            <Text style={[styles.descBody, { marginBottom: 15 }]}>
+              {MCQ_QUIZ_QUESTIONS[0].question}
+            </Text>
+            {MCQ_QUIZ_QUESTIONS[0].options.map((opt, i) => {
+              const letter = ['A', 'B', 'C', 'D'][i];
+              const selected = selectedMcqOption === letter;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[styles.mcqOptionButton, selected && styles.mcqOptionButtonSelected]}
+                  onPress={() => {
+                    setSelectedMcqOption(letter);
+                    setShowMcqExplanation(true);
+                  }}
+                >
+                  <Text style={[styles.mcqOptionText, selected && styles.mcqOptionTextSelected]}>
+                    {letter}.  {opt}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {showMcqExplanation && (
+              <View style={styles.explanationBox}>
+                <Text style={styles.explanationTitle}>✓ Correct Answer: {MCQ_QUIZ_QUESTIONS[0].answer}</Text>
+                <Text style={styles.explanationBody}>{MCQ_QUIZ_QUESTIONS[0].explanation}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
+
+  // -------------------------------------------------------------
+  // SCREEN 6: ROADMAP TAB
+  // -------------------------------------------------------------
+  const renderRoadmap = () => (
+    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
+      <View style={styles.problemBannerCard}>
+        <Text style={styles.problemMainTitle}>🎯 {targetRole} Roadmap</Text>
+        <Text style={styles.descBody}>Master key concepts tailored to crack tech interviews.</Text>
+      </View>
+
+      {INITIAL_ROADMAPS.find(r => r.role === targetRole)?.steps.map((step, idx) => (
+        <View key={idx} style={styles.roadmapStepCard}>
+          <View style={styles.roadmapNumberCircle}>
+            <Text style={styles.roadmapNumberText}>{idx + 1}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.roadmapStepTitle}>{step}</Text>
+            <Text style={styles.roadmapStepDesc}>Core curriculum & coding challenges</Text>
+          </View>
+          <Text style={styles.xpPillText}>+50 XP</Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+
+  // -------------------------------------------------------------
+  // SCREEN 7: PROFILE TAB
+  // -------------------------------------------------------------
+  const renderProfile = () => (
+    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
+      <View style={styles.readinessCard}>
+        <View style={styles.userAvatarCircleLarge}>
+          <Text style={styles.userAvatarTextLarge}>{userName.slice(0, 2).toUpperCase()}</Text>
+        </View>
+        <Text style={[styles.greetingName, { textAlign: 'center', marginTop: 12 }]}>{userName}</Text>
+        <Text style={[styles.greetingSub, { textAlign: 'center' }]}>{email}</Text>
+        <Text style={[styles.metricStatusStrong, { textAlign: 'center', marginTop: 6 }]}>
+          {targetRole} Track
+        </Text>
+
+        <TouchableOpacity 
+          style={[styles.gradientLoginButton, { marginTop: 24 }]}
+          onPress={() => {
+            setIsLoggedIn(false);
+            setCurrentScreen('auth');
+          }}
+        >
+          <Text style={styles.gradientLoginButtonText}>Log Out</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  // Main Root Container
+  return (
+    <SafeAreaView style={styles.mainAppWrapper}>
+      <StatusBar barStyle="light-content" backgroundColor="#060913" />
+
+      {activeTab === 'Home' && renderDashboard()}
+      {activeTab === 'Arena' && renderArena()}
+      {activeTab === 'Roadmap' && renderRoadmap()}
+      {activeTab === 'Profile' && renderProfile()}
+
+      {/* Bottom Tab Navigation Bar */}
+      <View style={styles.bottomTabBar}>
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('Home')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'Home' && styles.tabIconActive]}>🏠</Text>
+          <Text style={[styles.tabLabel, activeTab === 'Home' && styles.tabLabelActive]}>Home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('Arena')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'Arena' && styles.tabIconActive]}>🎮</Text>
+          <Text style={[styles.tabLabel, activeTab === 'Arena' && styles.tabLabelActive]}>Arena</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('Roadmap')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'Roadmap' && styles.tabIconActive]}>🗺️</Text>
+          <Text style={[styles.tabLabel, activeTab === 'Roadmap' && styles.tabLabelActive]}>Roadmap</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('Profile')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'Profile' && styles.tabIconActive]}>👤</Text>
+          <Text style={[styles.tabLabel, activeTab === 'Profile' && styles.tabLabelActive]}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
 
+// -------------------------------------------------------------
+// STYLES (Cyber-Neon Stitch Theme Tokens)
+// -------------------------------------------------------------
 const styles = StyleSheet.create({
-  container: {
+  mainAppWrapper: {
     flex: 1,
-    backgroundColor: '#090d16',
+    backgroundColor: '#060913',
   },
-  loginContainer: {
+  // SPLASH SCREEN
+  splashContainer: {
     flex: 1,
-    backgroundColor: '#090d16',
+    backgroundColor: '#060913',
     justifyContent: 'center',
-    padding: 20
+    alignItems: 'center',
   },
-  onboardScroll: {
-    paddingVertical: 40,
-    paddingHorizontal: 10
+  splashContent: {
+    width: '90%',
+    alignItems: 'center',
   },
-  loginBox: {
-    backgroundColor: '#0e1526',
-    padding: 28,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    width: '100%',
-    maxWidth: 450,
-    alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
+  sphereContainer: {
+    width: 140,
+    height: 140,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  outerGlowOrb: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 1.5,
+    borderColor: '#a855f7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(168, 85, 247, 0.08)',
+  },
+  innerGlowingCore: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#8b5cf6',
+    shadowColor: '#a855f7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
     shadowRadius: 20,
   },
-  logoText: {
-    fontSize: 32,
+  wireframeRing1: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 1,
+    borderColor: '#60a5fa',
+    transform: [{ rotate: '45deg' }],
+  },
+  wireframeRing2: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 1,
+    borderColor: '#c084fc',
+    transform: [{ rotate: '120deg' }],
+  },
+  wireframeRing3: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    borderWidth: 1,
+    borderColor: 'rgba(96, 165, 250, 0.4)',
+  },
+  splashCard: {
+    width: '100%',
+    backgroundColor: '#0d1326',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    alignItems: 'center',
+  },
+  splashTitle: {
+    fontSize: 28,
     fontWeight: '900',
-    color: '#3b82f6',
-    textAlign: 'center',
-    letterSpacing: 1.5,
-  },
-  loginSubtitle: {
-    fontSize: 13,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginBottom: 24,
-    marginTop: 4,
-  },
-  headerText: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subheadText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  input: {
-    backgroundColor: '#090d16',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 14,
-    color: '#fff',
-    fontSize: 15,
-    marginBottom: 16,
-  },
-  label: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  primaryButton: {
-    backgroundColor: '#4f46e5',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#4f46e5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  secondaryButton: {
-    backgroundColor: '#1b233a',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)'
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  selectRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  selectBtn: {
-    flex: 1,
-    minWidth: '28%',
-    backgroundColor: '#1b233a',
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    marginVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)'
-  },
-  selectBtnActive: {
-    backgroundColor: '#4f46e5',
-    borderColor: '#6366f1',
-  },
-  selectBtnText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  header: {
-    height: 70,
-    backgroundColor: '#090d16',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  welcomeText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  roleTagText: {
-    fontSize: 12,
-    color: '#60a5fa',
-    fontWeight: '600',
-  },
-  headerMetrics: {
-    flexDirection: 'row',
-  },
-  streakBadge: {
-    backgroundColor: '#451a03',
-    color: '#f97316',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginRight: 6,
-  },
-  xpBadge: {
-    backgroundColor: '#1e1b4b',
-    color: '#818cf8',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  tabContent: {
-    padding: 16,
-  },
-  sectionHeader: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 16,
-    letterSpacing: 0.5,
-  },
-  card: {
-    backgroundColor: '#0e1526',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  cardMeta: {
-    fontSize: 12,
-    color: '#9ca3af',
+    color: '#ffffff',
+    letterSpacing: 2,
     marginBottom: 12,
   },
-  readinessContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 10,
+  splashSubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  scoreNumber: {
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#10b981',
+  splashSubtitleHighlight: {
+    color: '#2dd4bf',
+    fontWeight: '700',
   },
-  scoreMax: {
-    fontSize: 16,
-    color: '#6b7280',
+  systemInitButton: {
+    width: '100%',
+    backgroundColor: '#111936',
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  scoreGrade: {
-    fontSize: 12,
-    color: '#9ca3af',
+  systemInitButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#374151',
-    borderRadius: 4,
+  authenticateButton: {
+    width: '100%',
+    backgroundColor: '#0a0f20',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  authenticateButtonText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  progressContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#1e293b',
+    borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 10,
   },
-  progressFill: {
+  progressBarFill: {
     height: '100%',
-    backgroundColor: '#10b981',
+    backgroundColor: '#60a5fa',
   },
-  weakText: {
+  progressText: {
+    fontFamily: 'monospace',
+    color: '#60a5fa',
     fontSize: 11,
-    color: '#f87171',
+    letterSpacing: 1,
   },
-  missionItem: {
-    marginVertical: 4,
-  },
-  missionText: {
-    fontSize: 14,
-    color: '#d1d5db',
-  },
-  missionDone: {
-    textDecorationLine: 'line-through',
-    color: '#6b7280',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statBox: {
+
+  // AUTH SCREEN
+  authContainer: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: '#111827',
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 4,
-    marginVertical: 4,
-    alignItems: 'center',
+    backgroundColor: '#060913',
+  },
+  authScroll: {
+    padding: 20,
+    justifyContent: 'center',
+    minHeight: '100%',
+  },
+  authCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 20,
+    padding: 24,
     borderWidth: 1,
-    borderColor: '#1f2937',
-  },
-  statLabel: {
-    color: '#9ca3af',
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  statValue: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  quickPracticeBtn: {
-    backgroundColor: '#10b981',
-    padding: 16,
-    borderRadius: 8,
+    borderColor: '#1e293b',
     alignItems: 'center',
-    marginTop: 10,
   },
-  quickPracticeText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  practiceSelectorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  practiceCard: {
-    width: '48%',
-    minWidth: 140,
-    backgroundColor: '#111827',
-    padding: 16,
-    borderRadius: 12,
+  authLogoImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#1f2937',
   },
-  practiceCardIcon: {
+  authTitle: {
     fontSize: 24,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  authSubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginBottom: 10,
+  },
+  inputGroup: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  cyberInput: {
+    width: '100%',
+    backgroundColor: '#131c38',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    color: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 13,
+    fontFamily: 'monospace',
+    marginBottom: 12,
+  },
+  forgotPasswordRow: {
+    alignSelf: 'flex-end',
+  },
+  forgotPasswordText: {
+    color: '#60a5fa',
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  gradientLoginButton: {
+    width: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  gradientLoginButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  orDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: 12,
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#1e293b',
+  },
+  orDividerText: {
+    color: '#6b7280',
+    fontSize: 10,
+    marginHorizontal: 10,
+    fontFamily: 'monospace',
+  },
+  googleAuthButton: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#131c38',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  googleGLogo: {
+    fontSize: 16,
+    marginRight: 10,
+  },
+  googleAuthButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  guestModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+  },
+  guestModeText: {
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+
+  // ONBOARDING
+  onboardContainer: {
+    flex: 1,
+    backgroundColor: '#060913',
+  },
+  onboardScroll: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  onboardMainTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 2,
+    textAlign: 'center',
     marginBottom: 8,
   },
-  practiceCardTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  practiceCardDesc: {
-    color: '#9ca3af',
-    fontSize: 10,
-  },
-  backBtn: {
-    paddingVertical: 8,
-    marginBottom: 16,
-  },
-  backBtnText: {
-    color: '#3b82f6',
-    fontWeight: 'bold',
-  },
-  problemDesc: {
-    color: '#d1d5db',
-    fontSize: 13,
-    marginBottom: 12,
+  onboardSubDesc: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginBottom: 20,
     lineHeight: 18,
   },
-  codeArea: {
-    backgroundColor: '#030712',
-    color: '#10b981',
-    fontFamily: 'monospace',
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 13,
-    borderWidth: 1,
-    borderColor: '#374151',
-    textAlignVertical: 'top',
-    marginBottom: 12,
+  phaseRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+    marginBottom: 24,
   },
-  runBtn: {
-    backgroundColor: '#3b82f6',
-    paddingVertical: 12,
-    borderRadius: 8,
+  phaseItem: {
+    paddingVertical: 8,
     alignItems: 'center',
   },
-  runBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  phaseActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#3b82f6',
   },
-  resultBox: {
-    marginTop: 12,
-    backgroundColor: '#030712',
-    padding: 12,
-    borderRadius: 8,
+  phaseText: {
+    color: '#6b7280',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  phaseTextActive: {
+    color: '#3b82f6',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  phaseActiveBar: {},
+  sectionHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginVertical: 14,
+  },
+  roleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  roleCard: {
+    width: '48%',
+    backgroundColor: '#0d1326',
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
   },
-  resultText: {
-    color: '#d1d5db',
-    fontFamily: 'monospace',
-    fontSize: 12,
-  },
-  mcqOptionBtn: {
-    backgroundColor: '#1f2937',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  mcqOptionActive: {
-    backgroundColor: '#1e3a8a',
+  roleCardSelected: {
     borderColor: '#3b82f6',
+    backgroundColor: '#111a3d',
   },
-  mcqOptionText: {
-    color: '#fff',
-    fontSize: 13,
+  roleCardIcon: {
+    fontSize: 20,
+    marginBottom: 8,
   },
-  resultSuccess: {
-    color: '#10b981',
-    fontWeight: 'bold',
+  roleCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
     marginBottom: 4,
   },
-  resultExplain: {
-    color: '#9ca3af',
+  roleCardDesc: {
     fontSize: 11,
+    color: '#94a3b8',
+    lineHeight: 14,
   },
-  hintBtn: {
-    paddingVertical: 8,
-    alignSelf: 'flex-start',
-    marginBottom: 10,
-  },
-  hintBtnText: {
-    color: '#f59e0b',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  roadmapTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  roadmapStepRow: {
+  skillsTagRow: {
     flexDirection: 'row',
-    marginVertical: 6,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  skillTag: {
+    backgroundColor: '#0d1326',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  skillTagActive: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#172554',
+  },
+  skillTagText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  skillTagTextActive: {
+    color: '#60a5fa',
+  },
+  timeAllocRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  timeBox: {
+    flex: 1,
+    backgroundColor: '#0d1326',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
   },
-  roadmapStepNumber: {
-    width: 24,
-    height: 24,
+  timeBoxActive: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#111a3d',
+  },
+  timeNumber: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  timeNumberActive: {
+    color: '#60a5fa',
+  },
+  timeLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#6b7280',
+    letterSpacing: 1,
+  },
+  launchRoadmapButton: {
+    backgroundColor: '#3b82f6',
     borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 30,
+  },
+  launchRoadmapButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+
+  // DASHBOARD
+  dashboardContainer: {
+    flex: 1,
+    backgroundColor: '#060913',
+    padding: 16,
+  },
+  dashHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dashBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dashLogoIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  dashBrandTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  dashHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0d1326',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userAvatarText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  greetingBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  greetingName: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  greetingSub: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  statsBadgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  statPill: {
+    backgroundColor: '#831843',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statPillText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  readinessCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardHeaderSmall: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94a3b8',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  gaugeContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  circularGaugeRing: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 8,
+    borderColor: '#c084fc',
+    borderLeftColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gaugeScoreNumber: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  gaugeScoreLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94a3b8',
+    letterSpacing: 1,
+  },
+  metricsSplitRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+    paddingTop: 12,
+    marginTop: 10,
+  },
+  metricItem: {
+    alignItems: 'center',
+  },
+  metricDivider: {
+    width: 1,
+    backgroundColor: '#1e293b',
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginBottom: 4,
+  },
+  metricStatusStrong: {
+    color: '#10b981',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  metricStatusImproving: {
+    color: '#c084fc',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  questsCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 16,
+  },
+  questsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  questCountBadge: {
+    color: '#60a5fa',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  questItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111936',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  questItemCompleted: {
+    opacity: 0.6,
+  },
+  checkboxCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#60a5fa',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
-  stepNumText: {
-    color: '#fff',
+  checkboxCircleActive: {
+    backgroundColor: '#3b82f6',
+  },
+  checkMark: {
+    color: '#ffffff',
     fontSize: 11,
-    fontWeight: 'bold',
+    fontWeight: '900',
   },
-  roadmapStepContent: {
+  questTitleText: {
     flex: 1,
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
-  stepTitleText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
+  questTitleTextCompleted: {
+    textDecorationLine: 'line-through',
+    color: '#94a3b8',
   },
-  stepStatusText: {
-    color: '#6b7280',
+  xpPill: {
+    backgroundColor: '#312e81',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  xpPillText: {
+    color: '#c084fc',
     fontSize: 10,
+    fontWeight: '800',
   },
-  analysisBox: {
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#374151',
-    paddingTop: 16,
+  activityCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 16,
   },
-  analysisScore: {
-    color: '#10b981',
-    fontSize: 18,
-    fontWeight: 'bold',
+  daysLetterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginBottom: 8,
   },
-  analysisSubHeader: {
-    color: '#fff',
+  dayLetterText: {
+    color: '#6b7280',
+    fontSize: 10,
+    fontWeight: '700',
+    width: 24,
+    textAlign: 'center',
+  },
+  heatmapGrid: {
+    gap: 6,
+  },
+  heatmapRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  heatmapTile: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+  },
+
+  // ARENA
+  problemBannerCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 12,
+  },
+  problemTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  problemMainTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  difficultyBadge: {
+    backgroundColor: '#064e3b',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  difficultyBadgeText: {
+    color: '#34d399',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  companyTagsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+  },
+  companyTag: {
+    backgroundColor: '#1e293b',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  companyTagText: {
+    color: '#94a3b8',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  arenaModeSwitcher: {
+    flexDirection: 'row',
+    backgroundColor: '#111936',
+    borderRadius: 8,
+    padding: 3,
+  },
+  modeTab: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  modeTabActive: {
+    backgroundColor: '#2563eb',
+  },
+  modeTabText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  modeTabTextActive: {
+    color: '#ffffff',
+  },
+  descCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 12,
+  },
+  descHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  descBody: {
+    color: '#94a3b8',
     fontSize: 12,
-    fontWeight: 'bold',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  exampleBox: {
+    backgroundColor: '#111936',
+    borderRadius: 8,
+    padding: 10,
+  },
+  exampleTitle: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  exampleCode: {
+    color: '#60a5fa',
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  editorCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 16,
+  },
+  editorHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  editorLangTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  editorExpandIcon: {
+    color: '#94a3b8',
+    fontSize: 14,
+  },
+  codeTextInput: {
+    backgroundColor: '#070b19',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    color: '#e2e8f0',
+    fontFamily: 'monospace',
+    fontSize: 12,
+    padding: 12,
+    minHeight: 180,
+    textAlignVertical: 'top',
+  },
+  executionStatusRow: {
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  executionStatusText: {
+    color: '#34d399',
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  editorButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  runCodeBtn: {
+    flex: 1,
+    backgroundColor: '#111936',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  runCodeBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  submitCodeBtn: {
+    flex: 1,
+    backgroundColor: '#2dd4bf',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  submitCodeBtnText: {
+    color: '#060913',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  mcqOptionButton: {
+    backgroundColor: '#111936',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  mcqOptionButtonSelected: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#172554',
+  },
+  mcqOptionText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  mcqOptionTextSelected: {
+    color: '#60a5fa',
+    fontWeight: '800',
+  },
+  explanationBox: {
+    backgroundColor: '#064e3b',
+    borderRadius: 8,
+    padding: 12,
     marginTop: 10,
   },
-  analysisText: {
-    color: '#d1d5db',
+  explanationTitle: {
+    color: '#34d399',
     fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  explanationBody: {
+    color: '#a7f3d0',
+    fontSize: 11,
+  },
+
+  // ROADMAP
+  roadmapStepCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d1326',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
+    marginBottom: 10,
+  },
+  roadmapNumberCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  roadmapNumberText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  roadmapStepTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  roadmapStepDesc: {
+    color: '#94a3b8',
+    fontSize: 11,
     marginTop: 2,
   },
-  analysisTextDanger: {
-    color: '#f87171',
-    fontSize: 12,
-    marginTop: 2,
+
+  // PROFILE
+  userAvatarCircleLarge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
   },
-  bottomNav: {
-    height: 60,
-    backgroundColor: '#111827',
+  userAvatarTextLarge: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+
+  // BOTTOM TAB BAR
+  bottomTabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 64,
+    backgroundColor: '#080d1e',
     borderTopWidth: 1,
-    borderTopColor: '#1f2937',
+    borderTopColor: '#1e293b',
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
   },
-  navItem: {
+  tabItem: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  navIcon: {
+  tabIcon: {
     fontSize: 18,
+    color: '#6b7280',
+    marginBottom: 2,
   },
-  navText: {
+  tabIconActive: {
+    color: '#3b82f6',
+  },
+  tabLabel: {
     fontSize: 10,
-    color: '#9ca3af',
-    marginTop: 2,
+    color: '#6b7280',
+    fontWeight: '600',
   },
-  navTextActive: {
+  tabLabelActive: {
     color: '#3b82f6',
-    fontWeight: 'bold',
-  },
-  arenaContainer: {
-    flex: 1,
-  },
-  arenaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  arenaTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  arenaTimer: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#f87171',
-  },
-  contestQRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  contestQBtn: {
-    flex: 1,
-    backgroundColor: '#1f2937',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  contestQBtnActive: {
-    backgroundColor: '#1e3a8a',
-    borderColor: '#3b82f6',
-  },
-  contestQText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  contestQTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  successMsg: {
-    color: '#10b981',
-    fontWeight: 'bold',
-    fontSize: 13,
-    marginBottom: 10,
-  },
-  leaderboardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f2937',
-  },
-  leaderboardUserRow: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-  },
-  leaderboardRank: {
-    color: '#3b82f6',
-    fontWeight: 'bold',
-    width: 30,
-  },
-  leaderboardName: {
-    color: '#fff',
-    flex: 1,
-  },
-  leaderboardScore: {
-    color: '#10b981',
-    fontWeight: 'bold',
-    width: 60,
-    textAlign: 'right',
-  },
-  leaderboardTime: {
-    color: '#9ca3af',
-    width: 50,
-    textAlign: 'right',
-  },
-  splashContainer: {
-    flex: 1,
-    backgroundColor: '#030712',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  splashBox: {
-    alignItems: 'center',
-  },
-  splashLogo: {
-    fontSize: 38,
-    fontWeight: '900',
-    color: '#3b82f6',
-    letterSpacing: 2,
-    marginBottom: 10,
-  },
-  splashSubtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    fontWeight: '500',
-    letterSpacing: 1,
-  },
-  uploadBox: {
-    borderWidth: 2,
-    borderColor: '#374151',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'stretch',
-    justifyContent: 'center',
-    backgroundColor: '#111827',
-    marginVertical: 10,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(3, 7, 18, 0.85)',
-    justifyContent: 'flex-end',
-  },
-  googleSheet: {
-    backgroundColor: '#0f172a',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '80%',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  googleSheetHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  googleSheetTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  googleSheetSubtitle: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginTop: 4,
-  },
-  accountsList: {
-    marginBottom: 20,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#2563eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  accountInfo: {
-    flex: 1,
-  },
-  accountName: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  accountEmail: {
-    color: '#94a3b8',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  accountBadge: {
-    color: '#38bdf8',
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  customEmailBox: {
-    backgroundColor: '#1e293b',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  customEmailLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  cancelGoogleBtn: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    backgroundColor: '#334155',
-    borderRadius: 12,
-  },
-  cancelGoogleText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  googleButton: {
-    backgroundColor: '#fff',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  googleButtonText: {
-    color: '#0f172a',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  separatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#334155',
-  },
-  separatorText: {
-    color: '#64748b',
-    marginHorizontal: 12,
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
 });
