@@ -573,19 +573,22 @@ export default function App() {
       setEmail(selectedEmail);
       setUserName(name);
     
-    if (selectedEmail === 'new.user@gmail.com') {
-      setIsOnboarded(false);
-    } else {
-      if (selectedEmail.includes('alex')) {
-        setTargetRole('Software Engineer');
-        setUserSkills('Python, JavaScript');
+      if (selectedEmail === 'new.user@gmail.com') {
+        setIsOnboarded(false);
       } else {
-        setTargetRole('Data Engineer');
-        setUserSkills('SQL, Python');
+        if (selectedEmail.includes('alex')) {
+          setTargetRole('Software Engineer');
+          setUserSkills('Python, JavaScript');
+        } else {
+          setTargetRole('Data Engineer');
+          setUserSkills('SQL, Python');
+        }
+        setIsOnboarded(true);
       }
-      setIsOnboarded(true);
+      setIsLoggedIn(true);
+    } finally {
+      setIsAuthenticating(false);
     }
-    setIsLoggedIn(true);
   };
 
   // Dynamic Placement Readiness Score computed from actual tracking
