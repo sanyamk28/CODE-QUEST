@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,43 +9,15 @@ import {
   SafeAreaView,
   StatusBar,
   Modal,
-  Animated,
   Image,
   Switch,
   Dimensions
 } from 'react-native';
-import axios from 'axios';
 import { firebaseAuthSignIn } from './firebase';
 
 const { width } = Dimensions.get('window');
 
-// --- API CONFIGURATION ---
-export const BACKEND_API_URL = 'https://code-quest-z89h.onrender.com/api/v1';
-
-// --- DATA MOCKS FOR MOBILE APP ---
-const INITIAL_ROADMAPS = [
-  {
-    role: "Data Engineer",
-    steps: ["SQL Joins", "Aggregations", "Window Functions", "DBMS Indexes", "ETL Pipelines", "Airflow Orchestration"]
-  },
-  {
-    role: "Software Engineer",
-    steps: ["Arrays & Strings", "Two Pointers", "Stacks", "Binary Search", "OOP Fundamentals", "System Design"]
-  },
-  {
-    role: "Frontend",
-    steps: ["HTML5 & CSS Grid", "JavaScript ES6+", "React Hooks", "State Management", "Performance Optimization"]
-  },
-  {
-    role: "Full-Stack",
-    steps: ["Data Structures", "REST APIs", "React Frontend", "Node/Express Backend", "PostgreSQL & Docker"]
-  },
-  {
-    role: "DevOps",
-    steps: ["Linux Internals", "Docker Containers", "Kubernetes", "CI/CD Pipelines", "AWS Cloud Architecture"]
-  }
-];
-
+// --- DATA DEFINITIONS ---
 const CONTEST_QUESTIONS = [
   { 
     title: "Two Sum", 
@@ -53,20 +25,15 @@ const CONTEST_QUESTIONS = [
     difficulty: "Easy", 
     companies: ["AMAZON", "GOOGLE"],
     desc: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.", 
-    template: `/**
- * @param {number[]} nums
- * @param {number} target
- * @return {number[]}
- */
-var twoSum = function(nums, target) {
-    const map = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        const complement = target - nums[i];
-        if (map.has(complement)) {
-            return [map.get(complement), i];
-        }
-        map.set(nums[i], i);
+    template: `var twoSum = function(nums, target) {
+  const map = new Map();
+  for (let i = 0; i < nums.length; i++) {
+    const complement = target - nums[i];
+    if (map.has(complement)) {
+      return [map.get(complement), i];
     }
+    map.set(nums[i], i);
+  }
 };`, 
     input: "nums = [2,7,11,15], target = 9", 
     output: "[0,1]", 
@@ -78,7 +45,9 @@ var twoSum = function(nums, target) {
     difficulty: "Easy", 
     companies: ["APPLE", "MICROSOFT"],
     desc: "Given an integer array nums, return true if any value appears at least twice in the array, and false if every element is distinct.", 
-    template: "var containsDuplicate = function(nums) {\n    return new Set(nums).size !== nums.length;\n};", 
+    template: `var containsDuplicate = function(nums) {
+  return new Set(nums).size !== nums.length;
+};`, 
     input: "nums = [1,2,3,1]", 
     output: "true", 
     solved: false 
@@ -89,20 +58,15 @@ var twoSum = function(nums, target) {
     difficulty: "Medium", 
     companies: ["GOOGLE", "META"],
     desc: "Find the employees who are high earners in each of the departments. A high earner earns a salary in the top three unique salaries in that department.", 
-    template: "SELECT d.name AS Department, e.name AS Employee, e.salary AS Salary\nFROM Employee e JOIN Department d ON e.departmentId = d.id\nWHERE 3 > (SELECT COUNT(DISTINCT e2.salary) FROM Employee e2 WHERE e2.salary > e.salary AND e2.departmentId = e.departmentId);", 
+    template: `SELECT d.name AS Department, e.name AS Employee, e.salary AS Salary
+FROM Employee e JOIN Department d ON e.departmentId = d.id
+WHERE 3 > (
+  SELECT COUNT(DISTINCT e2.salary) 
+  FROM Employee e2 
+  WHERE e2.salary > e.salary AND e2.departmentId = e.departmentId
+);`, 
     input: "Run on PostgreSQL engine", 
     output: "Rows matching top salaries per department", 
-    solved: false 
-  },
-  { 
-    title: "Combine Two Tables", 
-    type: "sql", 
-    difficulty: "Easy", 
-    companies: ["AMAZON"],
-    desc: "Report first name, last name, city, and state of each person. If the address of a personId is not in Address table, report null.", 
-    template: "SELECT firstName, lastName, city, state\nFROM Person LEFT JOIN Address ON Person.personId = Address.personId;", 
-    input: "Run on PostgreSQL engine", 
-    output: "Combined rows showing address elements or nulls", 
     solved: false 
   }
 ];
@@ -118,35 +82,32 @@ const MCQ_QUIZ_QUESTIONS = [
   },
   {
     topic: "System Design",
-    question: "Which pattern is primarily used to prevent cascading failures in distributed systems?",
+    question: "Which pattern is primarily used to prevent cascading failures in distributed microservices?",
     options: ["Circuit Breaker", "Singleton", "Observer", "Flyweight"],
     answer: "A",
     difficulty: "Medium",
-    explanation: "The Circuit Breaker pattern detects failures and encapsulates the logic of preventing a failure from constantly recurring during maintenance."
+    explanation: "The Circuit Breaker pattern detects failures and encapsulates the logic of preventing a failure from constantly recurring during service outages."
   }
 ];
 
 export default function App() {
-  // Navigation & Flow State
+  // Navigation
   const [currentScreen, setCurrentScreen] = useState<'auth' | 'onboarding' | 'dashboard'>('auth');
-  const [activeTab, setActiveTab] = useState<'Home' | 'Arena' | 'Roadmap' | 'Profile'>('Home');
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Arena' | 'Roadmap' | 'Profile'>('Dashboard');
 
-  // User & Profile State
+  // User State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isOnboarded, setIsOnboarded] = useState(true);
   const [guestMode, setGuestMode] = useState(false);
-  const [userName, setUserName] = useState('Alex');
-  const [email, setEmail] = useState('CQ-9921');
+  const [userName, setUserName] = useState('Alex Mercer');
+  const [email, setEmail] = useState('alex.mercer@gmail.com');
   const [password, setPassword] = useState('password123');
   const [targetRole, setTargetRole] = useState('Software Engineer');
   const [customRoleInput, setCustomRoleInput] = useState('');
   const [allAvailableSkills, setAllAvailableSkills] = useState<string[]>([
-    'Python', 'SQL', 'React', 'Docker', 'AWS', 'TypeScript', 'Node.js', 'Kubernetes', 'Java', 'C++', 'System Design'
+    'Python', 'SQL', 'React', 'Docker', 'AWS', 'TypeScript', 'Node.js', 'Kubernetes', 'GraphQL'
   ]);
   const [userSkills, setUserSkills] = useState<string[]>(['Python', 'SQL', 'React', 'Docker']);
   const [newCustomSkill, setNewCustomSkill] = useState('');
-  const [studyHours, setStudyHours] = useState('2h');
-  const [targetCollege, setTargetCollege] = useState('Stanford University');
   const [streak, setStreak] = useState(5);
   const [xp, setXp] = useState(480);
   const [authError, setAuthError] = useState('');
@@ -154,45 +115,53 @@ export default function App() {
 
   // Quests State
   const [quests, setQuests] = useState([
-    { id: 1, title: "Solve 1 SQL Challenge", completed: true, xp: 20 },
-    { id: 2, title: "Complete React Hooks Lesson", completed: false, xp: 50 },
-    { id: 3, title: "Review 2 Peer Pull Requests", completed: false, xp: 30 }
+    { id: 1, title: "Solve 1 SQL Challenge", xp: 20, completed: true },
+    { id: 2, title: "Complete React Hooks", xp: 50, completed: true },
+    { id: 3, title: "Review DSA Concepts", xp: 30, completed: true }
   ]);
 
-  // Arena & Editor State
+  // Arena State
   const [arenaMode, setArenaMode] = useState<'coding' | 'sql' | 'mcq'>('coding');
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(0);
   const [userCode, setUserCode] = useState(CONTEST_QUESTIONS[0].template);
-  const [codeExecutionResult, setCodeExecutionResult] = useState('🟢 Execution: 0.04s | Pass');
+  const [codeExecutionResult, setCodeExecutionResult] = useState('🟢 Execution: 0.04s | Pass (All Test Cases Passed)');
   const [isRunningCode, setIsRunningCode] = useState(false);
 
   // MCQ state
-  const [selectedMcqOption, setSelectedMcqOption] = useState<string | null>(null);
-  const [showMcqExplanation, setShowMcqExplanation] = useState(false);
+  const [selectedMcqOption, setSelectedMcqOption] = useState<string | null>('A');
+  const [showMcqExplanation, setShowMcqExplanation] = useState(true);
 
-  // EAS Observe Performance Tracker
-  useEffect(() => {
-    if (typeof performance !== 'undefined' && performance.mark) {
-      performance.mark('app_interactive');
-    }
-  }, []);
+  // Roadmap State
+  const [sqlModuleExpanded, setSqlModuleExpanded] = useState(true);
 
-  // Handle Firebase Login
+  // ATS Scanner State
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState('Alex_Resume_2026.pdf');
+  const [resumeAnalyzing, setResumeAnalyzing] = useState(false);
+  const [customResumeInput, setCustomResumeInput] = useState('');
+  const [resumeAnalysisResult, setResumeAnalysisResult] = useState({
+    score: 87,
+    matchedSkills: ['✓ Python', '✓ React', '✓ SQL', '✓ Docker'],
+    missingSkills: ['✕ Kubernetes', '✕ GraphQL'],
+    feedback: 'Strong alignment with Software Engineer track. Good keyword density.'
+  });
+
+  // Handle Login
   const handleLogin = async () => {
     if (!email || !password) {
-      setAuthError('Please enter your Student ID or Email and password');
+      setAuthError('Please enter email and password');
       return;
     }
     setAuthError('');
     setIsAuthenticating(true);
     try {
-      const emailToUse = email.includes('@') ? email : `${email.toLowerCase().replace(/[^a-z0-9]/g, '')}@codequest.dev`;
+      const emailToUse = email.includes('@') ? email : `${email.toLowerCase()}@codequest.dev`;
       const res = await firebaseAuthSignIn(emailToUse, password);
       setUserName(res.displayName || email.split('@')[0]);
       setIsLoggedIn(true);
       setCurrentScreen('dashboard');
     } catch (err: any) {
-      setUserName(email.split('@')[0]);
+      setUserName(email.split('@')[0] || 'Alex Mercer');
       setIsLoggedIn(true);
       setCurrentScreen('dashboard');
     } finally {
@@ -206,19 +175,19 @@ export default function App() {
     setIsAuthenticating(true);
     setTimeout(() => {
       setUserName('Google Student (Alex)');
-      setEmail('student@codequest.dev');
+      setEmail('alex.mercer@gmail.com');
       setIsLoggedIn(true);
       setCurrentScreen('dashboard');
       setIsAuthenticating(false);
-    }, 400);
+    }, 300);
   };
 
   const toggleQuest = (id: number) => {
     setQuests(prev => prev.map(q => {
       if (q.id === id) {
-        const nextState = !q.completed;
-        if (nextState) setXp(xp + q.xp);
-        return { ...q, completed: nextState };
+        const next = !q.completed;
+        if (next) setXp(prevXp => prevXp + q.xp);
+        return { ...q, completed: next };
       }
       return q;
     }));
@@ -229,24 +198,34 @@ export default function App() {
     setTimeout(() => {
       setIsRunningCode(false);
       setCodeExecutionResult('🟢 Execution: 0.04s | Pass (All Test Cases Passed)');
-      setXp(xp + 25);
+      setXp(prevXp => prevXp + 25);
+    }, 400);
+  };
+
+  const pickResume = (name?: string) => {
+    const selected = name || customResumeInput || 'Alex_Resume_2026.pdf';
+    setResumeFileName(selected);
+    setShowResumeModal(false);
+    setResumeAnalyzing(true);
+    setTimeout(() => {
+      setResumeAnalyzing(false);
+      setResumeAnalysisResult({
+        score: 87,
+        matchedSkills: ['✓ Python', '✓ React', '✓ SQL', '✓ Docker'],
+        missingSkills: ['✕ Kubernetes', '✕ GraphQL'],
+        feedback: 'Strong alignment with Software Engineer track. Good keyword density.'
+      });
     }, 600);
   };
 
   // -------------------------------------------------------------
-  // SCREEN 1: AUTHENTICATION SCREEN (Google Stitch UI Spec)
+  // SCREEN 1: AUTHENTICATION SCREEN (Exact UI Match)
   // -------------------------------------------------------------
   if (currentScreen === 'auth' && !isLoggedIn) {
     return (
       <SafeAreaView style={styles.authContainer}>
         <StatusBar barStyle="light-content" backgroundColor="#060913" />
         <ScrollView contentContainerStyle={styles.authScroll}>
-          {/* Top screen header indicator */}
-          <View style={styles.authScreenTagRow}>
-            <Text style={styles.authScreenTagIcon}>📲</Text>
-            <Text style={styles.authScreenTagText}>Authentication</Text>
-          </View>
-
           <View style={styles.authCard}>
             {/* CQ Code Quest Logo */}
             <View style={styles.authLogoBox}>
@@ -297,7 +276,7 @@ export default function App() {
               activeOpacity={0.85}
             >
               <Text style={styles.gradientLoginButtonText}>
-                {isAuthenticating ? 'Authenticating...' : 'Log In  ➔'}
+                {isAuthenticating ? 'Authenticating...' : 'Log In ➔'}
               </Text>
             </TouchableOpacity>
 
@@ -316,6 +295,16 @@ export default function App() {
               <Text style={styles.googleGLogo}>G</Text>
               <Text style={styles.googleAuthButtonText}>
                 {isAuthenticating ? 'Connecting...' : 'Sign in with Google'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Onboarding sequence link */}
+            <TouchableOpacity 
+              onPress={() => setCurrentScreen('onboarding')}
+              style={{ marginTop: 8, marginBottom: 14 }}
+            >
+              <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
+                🚀 Initialize Neural Sequence ➔
               </Text>
             </TouchableOpacity>
 
@@ -342,29 +331,28 @@ export default function App() {
   }
 
   // -------------------------------------------------------------
-  // SCREEN 3: ONBOARDING / INITIALIZE SEQUENCE
+  // SCREEN 2: INITIALIZE SEQUENCE / ONBOARDING (Exact UI Match)
   // -------------------------------------------------------------
   if (currentScreen === 'onboarding') {
     const roles = [
-      { id: 'Software Engineer', title: 'Software\nEngineer', desc: 'Core logic, algorithms, and system design' },
-      { id: 'Data Engineer', title: 'Data\nEngineer', desc: 'Pipelines, storage, SQL aggregations' },
-      { id: 'Frontend', title: 'Frontend', desc: 'User interfaces, client-side logic & React' },
-      { id: 'Full-Stack', title: 'Full-Stack', desc: 'End-to-end development & cloud architecture' },
-      { id: 'DevOps', title: 'DevOps', desc: 'Deployment, infrastructure & CI/CD' }
+      { id: 'Software Engineer', title: 'SOFTWARE\nENGINEER' },
+      { id: 'Data Engineer', title: 'DATA\nENGINEER' },
+      { id: 'Frontend', title: 'FRONTEND' },
+      { id: 'Full-Stack', title: 'FULL-STACK' }
     ];
 
     return (
       <SafeAreaView style={styles.onboardContainer}>
         <StatusBar barStyle="light-content" backgroundColor="#060913" />
         <ScrollView contentContainerStyle={styles.onboardScroll}>
-          <Text style={styles.onboardMainTitle}>INITIALIZE{'\n'}SEQUENCE</Text>
+          <Text style={styles.onboardMainTitle}>INITIALIZE SEQUENCE</Text>
           <Text style={styles.onboardSubDesc}>
-            Configure your custom neural pathway to optimize the learning protocol.
+            Configure your custom neural pathway{'\n'}to optimize the learning protocol.
           </Text>
 
           {/* Phase Tabs */}
           <View style={styles.phaseRow}>
-            <View style={[styles.phaseItem, styles.phaseActive]}>
+            <View style={styles.phaseItemActive}>
               <Text style={styles.phaseTextActive}>PHASE 1</Text>
               <View style={styles.phaseActiveBar} />
             </View>
@@ -374,127 +362,101 @@ export default function App() {
             <View style={styles.phaseItem}>
               <Text style={styles.phaseText}>PHASE 3</Text>
             </View>
+            <View style={styles.phaseItem}>
+              <Text style={styles.phaseText}>FINALIZING</Text>
+            </View>
           </View>
 
-          {/* Select Target Role */}
-          <Text style={styles.sectionHeaderTitle}>🌐  Select Or Type Target Role</Text>
+          {/* Role Cards Grid */}
           <View style={styles.roleGrid}>
-            {roles.map(r => (
-              <TouchableOpacity
-                key={r.id}
-                style={[
-                  styles.roleCard,
-                  targetRole === r.id && styles.roleCardSelected
-                ]}
-                onPress={() => {
-                  setTargetRole(r.id);
-                  setCustomRoleInput('');
-                }}
-              >
-                <Text style={styles.roleCardIcon}>💻</Text>
-                <Text style={styles.roleCardTitle}>{r.title}</Text>
-                <Text style={styles.roleCardDesc} numberOfLines={2}>{r.desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Custom Role Input */}
-          <View style={{ marginTop: 8, marginBottom: 16 }}>
-            <TextInput
-              style={styles.cyberInput}
-              placeholder="Or type custom role (e.g. AI / ML Engineer, Blockchain, iOS)"
-              placeholderTextColor="#6b7280"
-              value={customRoleInput}
-              onChangeText={(val) => {
-                setCustomRoleInput(val);
-                setTargetRole(val || 'Software Engineer');
-              }}
-            />
-          </View>
-
-          {/* Base Competencies & Custom Skills */}
-          <Text style={styles.sectionHeaderTitle}>💠  Base Competencies & Skills</Text>
-          <View style={styles.skillsTagRow}>
-            {allAvailableSkills.map(s => {
-              const selected = userSkills.includes(s);
+            {roles.map(r => {
+              const selected = targetRole === r.id;
               return (
                 <TouchableOpacity
-                  key={s}
-                  style={[styles.skillTag, selected && styles.skillTagActive]}
+                  key={r.id}
+                  style={[styles.roleCard, selected && styles.roleCardSelected]}
                   onPress={() => {
-                    if (selected) {
-                      setUserSkills(userSkills.filter(item => item !== s));
-                    } else {
-                      setUserSkills([...userSkills, s]);
-                    }
+                    setTargetRole(r.id);
+                    setCustomRoleInput('');
                   }}
+                  activeOpacity={0.8}
                 >
-                  <Text style={[styles.skillTagText, selected && styles.skillTagTextActive]}>
-                    {selected ? `✓ ${s}` : s}
-                  </Text>
+                  <Text style={{ fontSize: 24, marginBottom: 8 }}>{r.id === 'Software Engineer' ? '💻' : r.id === 'Data Engineer' ? '🗄️' : r.id === 'Frontend' ? '🎨' : '🌐'}</Text>
+                  <Text style={[styles.roleCardTitle, selected && styles.roleCardTitleSelected]}>{r.title}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          {/* Add Custom User Skill Input */}
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 16 }}>
+          {/* Custom Role Input */}
+          <TextInput
+            placeholder="Or type custom role (e.g. AI / ML Engineer)"
+            placeholderTextColor="#64748b"
+            value={customRoleInput}
+            onChangeText={(text) => {
+              setCustomRoleInput(text);
+              if (text) setTargetRole(text);
+            }}
+            style={styles.customRoleTextInput}
+          />
+
+          {/* Primary Skills */}
+          <Text style={styles.sectionHeaderTitle}>PRIMARY SKILLS</Text>
+          <View style={styles.skillsTagRow}>
+            {allAvailableSkills.map(skill => {
+              const selected = userSkills.includes(skill);
+              return (
+                <TouchableOpacity
+                  key={skill}
+                  style={[styles.skillChip, selected && styles.skillChipSelected]}
+                  onPress={() => {
+                    if (selected) {
+                      setUserSkills(userSkills.filter(s => s !== skill));
+                    } else {
+                      setUserSkills([...userSkills, skill]);
+                    }
+                  }}
+                >
+                  <Text style={[styles.skillChipText, selected && styles.skillChipTextSelected]}>{skill}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Add custom skill input */}
+          <View style={styles.addSkillRow}>
             <TextInput
-              style={[styles.cyberInput, { flex: 1, marginBottom: 0 }]}
-              placeholder="Add your skill (e.g. Flutter, PyTorch, GraphQL)"
-              placeholderTextColor="#6b7280"
+              placeholder="Add custom skill (e.g. Flutter, PyTorch)..."
+              placeholderTextColor="#64748b"
               value={newCustomSkill}
               onChangeText={setNewCustomSkill}
+              style={styles.addSkillInput}
             />
-            <TouchableOpacity
-              style={{ backgroundColor: '#2563eb', paddingHorizontal: 16, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
+            <TouchableOpacity 
+              style={styles.addSkillBtn}
               onPress={() => {
-                if (newCustomSkill.trim()) {
-                  const trimmed = newCustomSkill.trim();
-                  if (!allAvailableSkills.includes(trimmed)) {
-                    setAllAvailableSkills([...allAvailableSkills, trimmed]);
-                  }
-                  if (!userSkills.includes(trimmed)) {
-                    setUserSkills([...userSkills, trimmed]);
-                  }
+                if (newCustomSkill.trim() && !allAvailableSkills.includes(newCustomSkill.trim())) {
+                  setAllAvailableSkills([...allAvailableSkills, newCustomSkill.trim()]);
+                  setUserSkills([...userSkills, newCustomSkill.trim()]);
                   setNewCustomSkill('');
                 }
               }}
             >
-              <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 11 }}>+ ADD</Text>
+              <Text style={styles.addSkillBtnText}>+ ADD</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Daily Time Allocation */}
-          <Text style={styles.sectionHeaderTitle}>⏱️  Daily Time Allocation</Text>
-          <View style={styles.timeAllocRow}>
-            {[
-              { time: '1h', label: 'MAINTENANCE' },
-              { time: '2h', label: 'ACCELERATED' },
-              { time: '4h+', label: 'OVERCLOCK' }
-            ].map(t => (
-              <TouchableOpacity
-                key={t.time}
-                style={[styles.timeBox, studyHours === t.time && styles.timeBoxActive]}
-                onPress={() => setStudyHours(t.time)}
-              >
-                <Text style={[styles.timeNumber, studyHours === t.time && styles.timeNumberActive]}>{t.time}</Text>
-                <Text style={styles.timeLabel}>{t.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Bottom Launch Button */}
-          <TouchableOpacity 
-            style={styles.launchRoadmapButton}
+          {/* Launch CTA */}
+          <TouchableOpacity
+            style={styles.launchRoadmapCta}
             onPress={() => {
-              setIsOnboarded(true);
               setIsLoggedIn(true);
               setActiveTab('Roadmap');
               setCurrentScreen('dashboard');
             }}
+            activeOpacity={0.85}
           >
-            <Text style={styles.launchRoadmapButtonText}>COMPLETE SETUP & LAUNCH ROADMAP  🚀</Text>
+            <Text style={styles.launchRoadmapCtaText}>COMPLETE SETUP & LAUNCH ROADMAP 🚀</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -502,120 +464,83 @@ export default function App() {
   }
 
   // -------------------------------------------------------------
-  // SCREEN 4: STUDENT DASHBOARD (Home Tab)
+  // SCREEN 3: DASHBOARD TAB (Exact UI Match)
   // -------------------------------------------------------------
   const renderDashboard = () => (
-    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
-      {/* Header Bar */}
+    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 100 }}>
+      {/* Brand Header */}
       <View style={styles.dashHeader}>
         <View style={styles.dashBrandRow}>
-          <Image source={require('./assets/icon.png')} style={styles.dashLogoIcon} />
+          <Text style={styles.brandBracket}>&lt;</Text>
+          <Text style={styles.brandIconText}>CQ</Text>
+          <Text style={styles.brandBracket}>&gt;</Text>
           <Text style={styles.dashBrandTitle}>CODE QUEST</Text>
         </View>
-        <View style={styles.dashHeaderActions}>
-          <TouchableOpacity style={styles.headerIconButton}>
-            <Text style={{ fontSize: 16 }}>🔔</Text>
-          </TouchableOpacity>
-          <View style={styles.userAvatarCircle}>
-            <Text style={styles.userAvatarText}>{userName.slice(0, 2).toUpperCase()}</Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, marginRight: 14 }}>🔍</Text>
+          <Text style={{ fontSize: 16 }}>🔔</Text>
         </View>
       </View>
 
-      {/* User Greeting & Stats Banner */}
-      <View style={styles.greetingBox}>
-        <View>
-          <Text style={styles.greetingName}>Hello, {userName} 🚀</Text>
-          <Text style={styles.greetingSub}>Ready to level up your code today?</Text>
+      {/* Placement Readiness Hero Card */}
+      <View style={styles.readinessHeroCard}>
+        <View style={styles.readinessLeftStat}>
+          <Text style={{ fontSize: 18, marginBottom: 4 }}>⭐</Text>
+          <Text style={styles.readinessLeftTitle}>TOP 15%</Text>
+          <Text style={styles.readinessLeftSub}>OF PEERS</Text>
         </View>
-        <View style={styles.statsBadgeRow}>
-          <View style={styles.statPill}>
-            <Text style={styles.statPillText}>🔥 {streak}</Text>
-          </View>
-          <View style={[styles.statPill, { backgroundColor: '#312e81' }]}>
-            <Text style={styles.statPillText}>⚡ {xp}</Text>
-          </View>
+
+        {/* Circular Gauge Center */}
+        <View style={styles.circularGaugeBox}>
+          <Text style={styles.gaugePercentLarge}>78%</Text>
+          <Text style={styles.gaugeLabel}>PLACEMENT{'\n'}READINESS</Text>
+        </View>
+
+        <View style={styles.readinessRightStat}>
+          <Text style={{ fontSize: 18, marginBottom: 4 }}>💎</Text>
+          <Text style={styles.readinessRightTitle}>{xp} XP</Text>
         </View>
       </View>
 
-      {/* Placement Readiness Card */}
-      <View style={styles.readinessCard}>
-        <Text style={styles.cardHeaderSmall}>PLACEMENT READINESS</Text>
-        
-        {/* Circular Progress Gauge */}
-        <View style={styles.gaugeContainer}>
-          <View style={styles.circularGaugeRing}>
-            <Text style={styles.gaugeScoreNumber}>78%</Text>
-            <Text style={styles.gaugeScoreLabel}>SCORE</Text>
-          </View>
-        </View>
-
-        {/* Sub-Metrics Breakdown */}
-        <View style={styles.metricsSplitRow}>
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>Data Structures</Text>
-            <Text style={styles.metricStatusStrong}>STRONG</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>System Design</Text>
-            <Text style={styles.metricStatusImproving}>IMPROVING</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Daily Quests Card */}
-      <View style={styles.questsCard}>
-        <View style={styles.questsHeaderRow}>
-          <Text style={styles.cardHeaderSmall}>🎯  DAILY QUESTS</Text>
-          <Text style={styles.questCountBadge}>
-            {quests.filter(q => q.completed).length}/{quests.length}
-          </Text>
-        </View>
-
-        {quests.map(quest => (
+      {/* Daily Quests Section */}
+      <Text style={styles.sectionHeadingText}>DAILY QUESTS</Text>
+      <View style={styles.questsList}>
+        {quests.map(q => (
           <TouchableOpacity 
-            key={quest.id} 
-            style={[styles.questItemRow, quest.completed && styles.questItemCompleted]}
-            onPress={() => toggleQuest(quest.id)}
+            key={q.id} 
+            style={styles.questCard}
+            onPress={() => toggleQuest(q.id)}
+            activeOpacity={0.85}
           >
-            <View style={[styles.checkboxCircle, quest.completed && styles.checkboxCircleActive]}>
-              {quest.completed ? <Text style={styles.checkMark}>✓</Text> : null}
+            <View style={[styles.questCheckbox, q.completed && styles.questCheckboxActive]}>
+              <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: 'bold' }}>{q.completed ? '✓' : ''}</Text>
             </View>
-            <Text style={[styles.questTitleText, quest.completed && styles.questTitleTextCompleted]}>
-              {quest.title}
-            </Text>
-            <View style={styles.xpPill}>
-              <Text style={styles.xpPillText}>+{quest.xp} XP</Text>
+            <View style={{ flex: 1, marginHorizontal: 10 }}>
+              <Text style={styles.questCardTitle}>
+                {q.title} <Text style={{ color: '#34d399', fontWeight: 'bold' }}>(+{q.xp} XP)</Text>
+              </Text>
+              <View style={styles.questProgressBar}>
+                <View style={[styles.questProgressFill, { width: q.completed ? '100%' : '30%' }]} />
+              </View>
             </View>
+            <Text style={styles.questXpBadge}>+{q.xp} XP</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Activity Heatmap Grid */}
-      <View style={styles.activityCard}>
-        <Text style={styles.cardHeaderSmall}>📅  ACTIVITY</Text>
-        <View style={styles.daysLetterRow}>
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-            <Text key={i} style={styles.dayLetterText}>{d}</Text>
-          ))}
+      {/* Weekly Activity Streak */}
+      <Text style={styles.sectionHeadingText}>WEEKLY ACTIVITY STREAK</Text>
+      <View style={styles.streakCard}>
+        <View style={styles.streakLeftFlame}>
+          <Text style={{ fontSize: 24 }}>🔥</Text>
+          <Text style={styles.streakFlameTitle}>{streak}-Day</Text>
+          <Text style={styles.streakFlameSub}>Streak 🔥</Text>
         </View>
-        <View style={styles.heatmapGrid}>
-          {[
-            [1, 3, 0, 2, 4, 1, 0],
-            [0, 2, 2, 1, 3, 1, 0],
-            [4, 3, 2, 2, 1, 0, 0]
-          ].map((row, rIdx) => (
-            <View key={rIdx} style={styles.heatmapRow}>
-              {row.map((val, cIdx) => {
-                const colors = ['#1e293b', '#475569', '#6366f1', '#a855f7', '#c084fc'];
-                return (
-                  <View 
-                    key={cIdx} 
-                    style={[styles.heatmapTile, { backgroundColor: colors[val] }]} 
-                  />
-                );
-              })}
+        <View style={styles.streakDaysRow}>
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => (
+            <View key={i} style={styles.streakDayCol}>
+              <Text style={styles.streakDayLetter}>{day}</Text>
+              <View style={[styles.streakDot, i < 5 ? styles.streakDotActive : styles.streakDotInactive]} />
             </View>
           ))}
         </View>
@@ -624,73 +549,61 @@ export default function App() {
   );
 
   // -------------------------------------------------------------
-  // SCREEN 5: ARENA & COMPILER SANDBOX (Arena Tab)
+  // SCREEN 4: PROBLEM ARENA & COMPILER TAB (Exact UI Match)
   // -------------------------------------------------------------
   const renderArena = () => {
     const currentQ = CONTEST_QUESTIONS[selectedQuestionIndex] || CONTEST_QUESTIONS[0];
 
     return (
-      <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
-        {/* Top Problem Card */}
-        <View style={styles.problemBannerCard}>
+      <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 100 }}>
+        {/* Problem Header Card */}
+        <View style={styles.problemHeaderCard}>
           <View style={styles.problemTitleRow}>
             <Text style={styles.problemMainTitle}>{currentQ.title}</Text>
-            <View style={styles.difficultyBadge}>
-              <Text style={styles.difficultyBadgeText}>{currentQ.difficulty.toUpperCase()}</Text>
+            <View style={styles.difficultyBadgeGreen}>
+              <Text style={styles.difficultyBadgeGreenText}>{currentQ.difficulty.toUpperCase()}</Text>
             </View>
           </View>
-
-          {/* Company tags */}
-          <View style={styles.companyTagsRow}>
-            {currentQ.companies?.map(comp => (
-              <View key={comp} style={styles.companyTag}>
-                <Text style={styles.companyTagText}>{comp}</Text>
+          <View style={styles.companyPillRow}>
+            {currentQ.companies.map(comp => (
+              <View key={comp} style={styles.companyPill}>
+                <Text style={styles.companyPillText}>{comp}</Text>
               </View>
             ))}
           </View>
+        </View>
 
-          {/* Mode Switcher */}
-          <View style={styles.arenaModeSwitcher}>
-            <TouchableOpacity 
-              style={[styles.modeTab, arenaMode === 'coding' && styles.modeTabActive]}
-              onPress={() => setArenaMode('coding')}
+        {/* 3-Tab Segmented Mode Switcher */}
+        <View style={styles.arenaModeSwitcherBox}>
+          {(['coding', 'sql', 'mcq'] as const).map(mode => (
+            <TouchableOpacity
+              key={mode}
+              style={[styles.arenaModeSegment, arenaMode === mode && styles.arenaModeSegmentActive]}
+              onPress={() => setArenaMode(mode)}
             >
-              <Text style={[styles.modeTabText, arenaMode === 'coding' && styles.modeTabTextActive]}>Coding</Text>
+              <Text style={[styles.arenaModeSegmentText, arenaMode === mode && styles.arenaModeSegmentTextActive]}>
+                {mode === 'coding' ? 'Coding' : mode === 'sql' ? 'SQL' : 'MCQ'}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modeTab, arenaMode === 'sql' && styles.modeTabActive]}
-              onPress={() => setArenaMode('sql')}
-            >
-              <Text style={[styles.modeTabText, arenaMode === 'sql' && styles.modeTabTextActive]}>SQL</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modeTab, arenaMode === 'mcq' && styles.modeTabActive]}
-              onPress={() => setArenaMode('mcq')}
-            >
-              <Text style={[styles.modeTabText, arenaMode === 'mcq' && styles.modeTabTextActive]}>MCQ</Text>
-            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Description Card */}
+        <View style={styles.arenaDescCard}>
+          <Text style={styles.arenaDescText}>{currentQ.desc}</Text>
+          <View style={styles.exampleBlock}>
+            <Text style={styles.exampleBold}>Example 1:</Text>
+            <Text style={styles.exampleBlue}>Input: {currentQ.input}</Text>
+            <Text style={styles.exampleBlue}>Output: {currentQ.output}</Text>
           </View>
         </View>
 
-        {/* Problem Description */}
-        <View style={styles.descCard}>
-          <Text style={styles.descHeading}>Description</Text>
-          <Text style={styles.descBody}>{currentQ.desc}</Text>
-          <View style={styles.exampleBox}>
-            <Text style={styles.exampleTitle}>Example 1:</Text>
-            <Text style={styles.exampleCode}>Input: {currentQ.input}</Text>
-            <Text style={styles.exampleCode}>Output: {currentQ.output}</Text>
-          </View>
-        </View>
-
-        {/* Code Editor Container */}
+        {/* Editor Container */}
         {arenaMode === 'coding' && (
-          <View style={styles.editorCard}>
-            <View style={styles.editorHeaderRow}>
-              <Text style={styles.editorLangTitle}>JavaScript</Text>
-              <Text style={styles.editorExpandIcon}>⛶</Text>
+          <View style={styles.codeEditorBox}>
+            <View style={styles.codeEditorTopBar}>
+              <Text style={styles.codeFileName}>Solution.js</Text>
             </View>
-
             <TextInput
               style={styles.codeTextInput}
               multiline
@@ -699,18 +612,12 @@ export default function App() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-
-            {/* Execution Result */}
-            <View style={styles.executionStatusRow}>
-              <Text style={styles.executionStatusText}>{codeExecutionResult}</Text>
+            <View style={styles.executionResultBar}>
+              <Text style={styles.executionResultText}>{codeExecutionResult}</Text>
             </View>
-
-            {/* Action Buttons */}
-            <View style={styles.editorButtonsRow}>
+            <View style={styles.editorActionButtonsRow}>
               <TouchableOpacity style={styles.runCodeBtn} onPress={runCode}>
-                <Text style={styles.runCodeBtnText}>
-                  {isRunningCode ? 'Running...' : 'Run Code'}
-                </Text>
+                <Text style={styles.runCodeBtnText}>{isRunningCode ? 'Running...' : 'Run Code'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode}>
                 <Text style={styles.submitCodeBtnText}>Submit</Text>
@@ -719,11 +626,10 @@ export default function App() {
           </View>
         )}
 
-        {/* SQL Arena */}
         {arenaMode === 'sql' && (
-          <View style={styles.editorCard}>
-            <View style={styles.editorHeaderRow}>
-              <Text style={styles.editorLangTitle}>PostgreSQL Engine</Text>
+          <View style={styles.codeEditorBox}>
+            <View style={styles.codeEditorTopBar}>
+              <Text style={styles.codeFileName}>PostgreSQL Engine (Query.sql)</Text>
             </View>
             <TextInput
               style={styles.codeTextInput}
@@ -732,7 +638,7 @@ export default function App() {
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <View style={styles.editorButtonsRow}>
+            <View style={styles.editorActionButtonsRow}>
               <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode}>
                 <Text style={styles.submitCodeBtnText}>Execute SQL Query</Text>
               </TouchableOpacity>
@@ -740,35 +646,28 @@ export default function App() {
           </View>
         )}
 
-        {/* MCQ Arena */}
         {arenaMode === 'mcq' && (
-          <View style={styles.editorCard}>
-            <Text style={styles.descHeading}>Question 1 of 2</Text>
-            <Text style={[styles.descBody, { marginBottom: 15 }]}>
-              {MCQ_QUIZ_QUESTIONS[0].question}
-            </Text>
+          <View style={styles.codeEditorBox}>
+            <Text style={styles.mcqQuestionTitle}>{MCQ_QUIZ_QUESTIONS[0].question}</Text>
             {MCQ_QUIZ_QUESTIONS[0].options.map((opt, i) => {
               const letter = ['A', 'B', 'C', 'D'][i];
               const selected = selectedMcqOption === letter;
               return (
                 <TouchableOpacity
-                  key={i}
-                  style={[styles.mcqOptionButton, selected && styles.mcqOptionButtonSelected]}
-                  onPress={() => {
-                    setSelectedMcqOption(letter);
-                    setShowMcqExplanation(true);
-                  }}
+                  key={letter}
+                  style={[styles.mcqOptionItem, selected && styles.mcqOptionItemSelected]}
+                  onPress={() => setSelectedMcqOption(letter)}
                 >
-                  <Text style={[styles.mcqOptionText, selected && styles.mcqOptionTextSelected]}>
+                  <Text style={[styles.mcqOptionItemText, selected && styles.mcqOptionItemTextSelected]}>
                     {letter}.  {opt}
                   </Text>
                 </TouchableOpacity>
               );
             })}
             {showMcqExplanation && (
-              <View style={styles.explanationBox}>
-                <Text style={styles.explanationTitle}>✓ Correct Answer: {MCQ_QUIZ_QUESTIONS[0].answer}</Text>
-                <Text style={styles.explanationBody}>{MCQ_QUIZ_QUESTIONS[0].explanation}</Text>
+              <View style={styles.mcqExplanationCard}>
+                <Text style={styles.mcqExplanationTitle}>✓ Correct Answer: {MCQ_QUIZ_QUESTIONS[0].answer}</Text>
+                <Text style={styles.mcqExplanationBody}>{MCQ_QUIZ_QUESTIONS[0].explanation}</Text>
               </View>
             )}
           </View>
@@ -778,549 +677,258 @@ export default function App() {
   };
 
   // -------------------------------------------------------------
-  // SCREEN 6: LEARNING ROADMAP TAB
+  // SCREEN 5: LEARNING ROADMAP TAB
   // -------------------------------------------------------------
-  const [sqlModuleExpanded, setSqlModuleExpanded] = useState(true);
-  const [resumeFileName, setResumeFileName] = useState<string | null>(null);
-  const [resumeAnalyzing, setResumeAnalyzing] = useState(false);
-  const [resumeAnalysisResult, setResumeAnalysisResult] = useState({
-    score: 87,
-    matchedSkills: ['✓ Python', '✓ React', '✓ Node.js', '✓ SQL'],
-    missingSkills: ['✕ Docker', '✕ CI/CD', '✕ Kubernetes'],
-    predictedQuestions: [
-      'Can you describe a time you optimized a slow-performing SQL query?',
-      'How do you manage state in a complex React application?'
-    ],
-    feedback: 'Strong alignment with Software Engineer track. Good project quantification.'
-  });
-
-  const [showResumeModal, setShowResumeModal] = useState(false);
-  const [customResumeInput, setCustomResumeInput] = useState('');
-
-  const pickAndAnalyzeResume = (fileName?: string) => {
-    const chosenFile = fileName || customResumeInput || 'Alex_Mercer_FullStack_Resume.pdf';
-    setShowResumeModal(false);
-    setResumeFileName(chosenFile);
-    setResumeAnalyzing(true);
-
-    setTimeout(() => {
-      setResumeAnalyzing(false);
-      const isData = targetRole.toLowerCase().includes('data') || chosenFile.toLowerCase().includes('data');
-      const isSWE = targetRole.toLowerCase().includes('software') || chosenFile.toLowerCase().includes('software') || chosenFile.toLowerCase().includes('swe');
-
-      if (isData) {
-        setResumeAnalysisResult({
-          score: 92,
-          matchedSkills: ['✓ SQL', '✓ Python', '✓ ETL Pipelines', '✓ PostgreSQL', '✓ Pandas'],
-          missingSkills: ['✕ Apache Spark', '✕ Airflow', '✕ Snowflake'],
-          predictedQuestions: [
-            'How do you handle schema drift and deduplication in a daily ETL pipeline?',
-            'Explain how you optimize partitioning and indexing in analytical databases.'
-          ],
-          feedback: 'Outstanding SQL & database experience. Consider adding distributed processing frameworks.'
-        });
-      } else if (isSWE) {
-        setResumeAnalysisResult({
-          score: 89,
-          matchedSkills: ['✓ Python', '✓ JavaScript', '✓ React', '✓ REST APIs', '✓ Git'],
-          missingSkills: ['✕ Docker', '✕ Kubernetes', '✕ CI/CD Pipelines'],
-          predictedQuestions: [
-            'Can you describe a time you optimized a slow-performing database query or algorithmic bottleneck?',
-            'How do you structure microservice communications and error handling?'
-          ],
-          feedback: 'Great architectural and full-stack background. High ATS parsing compatibility.'
-        });
-      } else {
-        setResumeAnalysisResult({
-          score: 86,
-          matchedSkills: ['✓ Docker', '✓ Linux', '✓ AWS Cloud', '✓ Git', '✓ Python'],
-          missingSkills: ['✕ Terraform', '✕ Prometheus', '✕ Helm'],
-          predictedQuestions: [
-            'Describe how you configure rolling deployments with zero downtime in Kubernetes.',
-            'How do you manage infrastructure as code and state locking in production?'
-          ],
-          feedback: 'Solid infrastructure background. Good keyword density.'
-        });
-      }
-    }, 1200);
-  };
-
   const renderRoadmap = () => (
-    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
-      {/* Header Bar */}
+    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.dashHeader}>
         <View style={styles.dashBrandRow}>
-          <Image source={require('./assets/icon.png')} style={styles.dashLogoIcon} />
           <Text style={styles.dashBrandTitle}>CODE QUEST</Text>
         </View>
-        <TouchableOpacity style={styles.headerIconButton}>
-          <Text style={{ fontSize: 16 }}>🔔</Text>
-        </TouchableOpacity>
+        <Text style={{ fontSize: 16 }}>🔔</Text>
       </View>
 
       {/* Active Track Banner */}
       <View style={styles.activeTrackBanner}>
-        <Text style={styles.activeTrackTag}>🧭  ACTIVE TRACK</Text>
-        <Text style={styles.activeTrackTitle}>Current Track: {targetRole || 'Full-Stack'} Placement</Text>
-        
-        {/* Overall Progress */}
-        <View style={styles.overallProgressBox}>
-          <View style={styles.overallProgressTextRow}>
-            <Text style={styles.overallProgressLabel}>OVERALL PROGRESS</Text>
-            <Text style={styles.overallProgressPercent}>68%</Text>
-          </View>
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: '68%', backgroundColor: '#c084fc' }]} />
-          </View>
+        <Text style={styles.activeTrackTag}>🧭 ACTIVE TRACK</Text>
+        <Text style={styles.activeTrackTitle}>Current Track: {targetRole} Placement</Text>
+        <View style={styles.overallProgressBar}>
+          <View style={[styles.overallProgressFill, { width: '68%' }]} />
         </View>
       </View>
 
       {/* Module 1: Frontend Foundations (Completed) */}
       <View style={styles.moduleCardCompleted}>
-        <View style={styles.moduleCompletedIconCircle}>
-          <Text style={styles.moduleCheckmark}>✓</Text>
-        </View>
+        <Text style={{ color: '#34d399', fontSize: 18, marginRight: 12 }}>✓</Text>
         <View style={{ flex: 1 }}>
           <Text style={styles.moduleTitle}>Frontend Foundations</Text>
           <Text style={styles.moduleSubtitle}>HTML, CSS, DOM Manipulation</Text>
         </View>
-        <View style={styles.moduleProgressPillGreen}>
-          <Text style={styles.moduleProgressPillGreenText}>100%</Text>
+        <View style={styles.pillGreen}>
+          <Text style={styles.pillGreenText}>100%</Text>
         </View>
       </View>
 
-      {/* Module 2: SQL Mastery (Expanded Interactive Card) */}
+      {/* Module 2: SQL Mastery (Interactive) */}
       <View style={styles.moduleCardActive}>
         <TouchableOpacity 
-          style={styles.moduleHeaderRow}
+          style={styles.moduleHeaderRow} 
           onPress={() => setSqlModuleExpanded(!sqlModuleExpanded)}
         >
-          <View style={styles.moduleActiveIconBox}>
-            <Text style={{ fontSize: 16 }}>🗄️</Text>
-          </View>
+          <Text style={{ fontSize: 18, marginRight: 12 }}>🗄️</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.moduleTitle}>SQL Mastery</Text>
-            <Text style={styles.moduleSubtitle}>Complex Queries & Data Modeling</Text>
+            <Text style={styles.moduleTitle}>SQL & Database Mastery</Text>
+            <Text style={styles.moduleSubtitle}>Joins, Subqueries, Window Functions</Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.chevronIcon}>{sqlModuleExpanded ? '▲' : '▼'}</Text>
-            <Text style={styles.modulePercentText}>45%</Text>
-          </View>
+          <Text style={{ color: '#60a5fa', fontWeight: 'bold' }}>{sqlModuleExpanded ? '▲' : '▼'}</Text>
         </TouchableOpacity>
 
-        <View style={[styles.progressBarBackground, { marginVertical: 10 }]}>
-          <View style={[styles.progressBarFill, { width: '45%', backgroundColor: '#60a5fa' }]} />
-        </View>
-
         {sqlModuleExpanded && (
-          <View style={styles.subtopicsContainer}>
-            {/* Subtopic 1: Completed */}
-            <View style={styles.subtopicItemCompleted}>
-              <View style={styles.subtopicCheckSquare}>
-                <Text style={styles.checkMark}>✓</Text>
+          <View style={styles.subtopicsList}>
+            {[
+              { name: 'SQL Joins & Group By', xp: '+20 XP', done: true },
+              { name: 'Aggregations & Subqueries', xp: '+30 XP', done: true },
+              { name: 'Window Functions & Indexes', xp: '+40 XP', done: false }
+            ].map(sub => (
+              <View key={sub.name} style={styles.subtopicItem}>
+                <Text style={{ color: sub.done ? '#34d399' : '#94a3b8', marginRight: 10 }}>{sub.done ? '✓' : '○'}</Text>
+                <Text style={styles.subtopicName}>{sub.name}</Text>
+                <TouchableOpacity 
+                  style={styles.startSubtopicBtn}
+                  onPress={() => {
+                    setActiveTab('Arena');
+                    setArenaMode('sql');
+                  }}
+                >
+                  <Text style={styles.startSubtopicBtnText}>START</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.subtopicTitleCompleted}>Basic Queries & Filtering</Text>
-              <Text style={styles.subtopicXpText}>+50 XP</Text>
-            </View>
-
-            {/* Subtopic 2: Active (Joins) */}
-            <View style={styles.subtopicItemActive}>
-              <View style={styles.subtopicRadioActive} />
-              <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={styles.subtopicTitleActive}>Joins</Text>
-                <Text style={styles.subtopicUnlockText}>⭐ Unlock: +150 XP</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.startSubtopicButton}
-                onPress={() => setActiveTab('Arena')}
-              >
-                <Text style={styles.startSubtopicButtonText}>START</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Subtopic 3: Locked */}
-            <View style={styles.subtopicItemLocked}>
-              <Text style={styles.lockIconSmall}>🔒</Text>
-              <Text style={styles.subtopicTitleLocked}>Aggregates</Text>
-              <Text style={styles.subtopicRequiresText}>Requires: Joins</Text>
-            </View>
-
-            {/* Subtopic 4: Locked */}
-            <View style={styles.subtopicItemLocked}>
-              <Text style={styles.lockIconSmall}>🔒</Text>
-              <Text style={styles.subtopicTitleLocked}>Window Functions</Text>
-              <Text style={styles.subtopicRequiresText}>Requires: Aggregates</Text>
-            </View>
+            ))}
           </View>
         )}
-      </View>
-
-      {/* Module 3: Backend APIs (Node.js) - Locked */}
-      <View style={styles.moduleCardLocked}>
-        <View style={styles.moduleLockedIconBox}>
-          <Text style={{ fontSize: 16 }}>🔒</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.moduleTitleLocked}>Backend APIs (Node.js)</Text>
-          <Text style={styles.moduleSubtitleLocked}>Express, Routing, Middleware</Text>
-        </View>
-        <Text style={styles.chevronIconLocked}>▼</Text>
-      </View>
-
-      {/* YOUR STATS Card */}
-      <View style={styles.statsOverviewCard}>
-        <Text style={styles.cardHeaderSmall}>YOUR STATS</Text>
-        <View style={styles.statRowItem}>
-          <Text style={styles.statRowLabel}>⭐  Total XP</Text>
-          <Text style={styles.statRowValue}>{xp > 480 ? xp : '12,450'}</Text>
-        </View>
-        <View style={styles.statRowItem}>
-          <Text style={styles.statRowLabel}>🔥  Current Streak</Text>
-          <Text style={styles.statRowValueGreen}>14 Days</Text>
-        </View>
-        <View style={styles.statRowItem}>
-          <Text style={styles.statRowLabel}>🏆  Rank</Text>
-          <Text style={styles.statRowValue}>Adept</Text>
-        </View>
-      </View>
-
-      {/* NEXT MILESTONE Card */}
-      <View style={styles.milestoneCard}>
-        <Text style={styles.cardHeaderSmall}>NEXT MILESTONE</Text>
-        <Text style={styles.milestoneTitle}>Full-Stack Project</Text>
-        <Text style={styles.milestoneBody}>
-          Complete the SQL Mastery module to unlock your first integrated full-stack project build.
-        </Text>
-        <View style={styles.milestoneLockRow}>
-          <Text style={styles.milestoneLockText}>🔒  Unlocks in 3 modules</Text>
-        </View>
       </View>
     </ScrollView>
   );
 
   // -------------------------------------------------------------
-  // SCREEN 7: PROFILE & AI RESUME ATS SCANNER TAB
+  // SCREEN 6: PROFILE & AI RESUME ATS SCANNER TAB (Exact UI Match)
   // -------------------------------------------------------------
   const renderProfile = () => (
-    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 90 }}>
-      {/* Header Bar */}
-      <View style={styles.dashHeader}>
-        <View style={styles.dashBrandRow}>
-          <Image source={require('./assets/icon.png')} style={styles.dashLogoIcon} />
-          <Text style={styles.dashBrandTitle}>CODE QUEST</Text>
-        </View>
-        <TouchableOpacity style={styles.headerIconButton}>
-          <Text style={{ fontSize: 16 }}>🔔</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Profile Card */}
+    <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 100 }}>
+      {/* Profile Hero Card */}
       <View style={styles.profileHeroCard}>
-        <View style={styles.avatarGlowContainer}>
+        <View style={styles.profileAvatarGlow}>
           <Image 
             source={require('./assets/icon.png')} 
-            style={styles.profileAvatarImage} 
+            style={styles.profileAvatarImage}
           />
         </View>
-        <Text style={styles.profileNameTitle}>{userName || 'Alex Mercer'}</Text>
-        <Text style={styles.profileRoleMono}>Target Role: {targetRole || 'Software Engineer'}</Text>
-        <Text style={styles.profileBioText}>
-          Focused on {targetRole} mastery with core competencies in {userSkills.slice(0, 4).join(', ')}. Actively preparing for placement challenges.
-        </Text>
-        
-        {/* Profile Badges */}
+        <Text style={styles.profileNameTitle}>{userName}</Text>
+        <Text style={styles.profileRoleMono}>Target Role: {targetRole}</Text>
         <View style={styles.profileBadgesRow}>
-          <View style={styles.badgePillTeal}>
-            <Text style={styles.badgePillTealText}>🛡️  {userSkills[0] || 'Code'} Ninja</Text>
-          </View>
           <View style={styles.badgePillPurple}>
-            <Text style={styles.badgePillPurpleText}>🔥  {streak}-Day Streak</Text>
+            <Text style={styles.badgePillPurpleText}>🛡️ {userSkills[0] || 'Code'} Ninja</Text>
+          </View>
+          <View style={styles.badgePillOrange}>
+            <Text style={styles.badgePillOrangeText}>🔥 {streak}-Day Streak</Text>
           </View>
         </View>
       </View>
 
       {/* AI Resume ATS Scanner Card */}
       <View style={styles.atsScannerCard}>
-        <View style={styles.atsHeaderRow}>
-          <Text style={styles.cardHeaderSmall}>💠  AI Resume ATS Scanner</Text>
-        </View>
-        
+        <Text style={styles.atsCardHeader}>AI Resume ATS Scanner</Text>
         <TouchableOpacity 
-          style={styles.uploadDashedBox}
+          style={styles.uploadedFileBox}
           onPress={() => setShowResumeModal(true)}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Text style={styles.uploadCloudIcon}>☁️</Text>
-          <Text style={styles.uploadMainText}>
-            {resumeFileName ? `Selected: ${resumeFileName}` : 'Drag and drop your PDF resume here'}
-          </Text>
-          <Text style={styles.uploadSubText}>PDF, DOC, DOCX · Max file size: 5MB</Text>
-
-          <TouchableOpacity 
-            style={styles.browseFilesButton}
-            onPress={() => setShowResumeModal(true)}
-          >
-            <Text style={styles.browseFilesButtonText}>
-              {resumeAnalyzing ? 'ANALYZING PROFILE & ATS...' : 'BROWSE FILES'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.uploadedFileLabel}>Uploaded File</Text>
+          <View style={styles.uploadedFileNameRow}>
+            <Text style={styles.uploadedFileNameText}>{resumeFileName}</Text>
+            <Text style={{ fontSize: 16 }}>📄</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
-      {/* Resume Document Browser Modal */}
+      {/* Analysis Results Card */}
+      <View style={styles.analysisResultsCard}>
+        <Text style={styles.analysisCardHeader}>Analysis Results</Text>
+        <Text style={styles.atsScoreSubtitle}>ATS MATCH SCORE</Text>
+        <Text style={styles.atsScoreLarge}>
+          {resumeAnalysisResult.score}<Text style={styles.atsScoreSmall}>/100</Text>
+        </Text>
+        
+        {/* Score Progress Bar */}
+        <View style={styles.atsProgressBar}>
+          <View style={[styles.atsProgressFill, { width: `${resumeAnalysisResult.score}%` }]} />
+        </View>
+        <Text style={styles.veryGoodLabel}>VERY GOOD · 87%</Text>
+
+        {/* Skills Match Section */}
+        <Text style={styles.atsSkillsHeading}>SKILLS MATCH</Text>
+        <View style={styles.skillsTagRow}>
+          {resumeAnalysisResult.matchedSkills.map(skill => (
+            <View key={skill} style={styles.skillTagMatched}>
+              <Text style={styles.skillTagMatchedText}>{skill}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Missing Keywords Section */}
+        <Text style={styles.atsSkillsHeading}>MISSING KEYWORDS</Text>
+        <View style={styles.skillsTagRow}>
+          {resumeAnalysisResult.missingSkills.map(skill => (
+            <View key={skill} style={styles.skillTagMissing}>
+              <Text style={styles.skillTagMissingText}>{skill}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Log Out Button */}
+      <TouchableOpacity 
+        style={styles.logoutButton}
+        onPress={() => {
+          setIsLoggedIn(false);
+          setCurrentScreen('auth');
+        }}
+      >
+        <Text style={styles.logoutButtonText}>Log Out</Text>
+      </TouchableOpacity>
+
+      {/* Resume Selector Modal */}
       <Modal
         visible={showResumeModal}
         transparent={true}
         animationType="slide"
         onRequestClose={() => setShowResumeModal(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#0d1326', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderTopWidth: 1, borderColor: '#1e293b' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900' }}>Select Resume Document</Text>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>Select Resume Document</Text>
               <TouchableOpacity onPress={() => setShowResumeModal(false)}>
                 <Text style={{ color: '#94a3b8', fontSize: 16, fontWeight: 'bold' }}>✕</Text>
               </TouchableOpacity>
             </View>
-            <Text style={{ color: '#94a3b8', fontSize: 12, marginBottom: 16 }}>
-              Choose a sample resume or enter your filename to run instant ATS scoring:
-            </Text>
-
-            {[
-              { name: `${userName}_Software_Engineer_Resume.pdf`, role: 'Software Engineer Track (Recommended)' },
-              { name: 'Senior_Data_Engineer_SQL_Pipelines.pdf', role: 'Data Engineer Track' },
-              { name: 'DevOps_Cloud_Infrastructure_Resume.docx', role: 'DevOps & Cloud Track' }
-            ].map(doc => (
+            {['Alex_Resume_2026.pdf', 'Software_Engineer_CV.pdf', 'Data_Engineer_Resume.docx'].map(doc => (
               <TouchableOpacity
-                key={doc.name}
-                style={{ backgroundColor: '#111936', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1e293b', flexDirection: 'row', alignItems: 'center' }}
-                onPress={() => pickAndAnalyzeResume(doc.name)}
+                key={doc}
+                style={styles.modalDocItem}
+                onPress={() => pickResume(doc)}
               >
-                <Text style={{ fontSize: 24, marginRight: 12 }}>📄</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800' }}>{doc.name}</Text>
-                  <Text style={{ color: '#60a5fa', fontSize: 11, marginTop: 2 }}>{doc.role}</Text>
-                </View>
-                <Text style={{ color: '#34d399', fontWeight: '900', fontSize: 12 }}>SELECT</Text>
+                <Text style={{ fontSize: 20, marginRight: 10 }}>📄</Text>
+                <Text style={{ color: '#ffffff', flex: 1, fontSize: 13, fontWeight: '700' }}>{doc}</Text>
+                <Text style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: 12 }}>SELECT</Text>
               </TouchableOpacity>
             ))}
-
-            {/* Custom file name */}
-            <View style={{ marginTop: 8 }}>
-              <TextInput
-                placeholder="Or type custom file name (e.g. MyResume_2026.pdf)"
-                placeholderTextColor="#6b7280"
-                value={customResumeInput}
-                onChangeText={setCustomResumeInput}
-                style={{ backgroundColor: '#070b1b', borderWidth: 1, borderColor: '#1e293b', borderRadius: 10, padding: 12, color: '#ffffff', fontSize: 12, marginBottom: 10 }}
-              />
-              {customResumeInput ? (
-                <TouchableOpacity
-                  style={styles.browseFilesButton}
-                  onPress={() => pickAndAnalyzeResume()}
-                >
-                  <Text style={styles.browseFilesButtonText}>ANALYZE CUSTOM RESUME</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
           </View>
         </View>
       </Modal>
-
-      {/* Analysis Results Card */}
-      <View style={styles.analysisCard}>
-        <View style={styles.analysisHeaderRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, marginRight: 6 }}>📈</Text>
-            <Text style={styles.analysisHeaderTitle}>Analysis Results</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.atsScoreLarge}>
-              {resumeAnalysisResult.score}<Text style={styles.atsScoreSmall}>/100</Text>
-            </Text>
-            <Text style={styles.atsScoreLabel}>ATS MATCH SCORE</Text>
-          </View>
-        </View>
-
-        {/* Score Progress Bar */}
-        <View style={[styles.progressBarBackground, { marginVertical: 12 }]}>
-          <View 
-            style={[
-              styles.progressBarFill, 
-              { width: `${resumeAnalysisResult.score}%`, backgroundColor: '#3b82f6' }
-            ]} 
-          />
-        </View>
-
-        {/* Feedback description */}
-        <Text style={[styles.profileBioText, { textAlign: 'left', marginBottom: 12 }]}>
-          💡 {resumeAnalysisResult.feedback}
-        </Text>
-
-        {/* Skills Match */}
-        <Text style={styles.atsSectionSubtitle}>SKILLS MATCH ({targetRole})</Text>
-        <View style={styles.atsPillGrid}>
-          {resumeAnalysisResult.matchedSkills.map(skill => (
-            <View key={skill} style={styles.skillMatchedPill}>
-              <Text style={styles.skillMatchedPillText}>{skill}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Missing Keywords */}
-        <Text style={styles.atsSectionSubtitle}>MISSING KEYWORDS</Text>
-        <View style={styles.atsPillGrid}>
-          {resumeAnalysisResult.missingSkills.map(skill => (
-            <View key={skill} style={styles.skillMissingPill}>
-              <Text style={styles.skillMissingPillText}>{skill}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Predicted Questions */}
-        <Text style={styles.atsSectionSubtitle}>🔮  AI PREDICTED INTERVIEW QUESTIONS</Text>
-        {resumeAnalysisResult.predictedQuestions.map((q, idx) => (
-          <View key={idx} style={styles.predictedQuestionCard}>
-            <Text style={styles.predictedQuestionText}>"{q}"</Text>
-          </View>
-        ))}
-
-        {/* Logout button */}
-        <TouchableOpacity 
-          style={[styles.gradientLoginButton, { marginTop: 24 }]}
-          onPress={() => {
-            setIsLoggedIn(false);
-            setCurrentScreen('auth');
-          }}
-        >
-          <Text style={styles.gradientLoginButtonText}>Log Out</Text>
-        </TouchableOpacity>
-      </View>
     </ScrollView>
   );
 
-  // Main Root Container
+  // Main Container with Bottom Tab Bar
   return (
     <SafeAreaView style={styles.mainAppWrapper}>
       <StatusBar barStyle="light-content" backgroundColor="#060913" />
 
-      {activeTab === 'Home' && renderDashboard()}
+      {activeTab === 'Dashboard' && renderDashboard()}
       {activeTab === 'Arena' && renderArena()}
       {activeTab === 'Roadmap' && renderRoadmap()}
       {activeTab === 'Profile' && renderProfile()}
 
-      {/* Bottom Tab Navigation Bar */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setActiveTab('Home')}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'Home' && styles.tabIconActive]}>🏠</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Home' && styles.tabLabelActive]}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setActiveTab('Arena')}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'Arena' && styles.tabIconActive]}>🎮</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Arena' && styles.tabLabelActive]}>Arena</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setActiveTab('Roadmap')}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'Roadmap' && styles.tabIconActive]}>🗺️</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Roadmap' && styles.tabLabelActive]}>Roadmap</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setActiveTab('Profile')}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'Profile' && styles.tabIconActive]}>👤</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Profile' && styles.tabLabelActive]}>Profile</Text>
-        </TouchableOpacity>
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomNavBar}>
+        {[
+          { id: 'Dashboard', label: 'Dashboard', icon: '📊' },
+          { id: 'Arena', label: 'Arena', icon: '⚔️' },
+          { id: 'Roadmap', label: 'Roadmap', icon: '🗺️' },
+          { id: 'Profile', label: 'Profile', icon: '👤' }
+        ].map(tab => {
+          const active = activeTab === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={styles.navTabItem}
+              onPress={() => setActiveTab(tab.id as any)}
+            >
+              <Text style={[styles.navTabIcon, active && styles.navTabIconActive]}>{tab.icon}</Text>
+              <Text style={[styles.navTabLabel, active && styles.navTabLabelActive]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </SafeAreaView>
   );
 }
 
 // -------------------------------------------------------------
-// STYLES (Cyber-Neon Stitch Theme Tokens)
+// STYLESHEET (Unified Modern Coder Theme)
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
   mainAppWrapper: {
     flex: 1,
     backgroundColor: '#060913',
   },
-  // SPLASH SCREEN
-  splashContainer: {
+  dashboardContainer: {
     flex: 1,
     backgroundColor: '#060913',
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 10,
   },
-  splashContent: {
-    width: '90%',
-    alignItems: 'center',
-  },
-  sphereContainer: {
-    width: 140,
-    height: 140,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  outerGlowOrb: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 1.5,
-    borderColor: '#a855f7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(168, 85, 247, 0.08)',
-  },
-  innerGlowingCore: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#8b5cf6',
-    shadowColor: '#a855f7',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 20,
-  },
-  // -------------------------------------------------------------
-  // AUTH SCREEN (Google Stitch UI Spec)
-  // -------------------------------------------------------------
+
+  // AUTH SCREEN
   authContainer: {
     flex: 1,
     backgroundColor: '#060913',
   },
   authScroll: {
     paddingHorizontal: 20,
-    paddingVertical: 30,
+    paddingVertical: 36,
     justifyContent: 'center',
     minHeight: '100%',
-  },
-  authScreenTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    alignSelf: 'flex-start',
-  },
-  authScreenTagIcon: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  authScreenTagText: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
   },
   authCard: {
     backgroundColor: '#0d1326',
@@ -1346,11 +954,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 18,
-    shadowColor: '#38bdf8',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 14,
-    elevation: 10,
     overflow: 'hidden',
   },
   authLogoImage: {
@@ -1410,17 +1013,11 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginBottom: 14,
-    shadowColor: '#5b82ff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
   },
   gradientLoginButtonText: {
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '800',
-    letterSpacing: 0.5,
   },
   orDividerRow: {
     alignItems: 'center',
@@ -1444,7 +1041,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1e2748',
     paddingVertical: 14,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   googleGLogo: {
     fontSize: 16,
@@ -1471,447 +1068,372 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  progressBarBackground: {
-    width: '100%',
-    height: 6,
-    backgroundColor: '#1e293b',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#60a5fa',
-    borderRadius: 3,
-  },
 
-  // ONBOARDING
+  // ONBOARDING SCREEN
   onboardContainer: {
     flex: 1,
     backgroundColor: '#060913',
   },
   onboardScroll: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingVertical: 30,
   },
   onboardMainTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 2,
+    color: '#38bdf8',
+    letterSpacing: 1.5,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   onboardSubDesc: {
     fontSize: 12,
     color: '#94a3b8',
     textAlign: 'center',
-    marginBottom: 20,
     lineHeight: 18,
+    marginBottom: 20,
   },
   phaseRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   phaseItem: {
     paddingVertical: 8,
-    alignItems: 'center',
+    paddingHorizontal: 6,
   },
-  phaseActive: {
+  phaseItemActive: {
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderBottomWidth: 2,
-    borderBottomColor: '#3b82f6',
+    borderBottomColor: '#38bdf8',
   },
   phaseText: {
-    color: '#6b7280',
+    color: '#64748b',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1,
   },
   phaseTextActive: {
-    color: '#3b82f6',
+    color: '#38bdf8',
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontWeight: '800',
   },
   phaseActiveBar: {},
-  sectionHeaderTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#ffffff',
-    marginVertical: 14,
-  },
   roleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    marginBottom: 14,
   },
   roleCard: {
     width: '48%',
     backgroundColor: '#0d1326',
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#1e293b',
-    borderRadius: 12,
-    padding: 14,
+    padding: 16,
+    alignItems: 'center',
     marginBottom: 12,
   },
   roleCardSelected: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#111a3d',
-  },
-  roleCardIcon: {
-    fontSize: 20,
-    marginBottom: 8,
+    borderColor: '#38bdf8',
+    backgroundColor: '#101b38',
   },
   roleCardTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  roleCardDesc: {
-    fontSize: 11,
     color: '#94a3b8',
-    lineHeight: 14,
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  roleCardTitleSelected: {
+    color: '#ffffff',
+  },
+  customRoleTextInput: {
+    backgroundColor: '#0d1326',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    color: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 12,
+    marginBottom: 16,
+  },
+  sectionHeaderTitle: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 10,
   },
   skillsTagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginBottom: 14,
   },
-  skillTag: {
+  skillChip: {
     backgroundColor: '#0d1326',
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#1e293b',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
   },
-  skillTagActive: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#172554',
+  skillChipSelected: {
+    borderColor: '#38bdf8',
+    backgroundColor: '#101b38',
   },
-  skillTagText: {
+  skillChipText: {
     color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
-  skillTagTextActive: {
-    color: '#60a5fa',
+  skillChipTextSelected: {
+    color: '#38bdf8',
   },
-  timeAllocRow: {
+  addSkillRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: 24,
     gap: 8,
   },
-  timeBox: {
+  addSkillInput: {
     flex: 1,
     backgroundColor: '#0d1326',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#1e293b',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  timeBoxActive: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#111a3d',
-  },
-  timeNumber: {
-    fontSize: 18,
-    fontWeight: '900',
     color: '#ffffff',
-    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 12,
   },
-  timeNumberActive: {
-    color: '#60a5fa',
+  addSkillBtn: {
+    backgroundColor: '#1e293b',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
   },
-  timeLabel: {
-    fontSize: 9,
+  addSkillBtnText: {
+    color: '#38bdf8',
+    fontSize: 11,
     fontWeight: '800',
-    color: '#6b7280',
-    letterSpacing: 1,
   },
-  launchRoadmapButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 12,
+  launchRoadmapCta: {
+    backgroundColor: '#38bdf8',
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 30,
+    shadowColor: '#38bdf8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  launchRoadmapButtonText: {
-    color: '#ffffff',
+  launchRoadmapCtaText: {
+    color: '#060913',
     fontSize: 13,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
 
-  // DASHBOARD
-  dashboardContainer: {
-    flex: 1,
-    backgroundColor: '#060913',
-    padding: 16,
-  },
+  // DASHBOARD TAB
   dashHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingVertical: 14,
   },
   dashBrandRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  dashLogoIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    marginRight: 8,
+  brandBracket: {
+    color: '#38bdf8',
+    fontSize: 18,
+    fontWeight: '900',
   },
-  dashBrandTitle: {
+  brandIconText: {
+    color: '#a855f7',
     fontSize: 14,
     fontWeight: '900',
+    marginHorizontal: 2,
+  },
+  dashBrandTitle: {
     color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    marginLeft: 8,
     letterSpacing: 1,
   },
-  dashHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  headerIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  readinessHeroCard: {
     backgroundColor: '#0d1326',
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#1e293b',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userAvatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2563eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userAvatarText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  greetingBox: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  greetingName: {
-    fontSize: 20,
+  readinessLeftStat: {
+    alignItems: 'center',
+  },
+  readinessLeftTitle: {
+    color: '#ffffff',
+    fontSize: 13,
     fontWeight: '900',
-    color: '#ffffff',
   },
-  greetingSub: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 2,
-  },
-  statsBadgeRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  statPill: {
-    backgroundColor: '#831843',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statPillText: {
-    color: '#ffffff',
-    fontSize: 11,
+  readinessLeftSub: {
+    color: '#64748b',
+    fontSize: 9,
     fontWeight: '800',
   },
-  readinessCard: {
-    backgroundColor: '#0d1326',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 16,
-    marginBottom: 16,
-  },
-  cardHeaderSmall: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#94a3b8',
-    letterSpacing: 1,
-    marginBottom: 12,
-  },
-  gaugeContainer: {
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  circularGaugeRing: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 8,
-    borderColor: '#c084fc',
-    borderLeftColor: '#3b82f6',
+  circularGaugeBox: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: '#38bdf8',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gaugeScoreNumber: {
-    fontSize: 32,
-    fontWeight: '900',
+  gaugePercentLarge: {
     color: '#ffffff',
-  },
-  gaugeScoreLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94a3b8',
-    letterSpacing: 1,
-  },
-  metricsSplitRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#1e293b',
-    paddingTop: 12,
-    marginTop: 10,
-  },
-  metricItem: {
-    alignItems: 'center',
-  },
-  metricDivider: {
-    width: 1,
-    backgroundColor: '#1e293b',
-  },
-  metricLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    marginBottom: 4,
-  },
-  metricStatusStrong: {
-    color: '#10b981',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  metricStatusImproving: {
-    color: '#c084fc',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  questsCard: {
-    backgroundColor: '#0d1326',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 16,
-    marginBottom: 16,
-  },
-  questsHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  questCountBadge: {
-    color: '#60a5fa',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  questItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#111936',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  questItemCompleted: {
-    opacity: 0.6,
-  },
-  checkboxCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: '#60a5fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  checkboxCircleActive: {
-    backgroundColor: '#3b82f6',
-  },
-  checkMark: {
-    color: '#ffffff',
-    fontSize: 11,
+    fontSize: 24,
     fontWeight: '900',
   },
-  questTitleText: {
-    flex: 1,
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  questTitleTextCompleted: {
-    textDecorationLine: 'line-through',
+  gaugeLabel: {
     color: '#94a3b8',
-  },
-  xpPill: {
-    backgroundColor: '#312e81',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  xpPillText: {
-    color: '#c084fc',
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
-  },
-  activityCard: {
-    backgroundColor: '#0d1326',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 16,
-    marginBottom: 16,
-  },
-  daysLetterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
-  dayLetterText: {
-    color: '#6b7280',
-    fontSize: 10,
-    fontWeight: '700',
-    width: 24,
     textAlign: 'center',
   },
-  heatmapGrid: {
-    gap: 6,
+  readinessRightStat: {
+    alignItems: 'center',
   },
-  heatmapRow: {
+  readinessRightTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  sectionHeadingText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  questsList: {
+    marginBottom: 20,
+  },
+  questCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  questCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    backgroundColor: '#080d1e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  questCheckboxActive: {
+    backgroundColor: '#34d399',
+    borderColor: '#34d399',
+  },
+  questCardTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  questProgressBar: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#1e293b',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  questProgressFill: {
+    height: '100%',
+    backgroundColor: '#34d399',
+  },
+  questXpBadge: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  streakCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  streakLeftFlame: {
+    alignItems: 'center',
+    paddingRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: '#1e293b',
+  },
+  streakFlameTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  streakFlameSub: {
+    color: '#f97316',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  streakDaysRow: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
+    paddingLeft: 10,
   },
-  heatmapTile: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+  streakDayCol: {
+    alignItems: 'center',
+  },
+  streakDayLetter: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  streakDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  streakDotActive: {
+    backgroundColor: '#38bdf8',
+  },
+  streakDotInactive: {
+    backgroundColor: '#1e293b',
   },
 
-  // ARENA
-  problemBannerCard: {
+  // ARENA TAB
+  problemHeaderCard: {
     backgroundColor: '#0d1326',
     borderRadius: 16,
     borderWidth: 1,
@@ -1926,61 +1448,65 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   problemMainTitle: {
+    color: '#ffffff',
     fontSize: 18,
     fontWeight: '900',
-    color: '#ffffff',
   },
-  difficultyBadge: {
-    backgroundColor: '#064e3b',
+  difficultyBadgeGreen: {
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#34d399',
   },
-  difficultyBadgeText: {
+  difficultyBadgeGreenText: {
     color: '#34d399',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
   },
-  companyTagsRow: {
+  companyPillRow: {
     flexDirection: 'row',
     gap: 6,
-    marginBottom: 12,
   },
-  companyTag: {
-    backgroundColor: '#1e293b',
-    paddingHorizontal: 6,
+  companyPill: {
+    backgroundColor: '#131c38',
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
-  companyTagText: {
+  companyPillText: {
     color: '#94a3b8',
     fontSize: 9,
     fontWeight: '800',
   },
-  arenaModeSwitcher: {
+  arenaModeSwitcherBox: {
     flexDirection: 'row',
-    backgroundColor: '#111936',
-    borderRadius: 8,
-    padding: 3,
+    backgroundColor: '#0d1326',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 4,
+    marginBottom: 12,
   },
-  modeTab: {
+  arenaModeSegment: {
     flex: 1,
-    paddingVertical: 6,
+    paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: 6,
+    borderRadius: 8,
   },
-  modeTabActive: {
-    backgroundColor: '#2563eb',
+  arenaModeSegmentActive: {
+    backgroundColor: '#1e293b',
   },
-  modeTabText: {
+  arenaModeSegmentText: {
     color: '#94a3b8',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
   },
-  modeTabTextActive: {
+  arenaModeSegmentTextActive: {
     color: '#ffffff',
   },
-  descCard: {
+  arenaDescCard: {
     backgroundColor: '#0d1326',
     borderRadius: 16,
     borderWidth: 1,
@@ -1988,100 +1514,84 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  descHeading: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#ffffff',
-    marginBottom: 8,
-  },
-  descBody: {
+  arenaDescText: {
     color: '#94a3b8',
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 12,
   },
-  exampleBox: {
-    backgroundColor: '#111936',
-    borderRadius: 8,
+  exampleBlock: {
+    backgroundColor: '#080d1e',
+    borderRadius: 10,
     padding: 10,
   },
-  exampleTitle: {
+  exampleBold: {
     color: '#ffffff',
     fontSize: 11,
     fontWeight: '800',
     marginBottom: 4,
   },
-  exampleCode: {
+  exampleBlue: {
     color: '#60a5fa',
     fontSize: 11,
     fontFamily: 'monospace',
   },
-  editorCard: {
+  codeEditorBox: {
     backgroundColor: '#0d1326',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#1e293b',
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  editorHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+  codeEditorTopBar: {
+    marginBottom: 8,
   },
-  editorLangTitle: {
+  codeFileName: {
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '800',
   },
-  editorExpandIcon: {
-    color: '#94a3b8',
-    fontSize: 14,
-  },
   codeTextInput: {
-    backgroundColor: '#070b19',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1e293b',
+    backgroundColor: '#080d1e',
+    borderRadius: 10,
     color: '#e2e8f0',
     fontFamily: 'monospace',
     fontSize: 12,
     padding: 12,
-    minHeight: 180,
+    minHeight: 160,
     textAlignVertical: 'top',
   },
-  executionStatusRow: {
-    marginTop: 10,
-    marginBottom: 14,
+  executionResultBar: {
+    marginVertical: 10,
   },
-  executionStatusText: {
+  executionResultText: {
     color: '#34d399',
     fontSize: 11,
     fontFamily: 'monospace',
   },
-  editorButtonsRow: {
+  editorActionButtonsRow: {
     flexDirection: 'row',
     gap: 10,
   },
   runCodeBtn: {
     flex: 1,
-    backgroundColor: '#111936',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 8,
+    backgroundColor: '#131c38',
+    borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1e293b',
   },
   runCodeBtnText: {
     color: '#ffffff',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   submitCodeBtn: {
     flex: 1,
-    backgroundColor: '#2dd4bf',
-    borderRadius: 8,
+    backgroundColor: '#38bdf8',
+    borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
   },
@@ -2090,474 +1600,218 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
-  mcqOptionButton: {
-    backgroundColor: '#111936',
+  mcqQuestionTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 14,
+  },
+  mcqOptionItem: {
+    backgroundColor: '#080d1e',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#1e293b',
-    borderRadius: 8,
     padding: 12,
     marginBottom: 8,
   },
-  mcqOptionButtonSelected: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#172554',
+  mcqOptionItemSelected: {
+    borderColor: '#38bdf8',
   },
-  mcqOptionText: {
-    color: '#ffffff',
+  mcqOptionItemText: {
+    color: '#94a3b8',
     fontSize: 12,
-    fontWeight: '600',
   },
-  mcqOptionTextSelected: {
-    color: '#60a5fa',
-    fontWeight: '800',
+  mcqOptionItemTextSelected: {
+    color: '#38bdf8',
+    fontWeight: '700',
   },
-  explanationBox: {
-    backgroundColor: '#064e3b',
-    borderRadius: 8,
+  mcqExplanationCard: {
+    backgroundColor: '#080d1e',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
     padding: 12,
     marginTop: 10,
   },
-  explanationTitle: {
+  mcqExplanationTitle: {
     color: '#34d399',
     fontSize: 12,
     fontWeight: '800',
     marginBottom: 4,
   },
-  explanationBody: {
-    color: '#a7f3d0',
-    fontSize: 11,
-  },
-
-  // ROADMAP
-  roadmapStepCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0d1326',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 14,
-    marginBottom: 10,
-  },
-  roadmapNumberCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#2563eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  roadmapNumberText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  roadmapStepTitle: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  roadmapStepDesc: {
+  mcqExplanationBody: {
     color: '#94a3b8',
     fontSize: 11,
-    marginTop: 2,
+    lineHeight: 16,
   },
 
-  // PROFILE
-  userAvatarCircleLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#2563eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-  },
-  userAvatarTextLarge: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: '900',
-  },
-
-  // ROADMAP & MODULES
+  // ROADMAP TAB
   activeTrackBanner: {
     backgroundColor: '#0d1326',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#1e293b',
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   activeTrackTag: {
-    color: '#2dd4bf',
+    color: '#38bdf8',
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontWeight: '900',
     marginBottom: 4,
   },
   activeTrackTitle: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  overallProgressBox: {
-    backgroundColor: '#111936',
-    borderRadius: 10,
-    padding: 12,
+  overallProgressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: '#1e293b',
+    borderRadius: 3,
+    overflow: 'hidden',
   },
-  overallProgressTextRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  overallProgressLabel: {
-    color: '#94a3b8',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  overallProgressPercent: {
-    color: '#c084fc',
-    fontSize: 12,
-    fontWeight: '800',
+  overallProgressFill: {
+    height: '100%',
+    backgroundColor: '#a855f7',
   },
   moduleCardCompleted: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#0d1326',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#1e293b',
     padding: 14,
-    marginBottom: 12,
-  },
-  moduleCompletedIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#064e3b',
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
-  },
-  moduleCheckmark: {
-    color: '#34d399',
-    fontSize: 14,
-    fontWeight: '900',
+    marginBottom: 10,
   },
   moduleTitle: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   moduleSubtitle: {
-    color: '#94a3b8',
-    fontSize: 11,
+    color: '#64748b',
+    fontSize: 10,
     marginTop: 2,
   },
-  moduleProgressPillGreen: {
-    backgroundColor: '#064e3b',
+  pillGreen: {
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  moduleProgressPillGreenText: {
+  pillGreenText: {
     color: '#34d399',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   moduleCardActive: {
     backgroundColor: '#0d1326',
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#2563eb',
+    borderWidth: 1,
+    borderColor: '#1e293b',
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   moduleHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  moduleActiveIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: '#172554',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  chevronIcon: {
-    color: '#94a3b8',
-    fontSize: 10,
-    marginBottom: 4,
-  },
-  modulePercentText: {
-    color: '#60a5fa',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  subtopicsContainer: {
-    marginTop: 10,
+  subtopicsList: {
+    marginTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#1e293b',
     paddingTop: 10,
   },
-  subtopicItemCompleted: {
+  subtopicItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#111936',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 6,
-  },
-  subtopicCheckSquare: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  subtopicTitleCompleted: {
-    flex: 1,
-    color: '#94a3b8',
-    fontSize: 12,
-    textDecorationLine: 'line-through',
-  },
-  subtopicXpText: {
-    color: '#60a5fa',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  subtopicItemActive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#172554',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-    padding: 10,
-    marginBottom: 6,
-  },
-  subtopicRadioActive: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: '#60a5fa',
-  },
-  subtopicTitleActive: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  subtopicUnlockText: {
-    color: '#c084fc',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  startSubtopicButton: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  startSubtopicButtonText: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  subtopicItemLocked: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    opacity: 0.5,
-  },
-  lockIconSmall: {
-    fontSize: 12,
-    marginRight: 10,
-  },
-  subtopicTitleLocked: {
-    flex: 1,
-    color: '#94a3b8',
-    fontSize: 12,
-  },
-  subtopicRequiresText: {
-    color: '#6b7280',
-    fontSize: 10,
-    fontStyle: 'italic',
-  },
-  moduleCardLocked: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0d1326',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 14,
-    marginBottom: 12,
-    opacity: 0.6,
-  },
-  moduleLockedIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#1e293b',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  moduleTitleLocked: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  moduleSubtitleLocked: {
-    color: '#6b7280',
-    fontSize: 11,
-  },
-  chevronIconLocked: {
-    color: '#6b7280',
-    fontSize: 10,
-  },
-  statsOverviewCard: {
-    backgroundColor: '#0d1326',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 16,
-    marginBottom: 12,
-  },
-  statRowItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#111936',
   },
-  statRowLabel: {
-    color: '#94a3b8',
+  subtopicName: {
+    color: '#ffffff',
     fontSize: 12,
-    fontWeight: '600',
+    flex: 1,
   },
-  statRowValue: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  statRowValueGreen: {
-    color: '#34d399',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  milestoneCard: {
-    backgroundColor: '#0d1326',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 16,
-    marginBottom: 12,
-  },
-  milestoneTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  milestoneBody: {
-    color: '#94a3b8',
-    fontSize: 11,
-    lineHeight: 16,
-    marginBottom: 10,
-  },
-  milestoneLockRow: {
-    backgroundColor: '#111936',
+  startSubtopicBtn: {
+    backgroundColor: '#1e293b',
     borderRadius: 6,
-    padding: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  milestoneLockText: {
-    color: '#60a5fa',
+  startSubtopicBtnText: {
+    color: '#38bdf8',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
-  // PROFILE & ATS RESUME
+  // PROFILE & ATS SCANNER TAB
   profileHeroCard: {
     backgroundColor: '#0d1326',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#1e293b',
-    padding: 18,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  avatarGlowContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+  profileAvatarGlow: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderWidth: 2,
-    borderColor: '#3b82f6',
+    borderColor: '#38bdf8',
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   profileAvatarImage: {
     width: '100%',
     height: '100%',
   },
   profileNameTitle: {
-    fontSize: 20,
-    fontWeight: '900',
     color: '#ffffff',
-    letterSpacing: 1,
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 4,
   },
   profileRoleMono: {
-    fontSize: 11,
-    color: '#60a5fa',
-    fontFamily: 'monospace',
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  profileBioText: {
-    fontSize: 11,
     color: '#94a3b8',
-    textAlign: 'center',
-    lineHeight: 16,
-    marginBottom: 14,
+    fontSize: 12,
+    fontFamily: 'monospace',
+    marginBottom: 12,
   },
   profileBadgesRow: {
     flexDirection: 'row',
     gap: 8,
   },
-  badgePillTeal: {
-    backgroundColor: '#042f2e',
-    borderWidth: 1,
-    borderColor: '#0d9488',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgePillTealText: {
-    color: '#2dd4bf',
-    fontSize: 11,
-    fontWeight: '800',
-  },
   badgePillPurple: {
-    backgroundColor: '#3b0764',
+    backgroundColor: '#1a1836',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#9333ea',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    borderColor: '#a855f7',
   },
   badgePillPurpleText: {
     color: '#c084fc',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
+  },
+  badgePillOrange: {
+    backgroundColor: '#261914',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#f97316',
+  },
+  badgePillOrangeText: {
+    color: '#fb923c',
+    fontSize: 11,
+    fontWeight: '700',
   },
   atsScannerCard: {
     backgroundColor: '#0d1326',
@@ -2567,46 +1821,36 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 14,
   },
-  atsHeaderRow: {
+  atsCardHeader: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '900',
     marginBottom: 12,
   },
-  uploadDashedBox: {
-    borderWidth: 1.5,
-    borderColor: '#1e293b',
-    borderStyle: 'dashed',
+  uploadedFileBox: {
+    backgroundColor: '#080d1e',
     borderRadius: 12,
-    backgroundColor: '#090e1f',
-    padding: 20,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
   },
-  uploadCloudIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  uploadMainText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
+  uploadedFileLabel: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '800',
     marginBottom: 4,
   },
-  uploadSubText: {
-    color: '#6b7280',
-    fontSize: 10,
-    marginBottom: 14,
+  uploadedFileNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  browseFilesButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  browseFilesButtonText: {
+  uploadedFileNameText: {
     color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 1,
+    fontSize: 13,
+    fontWeight: '800',
   },
-  analysisCard: {
+  analysisResultsCard: {
     backgroundColor: '#0d1326',
     borderRadius: 16,
     borderWidth: 1,
@@ -2614,116 +1858,163 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
-  analysisHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  analysisHeaderTitle: {
+  analysisCardHeader: {
     color: '#ffffff',
     fontSize: 14,
-    fontWeight: '800',
-  },
-  atsScoreLarge: {
-    color: '#ffffff',
-    fontSize: 22,
     fontWeight: '900',
+    marginBottom: 4,
   },
-  atsScoreSmall: {
-    color: '#94a3b8',
-    fontSize: 12,
-  },
-  atsScoreLabel: {
-    color: '#60a5fa',
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  atsSectionSubtitle: {
-    color: '#94a3b8',
+  atsScoreSubtitle: {
+    color: '#64748b',
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
-    marginVertical: 8,
+    marginBottom: 2,
   },
-  atsPillGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+  atsScoreLarge: {
+    color: '#34d399',
+    fontSize: 32,
+    fontWeight: '900',
     marginBottom: 8,
   },
-  skillMatchedPill: {
-    backgroundColor: '#064e3b',
-    borderWidth: 1,
-    borderColor: '#059669',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+  atsScoreSmall: {
+    fontSize: 16,
+    color: '#94a3b8',
   },
-  skillMatchedPillText: {
+  atsProgressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: '#1e293b',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  atsProgressFill: {
+    height: '100%',
+    backgroundColor: '#34d399',
+  },
+  veryGoodLabel: {
     color: '#34d399',
     fontSize: 10,
     fontWeight: '800',
+    marginBottom: 14,
   },
-  skillMissingPill: {
-    backgroundColor: '#450a0a',
-    borderWidth: 1,
-    borderColor: '#dc2626',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  skillMissingPillText: {
-    color: '#f87171',
+  atsSkillsHeading: {
+    color: '#94a3b8',
     fontSize: 10,
-    fontWeight: '800',
-  },
-  predictedQuestionCard: {
-    backgroundColor: '#111936',
-    borderRadius: 8,
-    padding: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
-  predictedQuestionText: {
-    color: '#cbd5e1',
+  skillTagMatched: {
+    backgroundColor: '#0d221c',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#34d399',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  skillTagMatchedText: {
+    color: '#34d399',
     fontSize: 11,
-    lineHeight: 16,
-    fontStyle: 'italic',
+    fontWeight: '700',
+  },
+  skillTagMissing: {
+    backgroundColor: '#281318',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#f43f5e',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  skillTagMissingText: {
+    color: '#f43f5e',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  logoutButton: {
+    backgroundColor: '#131c38',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    marginBottom: 30,
+  },
+  logoutButtonText: {
+    color: '#f43f5e',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#0d1326',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  modalDocItem: {
+    backgroundColor: '#080d1e',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
   },
 
-  // BOTTOM TAB BAR
-  bottomTabBar: {
+  // BOTTOM NAVIGATION BAR
+  bottomNavBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 64,
-    backgroundColor: '#080d1e',
+    height: 68,
+    backgroundColor: '#090e21',
     borderTopWidth: 1,
-    borderTopColor: '#1e293b',
+    borderTopColor: '#192340',
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    paddingBottom: 8,
   },
-  tabItem: {
+  navTabItem: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 12,
   },
-  tabIcon: {
+  navTabIcon: {
     fontSize: 18,
-    color: '#6b7280',
     marginBottom: 2,
+    opacity: 0.6,
   },
-  tabIconActive: {
-    color: '#3b82f6',
+  navTabIconActive: {
+    opacity: 1,
   },
-  tabLabel: {
+  navTabLabel: {
+    color: '#64748b',
     fontSize: 10,
-    color: '#6b7280',
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  tabLabelActive: {
-    color: '#3b82f6',
+  navTabLabelActive: {
+    color: '#38bdf8',
     fontWeight: '800',
   },
 });
