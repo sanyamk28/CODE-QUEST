@@ -4,12 +4,12 @@
     "slug": "placementforge-mobile",
     "owner": "sanyamk",
     "scheme": "placementforge",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#060913"
     },
     "extra": {
       "eas": {
@@ -18,9 +18,10 @@
     },
     "android": {
       "package": "com.sanyamk.placementforgemobile",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#060913"
       },
       "permissions": [
         "INTERNET",
