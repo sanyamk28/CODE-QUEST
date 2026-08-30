@@ -62,7 +62,17 @@ app.include_router(roadmaps.router, prefix="/api/v1/roadmaps", tags=["Roadmaps"]
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 app.include_router(contests.router, prefix="/api/v1/contests", tags=["Contests"])
 
+@app.get("/")
+def root_index():
+    return {
+        "message": "Welcome to the Code Quest Cloud API",
+        "status": "online",
+        "docs_url": "/docs",
+        "health_check": "/api/v1/health"
+    }
+
 @app.get("/api/v1/health")
+@app.get("/health")
 def health_check():
     return {
         "status": "healthy",
