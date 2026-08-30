@@ -128,7 +128,7 @@ const MCQ_QUIZ_QUESTIONS = [
 
 export default function App() {
   // Navigation & Flow State
-  const [currentScreen, setCurrentScreen] = useState<'splash' | 'auth' | 'onboarding' | 'dashboard'>('splash');
+  const [currentScreen, setCurrentScreen] = useState<'auth' | 'onboarding' | 'dashboard'>('auth');
   const [activeTab, setActiveTab] = useState<'Home' | 'Arena' | 'Roadmap' | 'Profile'>('Home');
 
   // User & Profile State
@@ -136,7 +136,7 @@ export default function App() {
   const [isOnboarded, setIsOnboarded] = useState(true);
   const [guestMode, setGuestMode] = useState(false);
   const [userName, setUserName] = useState('Alex');
-  const [email, setEmail] = useState('alex.chen@gmail.com');
+  const [email, setEmail] = useState('CQ-9921');
   const [password, setPassword] = useState('password123');
   const [targetRole, setTargetRole] = useState('Software Engineer');
   const [customRoleInput, setCustomRoleInput] = useState('');
@@ -170,56 +170,17 @@ export default function App() {
   const [selectedMcqOption, setSelectedMcqOption] = useState<string | null>(null);
   const [showMcqExplanation, setShowMcqExplanation] = useState(false);
 
-  // Animation Refs
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(34)).current;
-  const [progressPercent, setProgressPercent] = useState(34);
-
-  // Setup animations
-  useEffect(() => {
-    // Pulse animation for the glowing sphere
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.15,
-          duration: 1800,
-          useNativeDriver: true
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1.0,
-          duration: 1800,
-          useNativeDriver: true
-        })
-      ])
-    ).start();
-
-    // Progress bar uplink animation
-    Animated.timing(progressAnim, {
-      toValue: 100,
-      duration: 3500,
-      useNativeDriver: false
-    }).start();
-
-    const listener = progressAnim.addListener(({ value }) => {
-      setProgressPercent(Math.floor(value));
-    });
-
-    return () => {
-      progressAnim.removeListener(listener);
-    };
-  }, []);
-
   // Handle Firebase Login
   const handleLogin = async () => {
     if (!email || !password) {
-      setAuthError('Please enter both student email and password');
+      setAuthError('Please enter your Student ID or Email and password');
       return;
     }
     setAuthError('');
     setIsAuthenticating(true);
     try {
-      const res = await firebaseAuthSignIn(email, password);
+      const emailToUse = email.includes('@') ? email : `${email.toLowerCase().replace(/[^a-z0-9]/g, '')}@codequest.dev`;
+      const res = await firebaseAuthSignIn(emailToUse, password);
       setUserName(res.displayName || email.split('@')[0]);
       setIsLoggedIn(true);
       setCurrentScreen('dashboard');
@@ -237,12 +198,12 @@ export default function App() {
     setAuthError('');
     setIsAuthenticating(true);
     setTimeout(() => {
-      setUserName('Google Student');
+      setUserName('Google Student (Alex)');
       setEmail('student@codequest.dev');
       setIsLoggedIn(true);
       setCurrentScreen('dashboard');
       setIsAuthenticating(false);
-    }, 600);
+    }, 400);
   };
 
   const toggleQuest = (id: number) => {
@@ -266,62 +227,7 @@ export default function App() {
   };
 
   // -------------------------------------------------------------
-  // SCREEN 1: SPLASH SCREEN (Google Stitch Wireframe Orb Design)
-  // -------------------------------------------------------------
-  if (currentScreen === 'splash') {
-    return (
-      <SafeAreaView style={styles.splashContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#060913" />
-        
-        <View style={styles.splashContent}>
-          {/* Glowing Geometric Geodesic Sphere */}
-          <Animated.View style={[styles.sphereContainer, { transform: [{ scale: pulseAnim }] }]}>
-            <View style={styles.outerGlowOrb}>
-              <View style={styles.innerGlowingCore} />
-              <View style={styles.wireframeRing1} />
-              <View style={styles.wireframeRing2} />
-              <View style={styles.wireframeRing3} />
-            </View>
-          </Animated.View>
-
-          {/* Title & Subtitle Card */}
-          <View style={styles.splashCard}>
-            <Text style={styles.splashTitle}>CODE QUEST</Text>
-            <Text style={styles.splashSubtitle}>
-              <Text style={styles.splashSubtitleHighlight}>Forge Your Coding Journey</Text>{'\n'}
-              through immersive challenges and algorithmic battles.
-            </Text>
-
-            {/* Action CTA Buttons */}
-            <TouchableOpacity 
-              style={styles.systemInitButton}
-              onPress={() => setCurrentScreen('onboarding')}
-            >
-              <Text style={styles.systemInitButtonText}>🚀  INITIALIZE SYSTEM</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.authenticateButton}
-              onPress={() => setCurrentScreen('auth')}
-            >
-              <Text style={styles.authenticateButtonText}>➔  AUTHENTICATE</Text>
-            </TouchableOpacity>
-
-            {/* Uplink Progress Bar */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarBackground}>
-                <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
-              </View>
-              <Text style={styles.progressText}>ESTABLISHING UPLINK... {progressPercent}%</Text>
-            </View>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // -------------------------------------------------------------
-  // SCREEN 2: AUTHENTICATION SCREEN
+  // SCREEN 1: AUTHENTICATION SCREEN (Student ID or Google Sign-In)
   // -------------------------------------------------------------
   if (currentScreen === 'auth' && !isLoggedIn) {
     return (
@@ -337,7 +243,7 @@ export default function App() {
             />
 
             <Text style={styles.authTitle}>CODE QUEST</Text>
-            <Text style={styles.authSubtitle}>Your complete programming assessment platform</Text>
+            <Text style={styles.authSubtitle}>Sign in with Student ID or Google account</Text>
 
             {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
 
@@ -345,11 +251,10 @@ export default function App() {
             <View style={styles.inputGroup}>
               <TextInput
                 style={styles.cyberInput}
-                placeholder="Student Email"
+                placeholder="Student ID or Email (e.g. CQ-9921 / alex@mail.com)"
                 placeholderTextColor="#6b7280"
                 value={email}
                 onChangeText={setEmail}
-                keyboardType="email-address"
                 autoCapitalize="none"
               />
               <TextInput
@@ -386,9 +291,22 @@ export default function App() {
             <TouchableOpacity 
               style={styles.googleAuthButton}
               onPress={handleGoogleLogin}
+              disabled={isAuthenticating}
             >
               <Text style={styles.googleGLogo}>🔵</Text>
-              <Text style={styles.googleAuthButtonText}>Sign in with Google</Text>
+              <Text style={styles.googleAuthButtonText}>
+                {isAuthenticating ? 'Connecting...' : 'Sign in with Google'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* New Student Sequence Link */}
+            <TouchableOpacity 
+              onPress={() => setCurrentScreen('onboarding')}
+              style={{ marginTop: 18, marginBottom: 8 }}
+            >
+              <Text style={{ color: '#60a5fa', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>
+                🚀  New Student? Initialize Custom Sequence
+              </Text>
             </TouchableOpacity>
 
             {/* Guest Mode Switch */}
