@@ -201,9 +201,9 @@ const MCQ_QUIZ_QUESTIONS = [
 export default function App() {
   // Google OAuth Hook Setup
   const [googleRequest, googleResponse, promptAsyncGoogle] = Google.useAuthRequest({
-    clientId: '962508754195-j659dsdq3goseasg4925a90j0qiktetg.apps.googleusercontent.com',
-    webClientId: '962508754195-j659dsdq3goseasg4925a90j0qiktetg.apps.googleusercontent.com',
-    androidClientId: '962508754195-j659dsdq3goseasg4925a90j0qiktetg.apps.googleusercontent.com',
+    clientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
+    webClientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
+    androidClientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
   });
 
   // Navigation / Auth State

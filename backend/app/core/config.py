@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     FCM_SERVER_KEY: Optional[str] = "mock-fcm-server-key"
 
     # Google OAuth Client ID
-    GOOGLE_CLIENT_ID: Optional[str] = "962508754195-j659dsdq3goseasg4925a90j0qiktetg.apps.googleusercontent.com"
+    GOOGLE_CLIENT_ID: Optional[str] = "54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com"
 
     # Admin seed credentials
     ADMIN_DEFAULT_EMAIL: str = "admin@placementforge.com"
