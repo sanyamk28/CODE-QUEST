@@ -15,11 +15,7 @@ import {
   Dimensions
 } from 'react-native';
 import axios from 'axios';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { firebaseAuthSignIn } from './firebase';
-
-WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 
@@ -143,7 +139,12 @@ export default function App() {
   const [email, setEmail] = useState('alex.chen@gmail.com');
   const [password, setPassword] = useState('password123');
   const [targetRole, setTargetRole] = useState('Software Engineer');
+  const [customRoleInput, setCustomRoleInput] = useState('');
+  const [allAvailableSkills, setAllAvailableSkills] = useState<string[]>([
+    'Python', 'SQL', 'React', 'Docker', 'AWS', 'TypeScript', 'Node.js', 'Kubernetes', 'Java', 'C++', 'System Design'
+  ]);
   const [userSkills, setUserSkills] = useState<string[]>(['Python', 'SQL', 'React', 'Docker']);
+  const [newCustomSkill, setNewCustomSkill] = useState('');
   const [studyHours, setStudyHours] = useState('2h');
   const [targetCollege, setTargetCollege] = useState('Stanford University');
   const [streak, setStreak] = useState(5);
@@ -231,11 +232,18 @@ export default function App() {
     }
   };
 
-  // Google OAuth Config
-  const [request, response, promptAsyncGoogle] = Google.useAuthRequest({
-    clientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
-    androidClientId: '54642993956-7q3odq2tcc92pjeuba8q9apllrphki75.apps.googleusercontent.com',
-  });
+  // Safe Google Login
+  const handleGoogleLogin = () => {
+    setAuthError('');
+    setIsAuthenticating(true);
+    setTimeout(() => {
+      setUserName('Google Student');
+      setEmail('student@codequest.dev');
+      setIsLoggedIn(true);
+      setCurrentScreen('dashboard');
+      setIsAuthenticating(false);
+    }, 600);
+  };
 
   const toggleQuest = (id: number) => {
     setQuests(prev => prev.map(q => {
@@ -377,10 +385,7 @@ export default function App() {
             {/* Google Sign In Button */}
             <TouchableOpacity 
               style={styles.googleAuthButton}
-              onPress={() => {
-                setIsLoggedIn(true);
-                setCurrentScreen('dashboard');
-              }}
+              onPress={handleGoogleLogin}
             >
               <Text style={styles.googleGLogo}>🔵</Text>
               <Text style={styles.googleAuthButtonText}>Sign in with Google</Text>
@@ -420,15 +425,13 @@ export default function App() {
       { id: 'DevOps', title: 'DevOps', desc: 'Deployment, infrastructure & CI/CD' }
     ];
 
-    const competencies = ['Python', 'SQL', 'React', 'Docker', 'AWS', 'TypeScript', 'Node.js', 'Kubernetes'];
-
     return (
       <SafeAreaView style={styles.onboardContainer}>
         <StatusBar barStyle="light-content" backgroundColor="#060913" />
         <ScrollView contentContainerStyle={styles.onboardScroll}>
           <Text style={styles.onboardMainTitle}>INITIALIZE{'\n'}SEQUENCE</Text>
           <Text style={styles.onboardSubDesc}>
-            Configure your neural pathway to optimize the learning protocol.
+            Configure your custom neural pathway to optimize the learning protocol.
           </Text>
 
           {/* Phase Tabs */}
@@ -446,7 +449,7 @@ export default function App() {
           </View>
 
           {/* Select Target Role */}
-          <Text style={styles.sectionHeaderTitle}>🌐  Select Target Role</Text>
+          <Text style={styles.sectionHeaderTitle}>🌐  Select Or Type Target Role</Text>
           <View style={styles.roleGrid}>
             {roles.map(r => (
               <TouchableOpacity
@@ -455,7 +458,10 @@ export default function App() {
                   styles.roleCard,
                   targetRole === r.id && styles.roleCardSelected
                 ]}
-                onPress={() => setTargetRole(r.id)}
+                onPress={() => {
+                  setTargetRole(r.id);
+                  setCustomRoleInput('');
+                }}
               >
                 <Text style={styles.roleCardIcon}>💻</Text>
                 <Text style={styles.roleCardTitle}>{r.title}</Text>
@@ -464,10 +470,24 @@ export default function App() {
             ))}
           </View>
 
-          {/* Base Competencies */}
-          <Text style={styles.sectionHeaderTitle}>💠  Base Competencies</Text>
+          {/* Custom Role Input */}
+          <View style={{ marginTop: 8, marginBottom: 16 }}>
+            <TextInput
+              style={styles.cyberInput}
+              placeholder="Or type custom role (e.g. AI / ML Engineer, Blockchain, iOS)"
+              placeholderTextColor="#6b7280"
+              value={customRoleInput}
+              onChangeText={(val) => {
+                setCustomRoleInput(val);
+                setTargetRole(val || 'Software Engineer');
+              }}
+            />
+          </View>
+
+          {/* Base Competencies & Custom Skills */}
+          <Text style={styles.sectionHeaderTitle}>💠  Base Competencies & Skills</Text>
           <View style={styles.skillsTagRow}>
-            {competencies.map(s => {
+            {allAvailableSkills.map(s => {
               const selected = userSkills.includes(s);
               return (
                 <TouchableOpacity
@@ -481,10 +501,40 @@ export default function App() {
                     }
                   }}
                 >
-                  <Text style={[styles.skillTagText, selected && styles.skillTagTextActive]}>{s}</Text>
+                  <Text style={[styles.skillTagText, selected && styles.skillTagTextActive]}>
+                    {selected ? `✓ ${s}` : s}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
+          </View>
+
+          {/* Add Custom User Skill Input */}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 16 }}>
+            <TextInput
+              style={[styles.cyberInput, { flex: 1, marginBottom: 0 }]}
+              placeholder="Add your skill (e.g. Flutter, PyTorch, GraphQL)"
+              placeholderTextColor="#6b7280"
+              value={newCustomSkill}
+              onChangeText={setNewCustomSkill}
+            />
+            <TouchableOpacity
+              style={{ backgroundColor: '#2563eb', paddingHorizontal: 16, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }}
+              onPress={() => {
+                if (newCustomSkill.trim()) {
+                  const trimmed = newCustomSkill.trim();
+                  if (!allAvailableSkills.includes(trimmed)) {
+                    setAllAvailableSkills([...allAvailableSkills, trimmed]);
+                  }
+                  if (!userSkills.includes(trimmed)) {
+                    setUserSkills([...userSkills, trimmed]);
+                  }
+                  setNewCustomSkill('');
+                }
+              }}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: '900', fontSize: 11 }}>+ ADD</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Daily Time Allocation */}
@@ -512,6 +562,7 @@ export default function App() {
             onPress={() => {
               setIsOnboarded(true);
               setIsLoggedIn(true);
+              setActiveTab('Roadmap');
               setCurrentScreen('dashboard');
             }}
           >
@@ -882,7 +933,7 @@ export default function App() {
       {/* Active Track Banner */}
       <View style={styles.activeTrackBanner}>
         <Text style={styles.activeTrackTag}>🧭  ACTIVE TRACK</Text>
-        <Text style={styles.activeTrackTitle}>Current Track: Full-Stack Placement</Text>
+        <Text style={styles.activeTrackTitle}>Current Track: {targetRole || 'Full-Stack'} Placement</Text>
         
         {/* Overall Progress */}
         <View style={styles.overallProgressBox}>
@@ -1043,19 +1094,19 @@ export default function App() {
             style={styles.profileAvatarImage} 
           />
         </View>
-        <Text style={styles.profileNameTitle}>Alex Mercer</Text>
-        <Text style={styles.profileRoleMono}>Target Role: Software Engineer</Text>
+        <Text style={styles.profileNameTitle}>{userName || 'Alex Mercer'}</Text>
+        <Text style={styles.profileRoleMono}>Target Role: {targetRole || 'Software Engineer'}</Text>
         <Text style={styles.profileBioText}>
-          Specializing in full-stack development, scalable microservices, and high-performance computing. Seeking roles that push the boundary of backend architecture.
+          Focused on {targetRole} mastery with core competencies in {userSkills.slice(0, 4).join(', ')}. Actively preparing for placement challenges.
         </Text>
         
         {/* Profile Badges */}
         <View style={styles.profileBadgesRow}>
           <View style={styles.badgePillTeal}>
-            <Text style={styles.badgePillTealText}>🛡️  SQL Ninja</Text>
+            <Text style={styles.badgePillTealText}>🛡️  {userSkills[0] || 'Code'} Ninja</Text>
           </View>
           <View style={styles.badgePillPurple}>
-            <Text style={styles.badgePillPurpleText}>🔥  5-Day Streak</Text>
+            <Text style={styles.badgePillPurpleText}>🔥  {streak}-Day Streak</Text>
           </View>
         </View>
       </View>
