@@ -45,11 +45,48 @@ interface SecurityLog {
   status: 'SUCCESSFUL' | 'FAILED AUTH';
 }
 
+interface LearningResource {
+  id: string;
+  title: string;
+  field: 'Software Engineer' | 'Data Engineer' | 'Frontend' | 'Full-Stack' | 'DevOps';
+  type: 'PDF' | 'Markdown' | 'CSV' | 'Document';
+  extractedQuestionsCount: number;
+  uploadedAt: string;
+  status: 'Parsed & Synced' | 'Processing';
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'submissions' | 'curriculum' | 'users' | 'analytics' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'submissions' | 'curriculum' | 'resources' | 'users' | 'analytics' | 'settings'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+
+  // Resource Uploader State
+  const [resourcesList, setResourcesList] = useState<LearningResource[]>([
+    {
+      id: 'res_1',
+      title: 'Meta Data Engineering SQL & Schema Modeling Notes.pdf',
+      field: 'Data Engineer',
+      type: 'PDF',
+      extractedQuestionsCount: 14,
+      uploadedAt: 'Today at 18:30',
+      status: 'Parsed & Synced'
+    },
+    {
+      id: 'res_2',
+      title: 'Google Distributed Systems & DSA Interview Guide.md',
+      field: 'Software Engineer',
+      type: 'Markdown',
+      extractedQuestionsCount: 22,
+      uploadedAt: 'Yesterday at 14:15',
+      status: 'Parsed & Synced'
+    }
+  ]);
+  const [uploadResourceTitle, setUploadResourceTitle] = useState('');
+  const [uploadResourceField, setUploadResourceField] = useState<'Software Engineer' | 'Data Engineer' | 'Frontend' | 'Full-Stack' | 'DevOps'>('Software Engineer');
+  const [uploadResourceContent, setUploadResourceContent] = useState('');
+  const [isExtractingQuestions, setIsExtractingQuestions] = useState(false);
+  const [extractionSuccessMsg, setExtractionSuccessMsg] = useState('');
 
   // Modal State for Edit Problem
   const [showEditProblemModal, setShowEditProblemModal] = useState(false);
@@ -196,6 +233,69 @@ export default function App() {
     }
   ]);
 
+  const handleExtractAndDistribute = () => {
+    if (!uploadResourceTitle) return;
+    setIsExtractingQuestions(true);
+    setExtractionSuccessMsg('');
+
+    setTimeout(() => {
+      setIsExtractingQuestions(false);
+      const newRes: LearningResource = {
+        id: `res_${Date.now()}`,
+        title: uploadResourceTitle,
+        field: uploadResourceField,
+        type: uploadResourceTitle.endsWith('.pdf') ? 'PDF' : uploadResourceTitle.endsWith('.md') ? 'Markdown' : 'Document',
+        extractedQuestionsCount: 12,
+        uploadedAt: 'Just now',
+        status: 'Parsed & Synced'
+      };
+
+      setResourcesList([newRes, ...resourcesList]);
+
+      // Generate and add tailored questions to the question bank
+      let generatedQ: Question;
+      if (uploadResourceField === 'Data Engineer') {
+        generatedQ = {
+          id: `${Math.floor(1000 + Math.random() * 9000)}`,
+          title: `Optimizing Aggregates & Window Partitioning (${uploadResourceTitle.slice(0, 20)})`,
+          difficulty: 'Hard',
+          type: 'SQL',
+          tags: ['Data Engineering', 'SQL', 'PostgreSQL'],
+          status: 'Published',
+          desc: `Extracted from resource "${uploadResourceTitle}".\n\nCalculate rolling 7-day conversion metrics partitioned by user segment without full table scans.`,
+          requirements: ['Use WINDOW sliding frame', 'Optimize index traversal']
+        };
+      } else if (uploadResourceField === 'Software Engineer') {
+        generatedQ = {
+          id: `${Math.floor(1000 + Math.random() * 9000)}`,
+          title: `LRU Cache with TTL Eviction (${uploadResourceTitle.slice(0, 20)})`,
+          difficulty: 'Hard',
+          type: 'Coding',
+          tags: ['Data Structures', 'Hash Map', 'Doubly Linked List'],
+          status: 'Published',
+          desc: `Extracted from resource "${uploadResourceTitle}".\n\nDesign a data structure that follows the constraints of a Least Recently Used (LRU) cache with time-to-live eviction.`,
+          requirements: ['O(1) get & put operations', 'Auto-evict expired keys']
+        };
+      } else {
+        generatedQ = {
+          id: `${Math.floor(1000 + Math.random() * 9000)}`,
+          title: `Automated Canary Deployment Pipeline (${uploadResourceTitle.slice(0, 20)})`,
+          difficulty: 'Medium',
+          type: 'Coding',
+          tags: ['DevOps', 'CI/CD', 'Docker'],
+          status: 'Published',
+          desc: `Extracted from resource "${uploadResourceTitle}".\n\nWrite a health-check script that triggers traffic rollback when error rates exceed 2%.`,
+          requirements: ['Parse JSON metrics feed', 'Execute rollback webhook']
+        };
+      }
+
+      setQuestionsList([generatedQ, ...questionsList]);
+      setExtractionSuccessMsg(`✅ Extracted 12 questions and dynamically synced to ${uploadResourceField} students!`);
+      setUploadResourceTitle('');
+      setUploadResourceContent('');
+    }, 1500);
+  };
+
   const openEditModal = (q: Question) => {
     setSelectedQuestion({ ...q });
     setShowEditProblemModal(true);
@@ -232,6 +332,7 @@ export default function App() {
               { id: 'dashboard', label: 'Dashboard', icon: '📊' },
               { id: 'submissions', label: 'Submissions', icon: '💻' },
               { id: 'curriculum', label: 'Curriculum', icon: '🗺️' },
+              { id: 'resources', label: 'Resource Studio', icon: '📚' },
               { id: 'users', label: 'User Management', icon: '👥' },
               { id: 'analytics', label: 'Analytics', icon: '📈' },
               { id: 'settings', label: 'Settings', icon: '⚙️' }
@@ -539,7 +640,129 @@ export default function App() {
           )}
 
           {/* ========================================================= */}
-          {/* TAB 4: STUDENT DATABASE (USER MANAGEMENT)                 */}
+          {/* TAB 4: RESOURCE STUDIO & AI QUESTION EXTRACTOR            */}
+          {/* ========================================================= */}
+          {activeTab === 'resources' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-black text-white">Resource Studio & AI Question Extractor</h3>
+                <p className="text-xs text-gray-400">
+                  Upload PDF curricula, interview guides, and notes. The AI automatically parses questions and distributes them to students based on their field specification.
+                </p>
+              </div>
+
+              {/* Uploader Card */}
+              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
+                <h4 className="text-sm font-extrabold text-white mb-4 flex items-center">
+                  <span className="text-base mr-2">📤</span>
+                  Upload New Learning Resource & Extract Questions
+                </h4>
+
+                {extractionSuccessMsg ? (
+                  <div className="p-3 bg-emerald-950/80 border border-emerald-800 rounded-xl text-xs text-emerald-300 font-bold mb-4">
+                    {extractionSuccessMsg}
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">
+                      RESOURCE TITLE / FILE NAME
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Amazon DSA & Dynamic Programming Handbook.pdf"
+                      value={uploadResourceTitle}
+                      onChange={e => setUploadResourceTitle(e.target.value)}
+                      className="w-full bg-[#070b1b] border border-[#172242] rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">
+                      TARGET FIELD SPECIFICATION
+                    </label>
+                    <select
+                      value={uploadResourceField}
+                      onChange={e => setUploadResourceField(e.target.value as any)}
+                      className="w-full bg-[#070b1b] border border-[#172242] rounded-xl p-3 text-xs text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="Software Engineer">Software Engineer (Algorithms & System Design)</option>
+                      <option value="Data Engineer">Data Engineer (SQL, Pipelines & Aggregations)</option>
+                      <option value="Frontend">Frontend (React, JavaScript & State)</option>
+                      <option value="Full-Stack">Full-Stack (REST APIs & Databases)</option>
+                      <option value="DevOps">DevOps (Docker, Kubernetes & CI/CD)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">
+                    RESOURCE CONTENT / SYLLABUS TEXT (OR DRAG PDF HERE)
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder="Paste technical syllabus, problem statements, or chapter notes to extract questions..."
+                    value={uploadResourceContent}
+                    onChange={e => setUploadResourceContent(e.target.value)}
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-xl p-3 text-xs text-gray-200 font-mono focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <button
+                  onClick={handleExtractAndDistribute}
+                  disabled={isExtractingQuestions || !uploadResourceTitle}
+                  className={`px-6 py-3 rounded-xl text-xs font-extrabold text-white flex items-center space-x-2 transition ${
+                    uploadResourceTitle
+                      ? 'bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 shadow-lg shadow-blue-500/20'
+                      : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <span>{isExtractingQuestions ? '🔄' : '⚡'}</span>
+                  <span>
+                    {isExtractingQuestions 
+                      ? 'EXTRACTING & DELIVERING TO STUDENTS...' 
+                      : `EXTRACT QUESTIONS & DISTRIBUTE TO ${uploadResourceField.toUpperCase()} STUDENTS`}
+                  </span>
+                </button>
+              </div>
+
+              {/* Uploaded Resources List */}
+              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
+                <h4 className="text-sm font-extrabold text-white mb-4">Active Field Curriculum Resources</h4>
+                <div className="space-y-3">
+                  {resourcesList.map(res => (
+                    <div key={res.id} className="p-4 bg-[#0d1430] border border-[#172242] rounded-xl flex justify-between items-center">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#131c40] border border-blue-500/30 flex items-center justify-center text-base">
+                          {res.type === 'PDF' ? '📄' : '📝'}
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs text-white">{res.title}</p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="px-2 py-0.5 bg-[#172554] text-blue-300 text-[9px] font-extrabold rounded">
+                              {res.field}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-mono">
+                              {res.extractedQuestionsCount} Questions Extracted
+                            </span>
+                            <span className="text-[10px] text-gray-500">· {res.uploadedAt}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold rounded-lg flex items-center">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5"></span>
+                        {res.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 5: STUDENT DATABASE (USER MANAGEMENT)                 */}
           {/* ========================================================= */}
           {activeTab === 'users' && (
             <div className="space-y-6">
