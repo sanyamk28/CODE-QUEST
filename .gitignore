@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.pytest_cache/
+.coverage
+
+# SQLite Databases & Local Logs
+*.db
+*.sqlite3
+*.log
+local_db.db
+
+# Build outputs
+dist/
+build/
+.cache/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
