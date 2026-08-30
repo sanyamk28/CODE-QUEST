@@ -1,10 +1,4 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut
-} from "firebase/auth";
+import axios from 'axios';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyD4Y4QBGIkrLTs73utVpwo28QkdWaO-Hto",
@@ -16,5 +10,32 @@ export const firebaseConfig = {
   measurementId: "G-V3429LC2ZP"
 };
 
-export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
+const AUTH_URL = 'https://identitytoolkit.googleapis.com/v1/accounts';
+
+export interface FirebaseAuthResult {
+  idToken: string;
+  email: string;
+  refreshToken: string;
+  expiresIn: string;
+  localId: string;
+  displayName?: string;
+}
+
+export async function firebaseAuthSignIn(email: string, password: string): Promise<FirebaseAuthResult> {
+  try {
+    const res = await axios.post(`${AUTH_URL}:signInWithPassword?key=${firebaseConfig.apiKey}`, {
+      email,
+      password,
+      returnSecureToken: true
+    });
+    return res.data;
+  } catch (err: any) {
+    // Auto-create student account if it's their first time logging in
+    const signUpRes = await axios.post(`${AUTH_URL}:signUp?key=${firebaseConfig.apiKey}`, {
+      email,
+      password,
+      returnSecureToken: true
+    });
+    return signUpRes.data;
+  }
+}

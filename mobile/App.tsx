@@ -14,8 +14,7 @@ import {
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import { auth, firebaseConfig } from './firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { firebaseAuthSignIn } from './firebase';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -516,25 +515,11 @@ export default function App() {
     setAuthError('');
     setIsAuthenticating(true);
     try {
-      let userCredential;
-      try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      } catch (signInErr: any) {
-        if (
-          signInErr.code === 'auth/user-not-found' || 
-          signInErr.code === 'auth/invalid-credential' ||
-          signInErr.code === 'auth/invalid-login-credentials'
-        ) {
-          userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        } else {
-          throw signInErr;
-        }
-      }
+      // 1. Authenticate with pure Firebase
+      const firebaseRes = await firebaseAuthSignIn(email, password);
+      const idToken = firebaseRes.idToken;
 
-      const firebaseUser = userCredential.user;
-      const idToken = await firebaseUser.getIdToken();
-
-      // Sync with cloud Render backend
+      // 2. Sync session with cloud Render backend & Neon Postgres DB
       try {
         const res = await axios.post(`${BACKEND_API_URL}/auth/google`, {
           id_token: idToken
@@ -544,8 +529,8 @@ export default function App() {
         console.log("Session verified locally");
       }
 
-      setUserName(firebaseUser.displayName || email.split('@')[0]);
-      setEmail(firebaseUser.email || email);
+      setUserName(firebaseRes.displayName || email.split('@')[0]);
+      setEmail(firebaseRes.email || email);
       setIsLoggedIn(true);
     } catch (err: any) {
       console.warn("Firebase Auth note:", err.message);
