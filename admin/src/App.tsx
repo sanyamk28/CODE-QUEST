@@ -1093,6 +1093,44 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: ADD PARENT TOPIC                                       */}
+      {/* ------------------------------------------------------------- */}
+      {showAddTopicModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0b1026] border border-[#1f2c52] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-[#182342] flex justify-between items-center bg-[#0d1430]">
+              <h3 className="font-extrabold text-sm text-white">Create New Curriculum Topic</h3>
+              <button onClick={() => setShowAddTopicModal(false)} className="text-gray-400 hover:text-white font-bold">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">TOPIC TITLE</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Graph Algorithms & Dynamic Trees"
+                  value={newTopicTitle}
+                  onChange={e => setNewTopicTitle(e.target.value)}
+                  className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[#182342] flex justify-end space-x-3 bg-[#0d1430]">
+              <button onClick={() => setShowAddTopicModal(false)} className="px-4 py-2 bg-[#121b3a] text-xs font-bold text-gray-300 rounded-xl">CANCEL</button>
+              <button
+                onClick={() => {
+                  setShowAddTopicModal(false);
+                  setNewTopicTitle('');
+                }}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-blue-500/20"
+              >
+                CREATE TOPIC
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
