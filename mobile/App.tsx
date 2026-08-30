@@ -170,6 +170,13 @@ export default function App() {
   const [selectedMcqOption, setSelectedMcqOption] = useState<string | null>(null);
   const [showMcqExplanation, setShowMcqExplanation] = useState(false);
 
+  // EAS Observe Performance Tracker
+  useEffect(() => {
+    if (typeof performance !== 'undefined' && performance.mark) {
+      performance.mark('app_interactive');
+    }
+  }, []);
+
   // Handle Firebase Login
   const handleLogin = async () => {
     if (!email || !password) {
