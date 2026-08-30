@@ -63,9 +63,11 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboar
 app.include_router(contests.router, prefix="/api/v1/contests", tags=["Contests"])
 
 @app.get("/")
+@app.get("/api/v1")
 def root_index():
     return {
         "message": "Welcome to the Code Quest Cloud API",
+        "version": "v1",
         "status": "online",
         "docs_url": "/docs",
         "health_check": "/api/v1/health"
