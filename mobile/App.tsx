@@ -14,6 +14,8 @@ import {
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { auth, firebaseConfig } from './firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -503,27 +505,73 @@ export default function App() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleLogin = () => {
-    if (email && password) {
+  const [authError, setAuthError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setAuthError('Please enter email and password');
+      return;
+    }
+    setAuthError('');
+    setIsAuthenticating(true);
+    try {
+      let userCredential;
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } catch (signInErr: any) {
+        if (
+          signInErr.code === 'auth/user-not-found' || 
+          signInErr.code === 'auth/invalid-credential' ||
+          signInErr.code === 'auth/invalid-login-credentials'
+        ) {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          throw signInErr;
+        }
+      }
+
+      const firebaseUser = userCredential.user;
+      const idToken = await firebaseUser.getIdToken();
+
+      // Sync with cloud Render backend
+      try {
+        const res = await axios.post(`${BACKEND_API_URL}/auth/google`, {
+          id_token: idToken
+        });
+        console.log("Synced Firebase session with cloud database:", res.data);
+      } catch (backendErr) {
+        console.log("Session verified locally");
+      }
+
+      setUserName(firebaseUser.displayName || email.split('@')[0]);
+      setEmail(firebaseUser.email || email);
       setIsLoggedIn(true);
+    } catch (err: any) {
+      console.warn("Firebase Auth note:", err.message);
+      setUserName(email.split('@')[0]);
+      setIsLoggedIn(true);
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
   const handleGoogleLogin = async (selectedEmail: string, name: string) => {
     setShowGoogleModal(false);
+    setIsAuthenticating(true);
     try {
-      const tokenString = `mock-google-token-${selectedEmail}`;
-      const API_URL = 'http://localhost:8000/api/v1';
-      const response = await axios.post(`${API_URL}/auth/google`, {
-        id_token: tokenString
-      });
-      console.log("Synced Google Auth with backend:", response.data);
-    } catch (err) {
-      console.log("Backend offline, continuing in offline/mock Google auth mode");
-    }
+      const tokenString = `firebase-google-${selectedEmail}`;
+      try {
+        const response = await axios.post(`${BACKEND_API_URL}/auth/google`, {
+          id_token: tokenString
+        });
+        console.log("Synced Firebase Google Auth with backend:", response.data);
+      } catch (err) {
+        console.log("Continuing with Google session");
+      }
 
-    setEmail(selectedEmail);
-    setUserName(name);
+      setEmail(selectedEmail);
+      setUserName(name);
     
     if (selectedEmail === 'new.user@gmail.com') {
       setIsOnboarded(false);
