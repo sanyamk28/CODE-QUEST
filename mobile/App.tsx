@@ -17,7 +17,6 @@ import {
 import axios from 'axios';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import * as DocumentPicker from 'expo-document-picker';
 import { firebaseAuthSignIn } from './firebase';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -816,62 +815,55 @@ export default function App() {
     feedback: 'Strong alignment with Software Engineer track. Good project quantification.'
   });
 
-  const pickAndAnalyzeResume = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-        copyToCacheDirectory: true
-      });
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [customResumeInput, setCustomResumeInput] = useState('');
 
-      if (result.type === 'success') {
-        const fileName = result.name || 'Student_Resume.pdf';
-        setResumeFileName(fileName);
-        setResumeAnalyzing(true);
+  const pickAndAnalyzeResume = (fileName?: string) => {
+    const chosenFile = fileName || customResumeInput || 'Alex_Mercer_FullStack_Resume.pdf';
+    setShowResumeModal(false);
+    setResumeFileName(chosenFile);
+    setResumeAnalyzing(true);
 
-        setTimeout(() => {
-          setResumeAnalyzing(false);
-          const isData = targetRole.toLowerCase().includes('data') || fileName.toLowerCase().includes('data');
-          const isSWE = targetRole.toLowerCase().includes('software') || fileName.toLowerCase().includes('software') || fileName.toLowerCase().includes('swe');
+    setTimeout(() => {
+      setResumeAnalyzing(false);
+      const isData = targetRole.toLowerCase().includes('data') || chosenFile.toLowerCase().includes('data');
+      const isSWE = targetRole.toLowerCase().includes('software') || chosenFile.toLowerCase().includes('software') || chosenFile.toLowerCase().includes('swe');
 
-          if (isData) {
-            setResumeAnalysisResult({
-              score: 92,
-              matchedSkills: ['✓ SQL', '✓ Python', '✓ ETL Pipelines', '✓ PostgreSQL', '✓ Pandas'],
-              missingSkills: ['✕ Apache Spark', '✕ Airflow', '✕ Snowflake'],
-              predictedQuestions: [
-                'How do you handle schema drift and deduplication in a daily ETL pipeline?',
-                'Explain how you optimize partitioning and indexing in analytical databases.'
-              ],
-              feedback: 'Outstanding SQL & database experience. Consider adding distributed processing frameworks.'
-            });
-          } else if (isSWE) {
-            setResumeAnalysisResult({
-              score: 89,
-              matchedSkills: ['✓ Python', '✓ JavaScript', '✓ React', '✓ REST APIs', '✓ Git'],
-              missingSkills: ['✕ Docker', '✕ Kubernetes', '✕ CI/CD Pipelines'],
-              predictedQuestions: [
-                'Can you describe a time you optimized a slow-performing database query or algorithmic bottleneck?',
-                'How do you structure microservice communications and error handling?'
-              ],
-              feedback: 'Great architectural and full-stack background. High ATS parsing compatibility.'
-            });
-          } else {
-            setResumeAnalysisResult({
-              score: 86,
-              matchedSkills: ['✓ Docker', '✓ Linux', '✓ AWS Cloud', '✓ Git', '✓ Python'],
-              missingSkills: ['✕ Terraform', '✕ Prometheus', '✕ Helm'],
-              predictedQuestions: [
-                'Describe how you configure rolling deployments with zero downtime in Kubernetes.',
-                'How do you manage infrastructure as code and state locking in production?'
-              ],
-              feedback: 'Solid infrastructure background. Good keyword density.'
-            });
-          }
-        }, 1200);
+      if (isData) {
+        setResumeAnalysisResult({
+          score: 92,
+          matchedSkills: ['✓ SQL', '✓ Python', '✓ ETL Pipelines', '✓ PostgreSQL', '✓ Pandas'],
+          missingSkills: ['✕ Apache Spark', '✕ Airflow', '✕ Snowflake'],
+          predictedQuestions: [
+            'How do you handle schema drift and deduplication in a daily ETL pipeline?',
+            'Explain how you optimize partitioning and indexing in analytical databases.'
+          ],
+          feedback: 'Outstanding SQL & database experience. Consider adding distributed processing frameworks.'
+        });
+      } else if (isSWE) {
+        setResumeAnalysisResult({
+          score: 89,
+          matchedSkills: ['✓ Python', '✓ JavaScript', '✓ React', '✓ REST APIs', '✓ Git'],
+          missingSkills: ['✕ Docker', '✕ Kubernetes', '✕ CI/CD Pipelines'],
+          predictedQuestions: [
+            'Can you describe a time you optimized a slow-performing database query or algorithmic bottleneck?',
+            'How do you structure microservice communications and error handling?'
+          ],
+          feedback: 'Great architectural and full-stack background. High ATS parsing compatibility.'
+        });
+      } else {
+        setResumeAnalysisResult({
+          score: 86,
+          matchedSkills: ['✓ Docker', '✓ Linux', '✓ AWS Cloud', '✓ Git', '✓ Python'],
+          missingSkills: ['✕ Terraform', '✕ Prometheus', '✕ Helm'],
+          predictedQuestions: [
+            'Describe how you configure rolling deployments with zero downtime in Kubernetes.',
+            'How do you manage infrastructure as code and state locking in production?'
+          ],
+          feedback: 'Solid infrastructure background. Good keyword density.'
+        });
       }
-    } catch (err) {
-      console.warn("Document picker error:", err);
-    }
+    }, 1200);
   };
 
   const renderRoadmap = () => (
@@ -1076,7 +1068,7 @@ export default function App() {
         
         <TouchableOpacity 
           style={styles.uploadDashedBox}
-          onPress={pickAndAnalyzeResume}
+          onPress={() => setShowResumeModal(true)}
           activeOpacity={0.8}
         >
           <Text style={styles.uploadCloudIcon}>☁️</Text>
@@ -1087,7 +1079,7 @@ export default function App() {
 
           <TouchableOpacity 
             style={styles.browseFilesButton}
-            onPress={pickAndAnalyzeResume}
+            onPress={() => setShowResumeModal(true)}
           >
             <Text style={styles.browseFilesButtonText}>
               {resumeAnalyzing ? 'ANALYZING PROFILE & ATS...' : 'BROWSE FILES'}
@@ -1095,6 +1087,66 @@ export default function App() {
           </TouchableOpacity>
         </TouchableOpacity>
       </View>
+
+      {/* Resume Document Browser Modal */}
+      <Modal
+        visible={showResumeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowResumeModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#0d1326', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderTopWidth: 1, borderColor: '#1e293b' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '900' }}>Select Resume Document</Text>
+              <TouchableOpacity onPress={() => setShowResumeModal(false)}>
+                <Text style={{ color: '#94a3b8', fontSize: 16, fontWeight: 'bold' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: '#94a3b8', fontSize: 12, marginBottom: 16 }}>
+              Choose a sample resume or enter your filename to run instant ATS scoring:
+            </Text>
+
+            {[
+              { name: `${userName}_Software_Engineer_Resume.pdf`, role: 'Software Engineer Track (Recommended)' },
+              { name: 'Senior_Data_Engineer_SQL_Pipelines.pdf', role: 'Data Engineer Track' },
+              { name: 'DevOps_Cloud_Infrastructure_Resume.docx', role: 'DevOps & Cloud Track' }
+            ].map(doc => (
+              <TouchableOpacity
+                key={doc.name}
+                style={{ backgroundColor: '#111936', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1e293b', flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => pickAndAnalyzeResume(doc.name)}
+              >
+                <Text style={{ fontSize: 24, marginRight: 12 }}>📄</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '800' }}>{doc.name}</Text>
+                  <Text style={{ color: '#60a5fa', fontSize: 11, marginTop: 2 }}>{doc.role}</Text>
+                </View>
+                <Text style={{ color: '#34d399', fontWeight: '900', fontSize: 12 }}>SELECT</Text>
+              </TouchableOpacity>
+            ))}
+
+            {/* Custom file name */}
+            <View style={{ marginTop: 8 }}>
+              <TextInput
+                placeholder="Or type custom file name (e.g. MyResume_2026.pdf)"
+                placeholderTextColor="#6b7280"
+                value={customResumeInput}
+                onChangeText={setCustomResumeInput}
+                style={{ backgroundColor: '#070b1b', borderWidth: 1, borderColor: '#1e293b', borderRadius: 10, padding: 12, color: '#ffffff', fontSize: 12, marginBottom: 10 }}
+              />
+              {customResumeInput ? (
+                <TouchableOpacity
+                  style={styles.browseFilesButton}
+                  onPress={() => pickAndAnalyzeResume()}
+                >
+                  <Text style={styles.browseFilesButtonText}>ANALYZE CUSTOM RESUME</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Analysis Results Card */}
       <View style={styles.analysisCard}>
