@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token, decode_token
 from app.api.v1.deps import get_current_user, get_current_admin
@@ -14,17 +15,19 @@ router = APIRouter()
 
 @router.post("/register", response_model=TokenResponse)
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
-    # Check if user already exists
-    user = db.query(User).filter(User.email == user_in.email).first()
+    clean_email = user_in.email.strip().lower()
+    
+    # Check if user already exists (case-insensitive)
+    user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            detail="Email is already registered. Please sign in instead."
         )
     
     # Create new user
     new_user = User(
-        email=user_in.email,
+        email=clean_email,
         hashed_password=get_password_hash(user_in.password),
         is_active=True,
         is_admin=False  # All registrations through student portal are strictly Students
@@ -32,6 +35,7 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
     
     # Initialize candidate profile for this specific user
     default_name = user_in.name.strip() if (user_in.name and user_in.name.strip()) else user_in.email.split("@")[0].replace(".", " ").title()
@@ -85,12 +89,14 @@ def log_login_event(db: Session, user_id, auth_provider: str, request: Request):
 
 @router.post("/login", response_model=TokenResponse)
 def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == user_in.email).first()
+    clean_email = user_in.email.strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if not user or not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect email or password"
         )
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

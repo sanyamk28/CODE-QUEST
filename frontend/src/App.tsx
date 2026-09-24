@@ -555,46 +555,58 @@ export default function App() {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+
+    const cleanEmail = authEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setAuthError("Please enter a valid email address (e.g. name@university.edu or name@gmail.com).");
+      return;
+    }
+    if (authPass.length < 6) {
+      setAuthError("Password must be at least 6 characters long.");
+      return;
+    }
+
     setAuthLoading(true);
 
     try {
       if (authMode === 'signup') {
+        const displayName = (authName || '').trim() || cleanEmail.split('@')[0].replace('.', ' ');
         const regRes = await axios.post(`${API_BASE}/auth/register`, {
-          email: authEmail,
-          password: authPass
+          email: cleanEmail,
+          password: authPass,
+          name: displayName
         });
         const newToken = regRes.data.access_token;
         setToken(newToken);
         localStorage.setItem('cq_token', newToken);
-        localStorage.setItem('cq_email', authEmail);
+        localStorage.setItem('cq_email', cleanEmail);
         setIsAdminUser(false);
         localStorage.setItem('cq_is_admin', 'false');
         
-        const displayName = authName || authEmail.split('@')[0].replace('.', ' ');
         setUserName(displayName);
         localStorage.setItem('cq_name', displayName);
-        setUserEmail(authEmail);
+        setUserEmail(cleanEmail);
 
         setShowOnboarding(true);
         setOnboardingStep(1);
       } else {
         const logRes = await axios.post(`${API_BASE}/auth/login`, {
-          email: authEmail,
+          email: cleanEmail,
           password: authPass
         });
         const newToken = logRes.data.access_token;
-        const isAdmin = !!logRes.data.is_admin || authEmail === 'admin@codequest.dev';
+        const isAdmin = !!logRes.data.is_admin || cleanEmail === 'admin@codequest.dev';
         setToken(newToken);
         setIsLoggedIn(true);
         setIsAdminUser(isAdmin);
         localStorage.setItem('cq_token', newToken);
-        localStorage.setItem('cq_email', authEmail);
+        localStorage.setItem('cq_email', cleanEmail);
         localStorage.setItem('cq_is_admin', isAdmin ? 'true' : 'false');
 
-        const displayName = authEmail.split('@')[0].replace('.', ' ');
+        const displayName = logRes.data.name || cleanEmail.split('@')[0].replace('.', ' ');
         setUserName(displayName);
         localStorage.setItem('cq_name', displayName);
-        setUserEmail(authEmail);
+        setUserEmail(cleanEmail);
 
         if (isAdmin) {
           setPortalMode('admin');
@@ -612,11 +624,25 @@ export default function App() {
         } catch (err) {}
       }
     } catch (err: any) {
-      setAuthError(err.response?.data?.detail || "Invalid email or password. Please check your credentials.");
+      let errMsg = "Unable to connect to the backend server. Please verify the server is running.";
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          errMsg = detail;
+        } else if (Array.isArray(detail) && detail.length > 0) {
+          errMsg = detail[0].msg ? `Validation error: ${detail[0].msg}` : JSON.stringify(detail[0]);
+        } else if (typeof detail === 'object') {
+          errMsg = detail.msg || JSON.stringify(detail);
+        }
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      setAuthError(errMsg);
     } finally {
       setAuthLoading(false);
     }
   };
+
 
   // 1-Click Head Administrator Login
   const handleAdminDemoLogin = async () => {
@@ -1830,7 +1856,12 @@ export default function App() {
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Password</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-slate-300">Password</label>
+                  {portalMode === 'candidate' && authMode === 'signup' && (
+                    <span className="text-[10px] text-slate-400">Min. 6 characters</span>
+                  )}
+                </div>
                 <div className="relative">
                   <KeyRound className="h-4 w-4 absolute left-3.5 top-3 text-slate-500" />
                   <input
@@ -1838,11 +1869,13 @@ export default function App() {
                     value={authPass}
                     onChange={(e) => setAuthPass(e.target.value)}
                     placeholder="••••••••"
+                    minLength={6}
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 outline-none focus:border-indigo-500 font-medium"
                     required
                   />
                 </div>
               </div>
+
 
               <button
                 type="submit"
