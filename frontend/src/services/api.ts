@@ -28,3 +28,36 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export interface RandomPuzzleScenario {
+  id: string;
+  title: string;
+  description: string;
+  type: 'puzzle' | 'scenario';
+  difficulty: string;
+  category: string;
+  xp_reward: number;
+  hints: string[];
+  solution?: string;
+  company_tags: string[];
+  options?: string[];
+  sample_approach?: string;
+}
+
+export const getRandomPuzzleOrScenario = async (params?: {
+  type?: 'puzzle' | 'scenario';
+  difficulty?: string;
+  category?: string;
+}): Promise<RandomPuzzleScenario> => {
+  const response = await apiClient.get<RandomPuzzleScenario>('/puzzles/random', { params });
+  return response.data;
+};
+
+export const getRandomScenario = async (difficulty?: string): Promise<RandomPuzzleScenario> => {
+  return getRandomPuzzleOrScenario({ type: 'scenario', difficulty });
+};
+
+export const getRandomPuzzle = async (difficulty?: string): Promise<RandomPuzzleScenario> => {
+  return getRandomPuzzleOrScenario({ type: 'puzzle', difficulty });
+};
+

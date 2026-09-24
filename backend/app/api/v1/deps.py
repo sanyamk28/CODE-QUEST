@@ -57,3 +57,29 @@ def get_current_admin(
             detail="The user does not have enough privileges"
         )
     return current_user
+
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="api/v1/auth/login",
+    auto_error=False
+)
+
+from typing import Optional
+
+def get_current_user_optional(
+    db: Session = Depends(get_db),
+    token: Optional[str] = Depends(oauth2_scheme_optional)
+) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+        if not payload:
+            return None
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        import uuid
+        return db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+    except Exception:
+        return None
+

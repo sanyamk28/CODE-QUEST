@@ -528,4 +528,19 @@ class ResumeBulletRewriteResponse(BaseModel):
     key_metrics_added: List[str] = []
     action_verb: str
 
+class RandomPuzzleScenarioResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    type: str  # "puzzle" | "scenario"
+    difficulty: str
+    category: str
+    xp_reward: int
+    hints: List[str] = []
+    solution: Optional[str] = None
+    company_tags: List[str] = []
+    options: Optional[List[str]] = None
+    sample_approach: Optional[str] = None
+
+
 
