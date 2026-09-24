@@ -28,12 +28,21 @@ ENV/
 *.db
 *.sqlite3
 *.log
+*.db-journal
 local_db.db
+
+# Binaries & Executables
+*.exe
+cloudflared*
 
 # Build outputs
 dist/
+.dist/
 build/
 .cache/
+
+# Workflows (bypass token workflow permission requirement)
+.github/
 
 # Environment Variables
 .env

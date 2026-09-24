@@ -342,6 +342,8 @@ class ResumeAnalysis(Base):
     formatting_feedback = Column(Text, nullable=True)
     role_alignment = Column(String, nullable=True)
     suggestions = Column(JSON, default=list)
+    score_breakdown = Column(JSON, default=dict)
+    metrics = Column(JSON, default=dict)
 
     # Relationship
     resume = relationship("Resume", back_populates="analysis")
@@ -471,3 +473,74 @@ class LoginHistory(Base):
 
     # Relationship
     user = relationship("User", back_populates="login_histories")
+
+
+class AnalyticsEvent(Base):
+    __tablename__ = "analytics_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    metadata_json = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationship
+    user = relationship("User", backref="analytics_events")
+
+
+class BattleRoom(Base):
+    __tablename__ = "battle_rooms"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    room_code = Column(String(10), unique=True, index=True, nullable=False)
+    host_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    problem_id = Column(UUID(as_uuid=True), ForeignKey("questions.id", ondelete="SET NULL"), nullable=True)
+    status = Column(String, default="waiting")  # waiting, active, completed, closed
+    winner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    max_players = Column(Integer, default=4)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)
+    ended_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    host = relationship("User", foreign_keys=[host_id])
+    winner = relationship("User", foreign_keys=[winner_id])
+    problem = relationship("Question")
+    participants = relationship("BattleParticipant", back_populates="room", cascade="all, delete-orphan")
+    submissions = relationship("BattleSubmission", back_populates="room", cascade="all, delete-orphan")
+
+
+class BattleParticipant(Base):
+    __tablename__ = "battle_participants"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    room_id = Column(UUID(as_uuid=True), ForeignKey("battle_rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    has_passed = Column(Boolean, default=False)
+    score = Column(Integer, default=0)
+    joined_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    room = relationship("BattleRoom", back_populates="participants")
+    user = relationship("User")
+
+
+class BattleSubmission(Base):
+    __tablename__ = "battle_submissions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    room_id = Column(UUID(as_uuid=True), ForeignKey("battle_rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    code = Column(Text, nullable=False)
+    language = Column(String, default="python")
+    is_correct = Column(Boolean, default=False)
+    test_cases_passed = Column(Integer, default=0)
+    total_test_cases = Column(Integer, default=0)
+    execution_time = Column(Float, default=0.0)
+    compiler_output = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    room = relationship("BattleRoom", back_populates="submissions")
+    user = relationship("User")
+

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
@@ -7,7 +7,8 @@ from datetime import datetime
 
 class UserRegister(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=8, description="Password must be at least 8 characters long")
+    name: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -17,12 +18,19 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    is_admin: bool = False
+    is_new_user: bool = False
+    user_id: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
 
 class TokenRefresh(BaseModel):
     refresh_token: str
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
+    email: Optional[str] = None
+    name: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: UUID
@@ -31,8 +39,7 @@ class UserResponse(BaseModel):
     is_admin: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- PROFILE SCHEMAS ---
 
@@ -59,7 +66,7 @@ class ProfileResponse(BaseModel):
     degree: Optional[str]
     graduation_year: Optional[int]
     target_role: Optional[str]
-    experience_level: str
+    experience_level: Optional[str] = "beginner"
     target_companies: List[str]
     prep_duration: int
     daily_study_goal: int
@@ -73,8 +80,7 @@ class ProfileResponse(BaseModel):
     cs_fundamentals_level: float
     communication_level: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- QUESTION / TOPIC SCHEMAS ---
 
@@ -83,8 +89,7 @@ class TopicResponse(BaseModel):
     name: str
     description: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SubtopicResponse(BaseModel):
     id: UUID
@@ -92,8 +97,7 @@ class SubtopicResponse(BaseModel):
     name: str
     description: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuestionListResponse(BaseModel):
     id: UUID
@@ -101,12 +105,11 @@ class QuestionListResponse(BaseModel):
     difficulty: str
     type: str
     xp_reward: int
-    company_tags: List[str]
-    topic_name: str
-    subtopic_name: str
+    company_tags: List[str] = []
+    topic_name: Optional[str] = "DSA"
+    subtopic_name: Optional[str] = "Algorithms"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # MCQ Details
 class MCQDetailResponse(BaseModel):
@@ -116,8 +119,7 @@ class MCQDetailResponse(BaseModel):
     option_d: str
     time_limit: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Coding Details
 class CodingDetailResponse(BaseModel):
@@ -129,16 +131,14 @@ class CodingDetailResponse(BaseModel):
     code_templates: Dict[str, str]
     hints: List[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # SQL Details
 class SQLDetailResponse(BaseModel):
     schema_description: str
     dataset_tables: Dict[str, Any]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuestionDetailResponse(BaseModel):
     id: UUID
@@ -155,8 +155,7 @@ class QuestionDetailResponse(BaseModel):
     coding_detail: Optional[CodingDetailResponse] = None
     sql_detail: Optional[SQLDetailResponse] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- SUBMISSION SCHEMAS ---
 
@@ -197,8 +196,7 @@ class SubmissionResponse(BaseModel):
     test_cases_passed: Optional[int] = None
     total_test_cases: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- ASSESSMENT SCHEMAS ---
 
@@ -211,8 +209,7 @@ class AssessmentListResponse(BaseModel):
     passing_score: int
     negative_marking: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AssessmentDetailResponse(BaseModel):
     id: UUID
@@ -222,8 +219,7 @@ class AssessmentDetailResponse(BaseModel):
     duration_minutes: int
     questions: List[QuestionListResponse]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AssessmentSubmitRequest(BaseModel):
     # Mapping of question_id (str) to attempt dictionary e.g. {"selected_option": "A"} or {"code": "...", "language": "python"}
@@ -269,13 +265,45 @@ class InterviewMessageResponse(BaseModel):
 
 # --- RESUME ANALYSIS SCHEMAS ---
 
+class ATSScoreBreakdown(BaseModel):
+    skills_score: int
+    impact_score: int
+    completeness_score: int
+    formatting_score: int
+
+class ATSContactInfo(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    linkedin: Optional[str] = None
+    github: Optional[str] = None
+    portfolio: Optional[str] = None
+
+class ATSMetrics(BaseModel):
+    word_count: int
+    estimated_pages: int
+    action_verbs_count: int
+    quantified_metrics_count: int
+    sections_found: List[str]
+    sections_missing: List[str]
+    contact_info: ATSContactInfo
+
+class ATSBulletImprovement(BaseModel):
+    original: str
+    improved: str
+    reason: str
+
 class ResumeAnalysisResponse(BaseModel):
     ats_score: int
+    target_role: Optional[str] = "Software Engineer"
     matched_skills: List[str]
     missing_skills: List[str]
     formatting_feedback: str
     role_alignment: str
     suggestions: List[str]
+    score_breakdown: Optional[ATSScoreBreakdown] = None
+    metrics: Optional[ATSMetrics] = None
+    bullet_improvements: Optional[List[ATSBulletImprovement]] = None
+    jd_match_score: Optional[int] = None
 
 # --- ROADMAP & PROJECT SCHEMAS ---
 
@@ -286,8 +314,7 @@ class RoadmapResponse(BaseModel):
     difficulty: str
     steps: List[Any]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProjectResponse(BaseModel):
     id: UUID
@@ -300,8 +327,7 @@ class ProjectResponse(BaseModel):
     interview_questions: List[Dict[str, Any]]
     resume_bullet_suggestions: List[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StudentAdminResponse(BaseModel):
     id: str
@@ -315,8 +341,7 @@ class StudentAdminResponse(BaseModel):
     xp: int
     readiness_score: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TopicCreate(BaseModel):
     name: str
@@ -331,8 +356,7 @@ class SubtopicResponse(BaseModel):
     name: str
     description: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TopicDetailResponse(BaseModel):
     id: UUID
@@ -340,8 +364,7 @@ class TopicDetailResponse(BaseModel):
     description: Optional[str] = None
     subtopics: List[SubtopicResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StudentSubmissionDetail(BaseModel):
     id: UUID
@@ -351,8 +374,7 @@ class StudentSubmissionDetail(BaseModel):
     is_correct: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StudentProgressResponse(BaseModel):
     id: str
@@ -371,8 +393,7 @@ class StudentProgressResponse(BaseModel):
     submissions: List[StudentSubmissionDetail] = []
     logins: List['LoginLogDetail'] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class LoginLogDetail(BaseModel):
     id: UUID
@@ -381,5 +402,130 @@ class LoginLogDetail(BaseModel):
     auth_provider: str
     device_info: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+# --- ANALYTICS SCHEMAS ---
+
+class AnalyticsEventCreate(BaseModel):
+    event_type: str
+    metadata: Dict[str, Any] = {}
+
+class AnalyticsEventResponse(BaseModel):
+    id: UUID
+    user_id: Optional[UUID] = None
+    event_type: str
+    metadata_json: Dict[str, Any] = {}
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AnalyticsSummaryResponse(BaseModel):
+    total_enrolled_users: int
+    daily_active_users: int
+    weekly_active_users: int
+    average_readiness_score: float
+    feature_adoption_rates: Dict[str, int]
+    roadmap_dropoff_stats: Dict[str, int]
+    recent_events: List[AnalyticsEventResponse] = []
+
+# --- BATTLE ROOM SCHEMAS ---
+
+class BattleRoomCreate(BaseModel):
+    problem_id: Optional[str] = None
+    difficulty: Optional[str] = "Easy"
+    max_players: int = 4
+
+class BattleRoomJoin(BaseModel):
+    room_code: str
+
+class BattleParticipantResponse(BaseModel):
+    user_id: UUID
+    user_name: str
+    has_passed: bool
+    score: int
+    joined_at: datetime
+
+class BattleProblemDetail(BaseModel):
+    id: UUID
+    title: str
+    description: str
+    difficulty: str
+    type: str = "coding"
+    xp_reward: int = 25
+    company_tags: List[str] = []
+    template_code: Optional[str] = None
+    input_format: Optional[str] = None
+    output_format: Optional[str] = None
+    constraints: Optional[str] = None
+
+class BattleRoomResponse(BaseModel):
+    id: UUID
+    room_code: str
+    host_id: UUID
+    problem_id: Optional[UUID] = None
+    status: str
+    winner_id: Optional[UUID] = None
+    winner_name: Optional[str] = None
+    max_players: int
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    participants: List[BattleParticipantResponse] = []
+    problem: Optional[QuestionListResponse] = None
+    problem_detail: Optional[BattleProblemDetail] = None
+
+class BattleSubmitRequest(BaseModel):
+    code: str
+    language: str = "python"
+
+class BattleSubmitResponse(BaseModel):
+    is_correct: bool
+    test_cases_passed: int
+    total_test_cases: int
+    is_winner: bool
+    execution_time: float
+    compiler_output: Optional[str] = None
+
+# --- PUZZLE SCHEMAS ---
+
+class PuzzleListResponse(BaseModel):
+    id: UUID
+    title: str
+    description: str
+    difficulty: str
+    category: str
+    xp_reward: int
+
+class PuzzleDetailResponse(BaseModel):
+    id: UUID
+    title: str
+    description: str
+    difficulty: str
+    category: str
+    xp_reward: int
+    hints: List[str] = []
+    has_solution: bool = True
+    company_tags: List[str] = []
+
+class PuzzleCheckRequest(BaseModel):
+    solution_text: str
+
+class PuzzleCheckResponse(BaseModel):
+    is_correct: bool
+    score: int
+    explanation: Optional[str] = None
+
+# --- RESUME ENHANCER SCHEMAS ---
+
+class ResumeBulletRewriteRequest(BaseModel):
+    bullet_text: str
+    target_role: Optional[str] = "Software Engineer"
+
+class ResumeBulletRewriteResponse(BaseModel):
+    original: str
+    improved: str
+    framework: str = "Google X-Y-Z (Accomplished [X], measured by [Y], by doing [Z])"
+    key_metrics_added: List[str] = []
+    action_verb: str
+
+

@@ -17,6 +17,66 @@ def seed_database():
         # Create all tables first
         Base.metadata.create_all(bind=engine)
         
+        # 0. SEED DEFAULT USERS (ADMIN & DEMO CANDIDATE)
+        from app.core.security import get_password_hash
+        admin_email = "admin@codequest.dev"
+        admin_user = db.query(models.User).filter(models.User.email == admin_email).first()
+        if not admin_user:
+            admin_user = models.User(
+                email=admin_email,
+                hashed_password=get_password_hash("Admin@1234"),
+                is_active=True,
+                is_admin=True
+            )
+            db.add(admin_user)
+            db.commit()
+            db.refresh(admin_user)
+            
+            admin_profile = models.Profile(
+                user_id=admin_user.id,
+                name="Head Administrator",
+                college="CodeQuest HQ",
+                degree="System Operations",
+                target_role="Platform Administrator",
+                xp=5000,
+                streak=99,
+                readiness_score=100.0,
+                skills=["System Architecture", "Security", "DevOps", "Analytics", "PostgreSQL"],
+                target_companies=["CodeQuest"]
+            )
+            db.add(admin_profile)
+            db.commit()
+            print("Default Administrator created: admin@codequest.dev (Pass: Admin@1234)")
+
+        candidate_email = "alex.chen@codequest.dev"
+        candidate_user = db.query(models.User).filter(models.User.email == candidate_email).first()
+        if not candidate_user:
+            candidate_user = models.User(
+                email=candidate_email,
+                hashed_password=get_password_hash("pass123"),
+                is_active=True,
+                is_admin=False
+            )
+            db.add(candidate_user)
+            db.commit()
+            db.refresh(candidate_user)
+
+            cand_profile = models.Profile(
+                user_id=candidate_user.id,
+                name="Alex Chen",
+                college="Stanford University",
+                degree="B.Tech Computer Science",
+                target_role="Software Engineer",
+                xp=540,
+                streak=7,
+                readiness_score=78.5,
+                skills=["Python", "SQL", "Data Structures (DSA)", "FastAPI", "React"],
+                target_companies=["Google", "Amazon", "Microsoft"]
+            )
+            db.add(cand_profile)
+            db.commit()
+            print("Default Candidate created: alex.chen@codequest.dev (Pass: pass123)")
+
         # 1. SEED TOPICS & SUBTOPICS
         topics_data = {
             "DSA": ["Arrays & Strings", "Two Pointers", "Sliding Window", "Stack & Queue", "Linked Lists", "Trees & BSTs", "Heaps", "Graphs", "Greedy & Dynamic Programming", "Bit Manipulation"],
@@ -424,22 +484,25 @@ def seed_database():
         resource_subtopics = list(subtopic_map.keys())
         for i in range(50):
             sub_name = resource_subtopics[i % len(resource_subtopics)]
-            res = models.Project( # We can seed resource details in the projects table or mock a simple project
-                title=f"Learning Resource: Complete Guide to {sub_name} #{i+1}",
-                description=f"A curated list of articles, tutorials, and cheat sheets to master {sub_name}.",
-                difficulty="Beginner" if i % 2 == 0 else "Intermediate",
-                role_tag="General Prep",
-                dataset_url="https://github.com/placementforge/resources",
-                architecture_steps=[
-                    f"Read official documentation on {sub_name}",
-                    f"Solve top 10 interview questions of {sub_name}",
-                    "Take the topic mock MCQ test"
-                ],
-                interview_questions=[{"question": f"Explain the core components of {sub_name}?", "answer": "Detailed walkthrough in guide."}],
-                resume_bullet_suggestions=[f"Demonstrated mastery in {sub_name} through targeted assessments."]
-            )
-            db.add(res)
-            db.commit()
+            p_title = f"Learning Resource: Complete Guide to {sub_name} #{i+1}"
+            exist = db.query(models.Project).filter(models.Project.title == p_title).first()
+            if not exist:
+                res = models.Project(
+                    title=p_title,
+                    description=f"A curated list of articles, tutorials, and cheat sheets to master {sub_name}.",
+                    difficulty="Beginner" if i % 2 == 0 else "Intermediate",
+                    role_tag="General Prep",
+                    dataset_url="https://github.com/placementforge/resources",
+                    architecture_steps=[
+                        f"Read official documentation on {sub_name}",
+                        f"Solve top 10 interview questions of {sub_name}",
+                        "Take the topic mock MCQ test"
+                    ],
+                    interview_questions=[{"question": f"Explain the core components of {sub_name}?", "answer": "Detailed walkthrough in guide."}],
+                    resume_bullet_suggestions=[f"Demonstrated mastery in {sub_name} through targeted assessments."]
+                )
+                db.add(res)
+        db.commit()
 
         print("50 Resources seeded.")
 

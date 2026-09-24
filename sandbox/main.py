@@ -4,7 +4,6 @@ import time
 import subprocess
 import tempfile
 import shutil
-import pwd
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel
@@ -27,15 +26,18 @@ class CodeExecutionResponse(BaseModel):
     exit_code: Optional[int] = None
     execution_time: float
 
-# Resolve sandbox_user UID and GID
-try:
-    user_info = pwd.getpwnam("sandbox_user")
-    SANDBOX_UID = user_info.pw_uid
-    SANDBOX_GID = user_info.pw_gid
-except KeyError:
-    # Fallback to current process user if running locally/development outside Docker
-    SANDBOX_UID = os.getuid() if hasattr(os, "getuid") else 0
-    SANDBOX_GID = os.getgid() if hasattr(os, "getgid") else 0
+# Resolve sandbox_user UID and GID safely across platforms
+SANDBOX_UID = 0
+SANDBOX_GID = 0
+if os.name != "nt":
+    try:
+        import pwd
+        user_info = pwd.getpwnam("sandbox_user")
+        SANDBOX_UID = user_info.pw_uid
+        SANDBOX_GID = user_info.pw_gid
+    except (ImportError, KeyError):
+        SANDBOX_UID = os.getuid() if hasattr(os, "getuid") else 0
+        SANDBOX_GID = os.getgid() if hasattr(os, "getgid") else 0
 
 def demote_process():
     """Sets the uid/gid of the subprocess to the sandbox user for security."""

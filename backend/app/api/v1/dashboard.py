@@ -36,6 +36,14 @@ def get_user_progress(
     profile.readiness_score = min(max(base_score, 10.0), 99.0)
     db.commit()
     db.refresh(profile)
+
+    from app.core.analytics import record_analytics_event
+    record_analytics_event(
+        db=db,
+        event_type="readiness_score_calculated",
+        user_id=current_user.id,
+        metadata={"readiness_score": profile.readiness_score, "streak": profile.streak, "xp": profile.xp}
+    )
     
     return profile
 
@@ -75,15 +83,17 @@ def get_dashboard_recommendations(
     # 2. Query recommended questions matching target role
     recommended_questions = []
     
+    from sqlalchemy import select
+
     # Select problems user has not solved yet
-    solved_qids = db.query(models.Submission.question_id).filter(
+    solved_qids_stmt = select(models.Submission.question_id).filter(
         models.Submission.user_id == current_user.id,
         models.Submission.is_correct == True
-    ).subquery()
+    )
     
     # Find matching questions
     rec_qs = db.query(models.Question).filter(
-        ~models.Question.id.in_(solved_qids)
+        ~models.Question.id.in_(solved_qids_stmt)
     ).limit(3).all()
     
     for rq in rec_qs:

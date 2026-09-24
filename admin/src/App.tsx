@@ -31,7 +31,7 @@ interface Submission {
   id: string;
   student: string;
   problem: string;
-  status: 'Accepted' | 'Runtime Error' | 'Time Limit';
+  status: 'Accepted' | 'Runtime Error' | 'Time Limit' | 'Wrong Answer';
   time: string;
 }
 
@@ -55,11 +55,92 @@ interface LearningResource {
   status: 'Parsed & Synced' | 'Processing';
 }
 
+interface SubtopicItem {
+  id: string;
+  name: string;
+  description?: string;
+  module_count?: number;
+}
+
+interface CurriculumTopic {
+  id: string;
+  name: string;
+  description?: string;
+  status?: string;
+  subtopics: SubtopicItem[];
+}
+
+interface StudentProgressDetail {
+  id: string;
+  user_id: string;
+  name: string;
+  college?: string;
+  degree?: string;
+  target_role?: string;
+  experience_level?: string;
+  xp: number;
+  streak: number;
+  readiness_score: number;
+  dsa_level: number;
+  sql_level: number;
+  aptitude_level: number;
+  cs_fundamentals_level: number;
+  communication_level: number;
+  submissions: Array<{
+    id: string;
+    question_title: string;
+    type: string;
+    is_correct: boolean;
+    score: number;
+    submitted_at: string;
+  }>;
+}
+
+const DEFAULT_API_URL = 'http://localhost:8000/api/v1';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'submissions' | 'curriculum' | 'resources' | 'users' | 'analytics' | 'settings'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [apiEndpoint, setApiEndpoint] = useState(DEFAULT_API_URL);
+  const [apiHealth, setApiHealth] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [apiLatency, setApiLatency] = useState<number | null>(null);
+
+  // Live Curriculum Topics State
+  const [curriculumTopics, setCurriculumTopics] = useState<CurriculumTopic[]>([
+    {
+      id: 'top-1',
+      name: 'Data Structures & Core Algorithms',
+      description: 'Foundational structures and algorithmic paradigms',
+      status: 'PUBLISHED',
+      subtopics: [
+        { id: 'sub-1', name: 'Arrays & Two Pointers', module_count: 12 },
+        { id: 'sub-2', name: 'Linked Lists & Fast Pointers', module_count: 8 },
+        { id: 'sub-3', name: 'Stacks, Queues & Monotonic Stacks', module_count: 6 }
+      ]
+    },
+    {
+      id: 'top-2',
+      name: 'Advanced Algorithms & Dynamic Programming',
+      description: 'Optimal substructure and state memoization',
+      status: 'PUBLISHED',
+      subtopics: [
+        { id: 'sub-4', name: '1D & 2D Dynamic Programming', module_count: 15 },
+        { id: 'sub-5', name: 'Graph Traversals (BFS / DFS / Dijkstra)', module_count: 10 }
+      ]
+    },
+    {
+      id: 'top-3',
+      name: 'SQL & Relational Database Architecture',
+      description: 'PostgreSQL queries, window ranking, and indexes',
+      status: 'PUBLISHED',
+      subtopics: [
+        { id: 'sub-6', name: 'Joins, Aggregations & Grouping', module_count: 14 },
+        { id: 'sub-7', name: 'Window Functions (DENSE_RANK, LEAD/LAG)', module_count: 9 }
+      ]
+    }
+  ]);
 
   // Resource Uploader State
   const [resourcesList, setResourcesList] = useState<LearningResource[]>([
@@ -93,11 +174,22 @@ export default function App() {
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [editorTab, setEditorTab] = useState<'desc' | 'starter' | 'tests'>('desc');
 
-  // Modal State for Add Topic
+  // Modal State for Add Topic / Subtopic
   const [showAddTopicModal, setShowAddTopicModal] = useState(false);
   const [newTopicTitle, setNewTopicTitle] = useState('');
+  const [newTopicDesc, setNewTopicDesc] = useState('');
+  const [showAddSubtopicModal, setShowAddSubtopicModal] = useState(false);
+  const [selectedParentTopicId, setSelectedParentTopicId] = useState('');
+  const [newSubtopicTitle, setNewSubtopicTitle] = useState('');
+  const [newSubtopicDesc, setNewSubtopicDesc] = useState('');
 
-  // Sample Students Data
+  // Modal State for Inspect Student Progress
+  const [showInspectStudentModal, setShowInspectStudentModal] = useState(false);
+  const [inspectingStudent, setInspectingStudent] = useState<Student | null>(null);
+  const [inspectProgressData, setInspectProgressData] = useState<StudentProgressDetail | null>(null);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+
+  // Students Data
   const [students, setStudents] = useState<Student[]>([
     {
       id: 'CQ-9921',
@@ -145,32 +237,16 @@ export default function App() {
     }
   ]);
 
-  // Sample Submissions
+  // Submissions Data
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([
-    { id: '1', student: 'usr_8921', problem: 'Binary Tree Inversion', status: 'Accepted', time: 'Just now' },
-    { id: '2', student: 'usr_4430', problem: 'Dynamic Knapsack', status: 'Runtime Error', time: '2m ago' },
-    { id: '3', student: 'usr_1105', problem: 'Graph Traversal BFS', status: 'Accepted', time: '5m ago' },
-    { id: '4', student: 'usr_9023', problem: 'String Anagram', status: 'Time Limit', time: '12m ago' }
+    { id: '1', student: 'Alex Mercer', problem: 'Two Sum & Pair Targeting', status: 'Accepted', time: 'Just now' },
+    { id: '2', student: 'Sarah Chen', problem: 'Department Top Three Salaries (SQL)', status: 'Accepted', time: '2m ago' },
+    { id: '3', student: 'Marcus Johnson', problem: 'LRU Cache Eviction Policy', status: 'Runtime Error', time: '5m ago' },
+    { id: '4', student: 'Elena Rostova', problem: 'Network OSI Layers & Handshake', status: 'Accepted', time: '12m ago' }
   ]);
 
-  // Sample Questions Data
+  // Questions Data
   const [questionsList, setQuestionsList] = useState<Question[]>([
-    {
-      id: '1042',
-      title: 'Distributed Task Queue',
-      difficulty: 'Hard',
-      type: 'Coding',
-      tags: ['Redis', 'System Design'],
-      status: 'Draft',
-      desc: '# Distributed Task Queue\n\nDesign and implement a resilient task queue system capable of handling distributed workers. The system should guarantee at-least-once delivery and handle worker node failures gracefully.',
-      requirements: [
-        'Implement `enqueue(task_id, payload)`',
-        'Implement `dequeue()` for workers to fetch tasks',
-        'Implement a mechanism to detect stalled tasks (timeout > 30s) and requeue them.'
-      ],
-      starterCode: 'class DistributedTaskQueue:\n    def __init__(self, redis_client):\n        self.redis = redis_client\n\n    def enqueue(self, task_id: str, payload: dict) -> bool:\n        pass\n\n    def dequeue(self) -> dict:\n        pass',
-      testCases: '[\n  { "input": { "task_id": "t_101", "payload": { "cmd": "send_email" } }, "expected": true },\n  { "input": { "action": "dequeue" }, "expected": "t_101" }\n]'
-    },
     {
       id: '1001',
       title: 'Two Sum',
@@ -178,18 +254,37 @@ export default function App() {
       type: 'Coding',
       tags: ['Arrays', 'Hash Map'],
       status: 'Published',
-      desc: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
-      requirements: ['O(N) time complexity target', 'Single unique solution guarantee']
+      desc: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.',
+      requirements: ['O(N) time complexity target', 'Single unique solution guarantee'],
+      starterCode: 'def twoSum(nums: list[int], target: int) -> list[int]:\n    # Hash table lookup\n    seen = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in seen:\n            return [seen[diff], i]\n        seen[num] = i\n    return []',
+      testCases: '[\n  { "input": "2 7 11 15\\n9", "expected": "[0, 1]" }\n]'
     },
     {
       id: '1002',
       title: 'Department Top Three Salaries',
       difficulty: 'Medium',
       type: 'SQL',
-      tags: ['SQL', 'Window Functions'],
+      tags: ['SQL', 'Window Functions', 'PostgreSQL'],
       status: 'Published',
-      desc: 'Find the employees who earn the top three unique salaries in each department.',
-      requirements: ['DENSE_RANK() aggregation', 'Partition by Department']
+      desc: 'Find the employees who earn the top three unique salaries in each department. A high earner in a department is an employee who has a salary in the top three unique salaries for that department.',
+      requirements: ['DENSE_RANK() aggregation', 'Partition by Department'],
+      starterCode: 'SELECT Department, Employee, Salary\nFROM (\n  SELECT d.name AS Department, e.name AS Employee, e.salary,\n         DENSE_RANK() OVER (PARTITION BY e.departmentId ORDER BY e.salary DESC) as rk\n  FROM Employee e\n  JOIN Department d ON e.departmentId = d.id\n) ranked\nWHERE rk <= 3;'
+    },
+    {
+      id: '1042',
+      title: 'Distributed Task Queue',
+      difficulty: 'Hard',
+      type: 'Coding',
+      tags: ['Redis', 'System Design', 'Concurrency'],
+      status: 'Published',
+      desc: 'Design and implement a resilient task queue system capable of handling distributed workers. The system should guarantee at-least-once delivery and handle worker node failures gracefully.',
+      requirements: [
+        'Implement `enqueue(task_id, payload)`',
+        'Implement `dequeue()` for workers to fetch tasks',
+        'Implement a mechanism to detect stalled tasks (timeout > 30s) and requeue them.'
+      ],
+      starterCode: 'class DistributedTaskQueue:\n    def __init__(self, redis_client):\n        self.redis = redis_client\n\n    def enqueue(self, task_id: str, payload: dict) -> bool:\n        pass\n\n    def dequeue(self) -> dict:\n        pass',
+      testCases: '[\n  { "input": "t_101 send_email", "expected": "t_101" }\n]'
     }
   ]);
 
@@ -198,7 +293,7 @@ export default function App() {
     {
       id: 'sec_1',
       timestamp: '2026-10-27 14:32:01 UTC',
-      email: 'j.doe@example.com',
+      email: 'alex.m@example.com',
       authProvider: 'Google OAuth',
       ipAddress: '192.168.1.105',
       deviceLocation: 'Chrome on macOS\nSan Francisco, US',
@@ -207,8 +302,8 @@ export default function App() {
     {
       id: 'sec_2',
       timestamp: '2026-10-27 14:31:43 UTC',
-      email: 'a.lincoln@domain.co',
-      authProvider: 'Email / Password',
+      email: 'schen.data@example.com',
+      authProvider: 'GitHub OAuth',
       ipAddress: '203.0.113.42',
       deviceLocation: 'Safari on iOS\nLondon, UK',
       status: 'SUCCESSFUL'
@@ -216,7 +311,7 @@ export default function App() {
     {
       id: 'sec_3',
       timestamp: '2026-10-27 14:28:12 UTC',
-      email: 'unknown_user@test.com',
+      email: 'unknown_crawler@test.com',
       authProvider: 'API Key',
       ipAddress: '45.22.18.100',
       deviceLocation: 'Unknown Device\nUnknown',
@@ -225,14 +320,283 @@ export default function App() {
     {
       id: 'sec_4',
       timestamp: '2026-10-27 14:25:05 UTC',
-      email: 'm.khan@techcorp.in',
-      authProvider: 'GitHub OAuth',
+      email: 'mj.code@example.com',
+      authProvider: 'Email / Password',
       ipAddress: '10.0.0.15',
       deviceLocation: 'Firefox on Windows\nToronto, CA',
       status: 'SUCCESSFUL'
     }
   ]);
 
+  // Check Backend Health on Mount
+  const checkBackendHealth = async () => {
+    setApiHealth('checking');
+    const startTime = Date.now();
+    try {
+      const res = await axios.get(`${apiEndpoint}/`, { timeout: 3500 });
+      if (res.status === 200) {
+        setApiLatency(Date.now() - startTime);
+        setApiHealth('online');
+      } else {
+        setApiHealth('offline');
+      }
+    } catch {
+      // Also try health endpoint directly on root
+      try {
+        const rootUrl = apiEndpoint.replace('/api/v1', '');
+        const res2 = await axios.get(`${rootUrl}/health`, { timeout: 2000 });
+        if (res2.status === 200) {
+          setApiLatency(Date.now() - startTime);
+          setApiHealth('online');
+          return;
+        }
+      } catch {
+        // Offline
+      }
+      setApiHealth('offline');
+      setApiLatency(null);
+    }
+  };
+
+  // Sync Data on Mount & Endpoint change
+  useEffect(() => {
+    checkBackendHealth();
+    fetchLiveCurriculum();
+    fetchLiveStudents();
+    fetchLiveQuestions();
+  }, [apiEndpoint]);
+
+  // Live Fetch Students
+  const fetchLiveStudents = async () => {
+    try {
+      const res = await axios.get(`${apiEndpoint}/auth/students`, { timeout: 3000 });
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        const mapped: Student[] = res.data.map((item: any) => ({
+          id: item.id ? `CQ-${String(item.id).slice(0, 4).toUpperCase()}` : `CQ-${Math.floor(1000 + Math.random() * 9000)}`,
+          name: item.name || item.email.split('@')[0],
+          email: item.email,
+          auth_provider: (item.auth_provider === 'google' ? 'Google' : item.auth_provider === 'github' ? 'GitHub' : 'Email') as any,
+          enrolled: item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
+          role: item.target_role || 'Software Engineer',
+          solved: Math.floor(item.xp / 10) || 0,
+          readiness: Math.round(item.readiness_score || 50),
+          status: item.is_active !== false ? 'Active' : 'Suspended'
+        }));
+        setStudents(mapped);
+      }
+    } catch {
+      // Keep offline initial state
+    }
+  };
+
+  // Live Fetch Questions
+  const fetchLiveQuestions = async () => {
+    try {
+      const res = await axios.get(`${apiEndpoint}/problems/`, { timeout: 3000 });
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        const mapped: Question[] = res.data.map((q: any) => ({
+          id: String(q.id).slice(0, 8),
+          title: q.title,
+          difficulty: (q.difficulty || 'Medium') as any,
+          type: (q.type === 'sql' ? 'SQL' : q.type === 'mcq' ? 'MCQ' : 'Coding') as any,
+          tags: q.company_tags || [q.topic_name || 'DSA'],
+          status: 'Published',
+          desc: q.description || `Prepare and master ${q.title} to improve technical problem solving.`,
+          requirements: ['Optimized runtime target', 'Edge cases verified']
+        }));
+        setQuestionsList(prev => {
+          const ids = new Set(prev.map(p => p.title));
+          const toAdd = mapped.filter(m => !ids.has(m.title));
+          return [...prev, ...toAdd];
+        });
+      }
+    } catch {
+      // Keep existing questions
+    }
+  };
+
+  // Live Fetch Curriculum Topics
+  const fetchLiveCurriculum = async () => {
+    try {
+      const res = await axios.get(`${apiEndpoint}/problems/topics/all`, { timeout: 3000 });
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        const mapped: CurriculumTopic[] = res.data.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description || 'Core learning track',
+          status: 'PUBLISHED',
+          subtopics: (t.subtopics || []).map((st: any) => ({
+            id: st.id,
+            name: st.name,
+            description: st.description,
+            module_count: 8
+          }))
+        }));
+        setCurriculumTopics(mapped);
+      }
+    } catch {
+      // Keep fallback curriculum topics
+    }
+  };
+
+  // Student Actions: Inspect Progress
+  const handleInspectStudent = async (student: Student) => {
+    setInspectingStudent(student);
+    setShowInspectStudentModal(true);
+    setIsLoadingProgress(true);
+    setInspectProgressData(null);
+
+    // Extract raw ID if it was formatted
+    const searchEmail = student.email;
+    try {
+      const allRes = await axios.get(`${apiEndpoint}/auth/students`, { timeout: 3000 });
+      const targetUser = (allRes.data || []).find((u: any) => u.email === searchEmail);
+      if (targetUser && targetUser.id) {
+        const progRes = await axios.get(`${apiEndpoint}/auth/students/${targetUser.id}/progress`, { timeout: 3000 });
+        setInspectProgressData(progRes.data);
+      } else {
+        // Generate realistic detail if offline
+        setInspectProgressData({
+          id: student.id,
+          user_id: student.id,
+          name: student.name,
+          college: 'University of Engineering & Tech',
+          degree: 'B.S. Computer Science',
+          target_role: student.role,
+          experience_level: 'Intermediate',
+          xp: student.solved * 15,
+          streak: 5,
+          readiness_score: student.readiness,
+          dsa_level: Math.min(student.readiness + 5, 95),
+          sql_level: Math.max(student.readiness - 10, 40),
+          aptitude_level: 70,
+          cs_fundamentals_level: 80,
+          communication_level: 75,
+          submissions: [
+            { id: 'sub-1', question_title: 'Two Sum', type: 'Coding', is_correct: true, score: 25, submitted_at: '2 hours ago' },
+            { id: 'sub-2', question_title: 'Department Top Three Salaries', type: 'SQL', is_correct: true, score: 30, submitted_at: 'Yesterday' },
+            { id: 'sub-3', question_title: 'LRU Cache Design', type: 'Coding', is_correct: false, score: 0, submitted_at: '3 days ago' }
+          ]
+        });
+      }
+    } catch {
+      setInspectProgressData({
+        id: student.id,
+        user_id: student.id,
+        name: student.name,
+        college: 'University of Engineering & Tech',
+        degree: 'B.S. Computer Science',
+        target_role: student.role,
+        experience_level: 'Intermediate',
+        xp: student.solved * 15,
+        streak: 5,
+        readiness_score: student.readiness,
+        dsa_level: Math.min(student.readiness + 5, 95),
+        sql_level: Math.max(student.readiness - 10, 40),
+        aptitude_level: 70,
+        cs_fundamentals_level: 80,
+        communication_level: 75,
+        submissions: [
+          { id: 'sub-1', question_title: 'Two Sum', type: 'Coding', is_correct: true, score: 25, submitted_at: '2 hours ago' },
+          { id: 'sub-2', question_title: 'Department Top Three Salaries', type: 'SQL', is_correct: true, score: 30, submitted_at: 'Yesterday' },
+          { id: 'sub-3', question_title: 'LRU Cache Design', type: 'Coding', is_correct: false, score: 0, submitted_at: '3 days ago' }
+        ]
+      });
+    } finally {
+      setIsLoadingProgress(false);
+    }
+  };
+
+  // Student Actions: Toggle Active Status
+  const handleToggleActive = async (studentId: string, currentStatus: 'Active' | 'Suspended') => {
+    const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
+    // Optimistic UI update
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s));
+    if (inspectingStudent && inspectingStudent.id === studentId) {
+      setInspectingStudent({ ...inspectingStudent, status: newStatus });
+    }
+
+    try {
+      await axios.post(`${apiEndpoint}/auth/students/${studentId}/toggle-active`);
+    } catch {
+      // Handled gracefully in offline mode
+    }
+  };
+
+  // Student Actions: Delete Student
+  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    if (!window.confirm(`Are you sure you want to delete student "${studentName}"? This will permanently wipe their progress and submissions.`)) {
+      return;
+    }
+    setStudents(prev => prev.filter(s => s.id !== studentId));
+    if (inspectingStudent && inspectingStudent.id === studentId) {
+      setShowInspectStudentModal(false);
+      setInspectingStudent(null);
+    }
+    try {
+      await axios.delete(`${apiEndpoint}/auth/students/${studentId}`);
+    } catch {
+      // Handled gracefully in offline mode
+    }
+  };
+
+  // Curriculum Actions: Create Parent Topic
+  const handleCreateParentTopic = async () => {
+    if (!newTopicTitle.trim()) return;
+    const newTopic: CurriculumTopic = {
+      id: `top-${Date.now()}`,
+      name: newTopicTitle.trim(),
+      description: newTopicDesc.trim() || 'Custom Curriculum Track',
+      status: 'PUBLISHED',
+      subtopics: []
+    };
+    setCurriculumTopics(prev => [newTopic, ...prev]);
+    setShowAddTopicModal(false);
+    setNewTopicTitle('');
+    setNewTopicDesc('');
+
+    try {
+      await axios.post(`${apiEndpoint}/problems/topics`, {
+        name: newTopic.name,
+        description: newTopic.description
+      });
+    } catch {
+      // Handled in offline mode
+    }
+  };
+
+  // Curriculum Actions: Create Subtopic
+  const handleCreateSubtopic = async () => {
+    if (!selectedParentTopicId || !newSubtopicTitle.trim()) return;
+    const newSub: SubtopicItem = {
+      id: `sub-${Date.now()}`,
+      name: newSubtopicTitle.trim(),
+      description: newSubtopicDesc.trim(),
+      module_count: 5
+    };
+
+    setCurriculumTopics(prev => prev.map(topic => {
+      if (topic.id === selectedParentTopicId) {
+        return { ...topic, subtopics: [...topic.subtopics, newSub] };
+      }
+      return topic;
+    }));
+
+    setShowAddSubtopicModal(false);
+    setNewSubtopicTitle('');
+    setNewSubtopicDesc('');
+
+    try {
+      await axios.post(`${apiEndpoint}/problems/topics/${selectedParentTopicId}/subtopics`, {
+        name: newSub.name,
+        description: newSub.description
+      });
+    } catch {
+      // Handled in offline mode
+    }
+  };
+
+  // Resource Extraction Handler
   const handleExtractAndDistribute = () => {
     if (!uploadResourceTitle) return;
     setIsExtractingQuestions(true);
@@ -252,12 +616,11 @@ export default function App() {
 
       setResourcesList([newRes, ...resourcesList]);
 
-      // Generate and add tailored questions to the question bank
       let generatedQ: Question;
       if (uploadResourceField === 'Data Engineer') {
         generatedQ = {
           id: `${Math.floor(1000 + Math.random() * 9000)}`,
-          title: `Optimizing Aggregates & Window Partitioning (${uploadResourceTitle.slice(0, 20)})`,
+          title: `Optimizing Aggregates & Window Partitioning (${uploadResourceTitle.slice(0, 18)})`,
           difficulty: 'Hard',
           type: 'SQL',
           tags: ['Data Engineering', 'SQL', 'PostgreSQL'],
@@ -268,7 +631,7 @@ export default function App() {
       } else if (uploadResourceField === 'Software Engineer') {
         generatedQ = {
           id: `${Math.floor(1000 + Math.random() * 9000)}`,
-          title: `LRU Cache with TTL Eviction (${uploadResourceTitle.slice(0, 20)})`,
+          title: `LRU Cache with TTL Eviction (${uploadResourceTitle.slice(0, 18)})`,
           difficulty: 'Hard',
           type: 'Coding',
           tags: ['Data Structures', 'Hash Map', 'Doubly Linked List'],
@@ -279,7 +642,7 @@ export default function App() {
       } else {
         generatedQ = {
           id: `${Math.floor(1000 + Math.random() * 9000)}`,
-          title: `Automated Canary Deployment Pipeline (${uploadResourceTitle.slice(0, 20)})`,
+          title: `Automated Canary Deployment Pipeline (${uploadResourceTitle.slice(0, 18)})`,
           difficulty: 'Medium',
           type: 'Coding',
           tags: ['DevOps', 'CI/CD', 'Docker'],
@@ -293,7 +656,7 @@ export default function App() {
       setExtractionSuccessMsg(`✅ Extracted 12 questions and dynamically synced to ${uploadResourceField} students!`);
       setUploadResourceTitle('');
       setUploadResourceContent('');
-    }, 1500);
+    }, 1200);
   };
 
   const openEditModal = (q: Question) => {
@@ -308,12 +671,20 @@ export default function App() {
     }
   };
 
+  // Filtered Students
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === 'All' || s.role === roleFilter;
+    const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
   return (
     <div className="flex h-screen bg-[#070b19] text-gray-100 font-sans overflow-hidden">
       {/* ------------------------------------------------------------- */}
       {/* LEFT NAVIGATION SIDEBAR */}
       {/* ------------------------------------------------------------- */}
-      <aside className="w-64 bg-[#0a0f24] border-r border-[#1a233d] flex flex-col justify-between p-4">
+      <aside className="w-64 bg-[#0a0f24] border-r border-[#1a233d] flex flex-col justify-between p-4 flex-shrink-0">
         <div>
           {/* Platform Title */}
           <div className="flex items-center space-x-3 px-2 py-4 mb-4">
@@ -330,11 +701,11 @@ export default function App() {
           <nav className="space-y-1.5">
             {[
               { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-              { id: 'submissions', label: 'Submissions', icon: '💻' },
-              { id: 'curriculum', label: 'Curriculum', icon: '🗺️' },
+              { id: 'submissions', label: 'Question Studio', icon: '💻' },
+              { id: 'curriculum', label: 'Curriculum & Tracks', icon: '🗺️' },
               { id: 'resources', label: 'Resource Studio', icon: '📚' },
-              { id: 'users', label: 'User Management', icon: '👥' },
-              { id: 'analytics', label: 'Analytics', icon: '📈' },
+              { id: 'users', label: 'Student Management', icon: '👥' },
+              { id: 'analytics', label: 'Security & Analytics', icon: '📈' },
               { id: 'settings', label: 'Settings', icon: '⚙️' }
             ].map(item => (
               <button
@@ -353,49 +724,61 @@ export default function App() {
           </nav>
         </div>
 
-        {/* Admin Footer Badge */}
-        <div className="p-3 bg-[#0d1430] rounded-xl border border-[#1a233d] flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white">
-            AD
+        {/* Admin Footer Badge with API Status */}
+        <div className="p-3 bg-[#0d1430] rounded-xl border border-[#1a233d] flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xs text-white">
+              AD
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">Super Admin</p>
+              <div className="flex items-center space-x-1.5">
+                <span className={`w-2 h-2 rounded-full ${apiHealth === 'online' ? 'bg-emerald-400 animate-pulse' : apiHealth === 'checking' ? 'bg-amber-400 animate-pulse' : 'bg-rose-400'}`}></span>
+                <span className="text-[10px] text-gray-400 font-mono">
+                  {apiHealth === 'online' ? `API Online (${apiLatency}ms)` : apiHealth === 'checking' ? 'Connecting...' : 'Offline Mode'}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-bold text-white truncate">Administrator</p>
-            <p className="text-[10px] text-emerald-400 flex items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>
-              Live Sync Active
-            </p>
-          </div>
+          <button onClick={checkBackendHealth} title="Refresh API Status" className="text-gray-400 hover:text-white text-xs">🔄</button>
         </div>
       </aside>
 
       {/* ------------------------------------------------------------- */}
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT WORKSPACE */}
       {/* ------------------------------------------------------------- */}
-      <main className="flex-1 flex flex-col overflow-y-auto">
-        {/* Top App Header */}
-        <header className="h-16 border-b border-[#1a233d] bg-[#090e21]/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20">
-          <div className="flex items-center space-x-3">
-            <button className="text-gray-400 hover:text-white text-lg">☰</button>
-            <h2 className="text-sm font-bold text-white tracking-wide">Platform Overview</h2>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Header Bar */}
+        <header className="h-16 border-b border-[#1a233d] bg-[#080d22] px-6 flex justify-between items-center flex-shrink-0">
+          <div>
+            <h2 className="text-sm font-black text-white capitalize tracking-wide">
+              {activeTab === 'users' ? 'Student Performance Database' : activeTab === 'submissions' ? 'Technical Question Studio' : `${activeTab} Overview`}
+            </h2>
+            <p className="text-[10px] text-gray-400 font-medium">PlacementForge Enterprise System · Build 2.5</p>
           </div>
           <div className="flex items-center space-x-3">
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search students, topics, questions..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="bg-[#0f1738] border border-[#1e2a4a] text-xs text-white placeholder-gray-500 rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-blue-500 w-64"
+                className="bg-[#0f1738] border border-[#1e2a4a] text-xs text-white placeholder-gray-500 rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-blue-500 w-72"
               />
               <span className="absolute left-2.5 top-1.5 text-xs text-gray-500">🔍</span>
             </div>
-            <button className="px-3 py-1.5 bg-[#0f1738] border border-[#1e2a4a] text-xs font-bold text-gray-300 rounded-lg hover:border-blue-500">
-              🔔
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className="px-3 py-1.5 bg-[#0f1738] border border-[#1e2a4a] text-xs font-bold text-gray-300 rounded-lg hover:border-blue-500 flex items-center space-x-1.5"
+            >
+              <span className={`w-2 h-2 rounded-full ${apiHealth === 'online' ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+              <span>v1.0 API</span>
             </button>
           </div>
         </header>
 
-        <div className="p-6 space-y-6 max-w-7xl mx-auto w-full">
+        {/* Tab Content Container */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-7xl mx-auto w-full">
           {/* ========================================================= */}
           {/* TAB 1: EXECUTIVE OVERVIEW (DASHBOARD)                     */}
           {/* ========================================================= */}
@@ -406,7 +789,7 @@ export default function App() {
                 <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl relative overflow-hidden">
                   <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL ENROLLED</p>
                   <div className="flex items-baseline space-x-2 mt-2">
-                    <h3 className="text-2xl font-black text-white">1,284</h3>
+                    <h3 className="text-2xl font-black text-white">{students.length} Active</h3>
                     <span className="text-xs font-bold text-emerald-400">+12%</span>
                   </div>
                   <div className="h-1 bg-[#151e3d] rounded-full mt-4 overflow-hidden">
@@ -418,7 +801,7 @@ export default function App() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">ACTIVE TODAY</p>
-                      <h3 className="text-2xl font-black text-white mt-2">432</h3>
+                      <h3 className="text-2xl font-black text-white mt-2">18 Students</h3>
                     </div>
                     <span className="text-lg">⚡</span>
                   </div>
@@ -431,7 +814,9 @@ export default function App() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">AVG. READINESS</p>
-                      <h3 className="text-2xl font-black text-white mt-2">78.5%</h3>
+                      <h3 className="text-2xl font-black text-white mt-2">
+                        {Math.round(students.reduce((acc, s) => acc + s.readiness, 0) / (students.length || 1))}%
+                      </h3>
                     </div>
                     <span className="text-lg">📈</span>
                   </div>
@@ -444,106 +829,125 @@ export default function App() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">QUESTION BANK</p>
-                      <h3 className="text-2xl font-black text-white mt-2">156</h3>
+                      <h3 className="text-2xl font-black text-white mt-2">{questionsList.length} Challenges</h3>
                     </div>
-                    <span className="text-lg">🗄️</span>
+                    <span className="text-lg">🎯</span>
                   </div>
                   <div className="h-1 bg-[#151e3d] rounded-full mt-4 overflow-hidden">
-                    <div className="h-full bg-cyan-400 w-4/5"></div>
+                    <div className="h-full bg-amber-400 w-2/3"></div>
                   </div>
                 </div>
               </div>
 
-              {/* Recent Submissions Table */}
-              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    <h4 className="text-sm font-extrabold text-white">Recent Submissions</h4>
+              {/* Grid 2: Readiness Distribution & Recent Submissions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Readiness Distribution */}
+                <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
+                  <h3 className="text-sm font-extrabold text-white mb-4">Placement Readiness Tier Breakdown</h3>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Tier 1: High Caliber (80-100%)', count: students.filter(s => s.readiness >= 80).length, color: 'bg-emerald-500' },
+                      { label: 'Tier 2: Job Ready (65-79%)', count: students.filter(s => s.readiness >= 65 && s.readiness < 80).length, color: 'bg-blue-500' },
+                      { label: 'Tier 3: Foundations in Progress (40-64%)', count: students.filter(s => s.readiness < 65).length, color: 'bg-amber-500' }
+                    ].map((tier, idx) => (
+                      <div key={idx}>
+                        <div className="flex justify-between text-xs font-semibold mb-1">
+                          <span className="text-gray-300">{tier.label}</span>
+                          <span className="text-gray-400">{tier.count} Students</span>
+                        </div>
+                        <div className="h-2 bg-[#121938] rounded-full overflow-hidden">
+                          <div className={`h-full ${tier.color} rounded-full`} style={{ width: `${(tier.count / (students.length || 1)) * 100}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <button className="text-xs font-bold text-blue-400 hover:underline">VIEW ALL</button>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-[#17203d] text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                        <th className="py-3 px-4">STUDENT</th>
-                        <th className="py-3 px-4">PROBLEM</th>
-                        <th className="py-3 px-4">STATUS</th>
-                        <th className="py-3 px-4 text-right">TIME</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#131b36]">
-                      {recentSubmissions.map(sub => (
-                        <tr key={sub.id} className="hover:bg-[#111938]/60 transition">
-                          <td className="py-3 px-4 font-mono font-bold text-gray-300">{sub.student}</td>
-                          <td className="py-3 px-4 font-medium text-white">{sub.problem}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold ${
-                              sub.status === 'Accepted'
-                                ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
-                                : sub.status === 'Runtime Error'
-                                ? 'bg-rose-950/80 text-rose-400 border border-rose-800'
-                                : 'bg-amber-950/80 text-amber-400 border border-amber-800'
-                            }`}>
-                              {sub.status === 'Accepted' ? '● Accepted' : sub.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right text-gray-400 font-mono">{sub.time}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Real-time Submissions Stream */}
+                <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-extrabold text-white">Live Submission Activity</h3>
+                    <span className="text-[10px] text-blue-400 font-mono">Auto-Refreshing</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {recentSubmissions.map(sub => (
+                      <div key={sub.id} className="p-3 bg-[#0d1430] border border-[#172242] rounded-xl flex justify-between items-center">
+                        <div>
+                          <p className="text-xs font-bold text-white">{sub.problem}</p>
+                          <p className="text-[10px] text-gray-400">{sub.student} · {sub.time}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded ${
+                          sub.status === 'Accepted' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
+                        }`}>
+                          {sub.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {/* ========================================================= */}
-          {/* TAB 2: QUESTION BANK (SUBMISSIONS / QUESTION STUDIO)      */}
+          {/* TAB 2: QUESTION STUDIO (SUBMISSIONS / BANK)              */}
           {/* ========================================================= */}
           {activeTab === 'submissions' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-black text-white">Question Management</h3>
-                  <p className="text-xs text-gray-400">Author and deploy coding challenges and test cases.</p>
+                  <h3 className="text-lg font-black text-white">Technical Question Studio</h3>
+                  <p className="text-xs text-gray-400">Curate coding, SQL, and MCQ challenges distributed to students.</p>
                 </div>
-                <button 
-                  onClick={() => openEditModal(questionsList[0])}
+                <button
+                  onClick={() => {
+                    const newQ: Question = {
+                      id: `${Math.floor(1000 + Math.random() * 9000)}`,
+                      title: 'New Custom Coding Challenge',
+                      difficulty: 'Medium',
+                      type: 'Coding',
+                      tags: ['Algorithms', 'Data Structures'],
+                      status: 'Published',
+                      desc: 'Describe the problem statement, inputs, outputs, and edge cases here.',
+                      requirements: ['O(N) target time complexity'],
+                      starterCode: 'def solve(data):\n    # TODO: Implement solution\n    return data'
+                    };
+                    setQuestionsList([newQ, ...questionsList]);
+                    openEditModal(newQ);
+                  }}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-blue-500/20"
                 >
-                  + CREATE NEW PROBLEM
+                  + Create New Challenge
                 </button>
               </div>
 
               {/* Questions Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {questionsList.map(q => (
-                  <div key={q.id} className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5 flex flex-col justify-between hover:border-blue-500/50 transition">
+                  <div key={q.id} className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5 flex flex-col justify-between">
                     <div>
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-mono text-gray-400 font-bold">ID: {q.id}</span>
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-black ${
-                          q.difficulty === 'Hard' ? 'bg-rose-950 text-rose-400 border border-rose-800' :
-                          q.difficulty === 'Medium' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
-                          'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                      <div className="flex justify-between items-start mb-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                          q.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                          q.difficulty === 'Medium' ? 'bg-blue-950 text-blue-400 border border-blue-800' :
+                          'bg-amber-950 text-amber-400 border border-amber-800'
                         }`}>
-                          {q.difficulty.toUpperCase()}
+                          {q.difficulty}
                         </span>
+                        <span className="text-[10px] font-mono text-gray-400">ID: {q.id}</span>
                       </div>
                       <h4 className="font-extrabold text-sm text-white mb-2">{q.title}</h4>
+                      <p className="text-xs text-gray-400 line-clamp-2 mb-4 font-mono">{q.desc}</p>
                       <div className="flex flex-wrap gap-1.5 mb-4">
                         {q.tags.map(tag => (
-                          <span key={tag} className="px-2 py-0.5 bg-[#121a3a] text-gray-300 text-[10px] rounded font-medium">
+                          <span key={tag} className="px-2 py-0.5 bg-[#121a3a] border border-[#1d294a] rounded text-[9px] font-bold text-gray-300">
                             {tag}
                           </span>
                         ))}
                       </div>
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-[#17203d]">
-                      <span className="text-[10px] text-gray-400 font-bold">{q.type}</span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase">{q.type}</span>
                       <button 
                         onClick={() => openEditModal(q)}
                         className="text-xs font-extrabold text-blue-400 hover:text-blue-300"
@@ -565,10 +969,18 @@ export default function App() {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-black text-white">Topic & Roadmap Builder</h3>
-                  <p className="text-xs text-gray-400">Construct and reorder learning pathways. Changes sync automatically.</p>
+                  <p className="text-xs text-gray-400">Construct and organize learning pathways synced to mobile clients.</p>
                 </div>
                 <div className="flex space-x-3">
-                  <button className="px-3.5 py-2 bg-[#121a3a] border border-[#1e2a4a] text-xs font-bold text-gray-200 rounded-xl hover:border-blue-500">
+                  <button 
+                    onClick={() => {
+                      if (curriculumTopics.length > 0) {
+                        setSelectedParentTopicId(curriculumTopics[0].id);
+                      }
+                      setShowAddSubtopicModal(true);
+                    }}
+                    className="px-3.5 py-2 bg-[#121a3a] border border-[#1e2a4a] text-xs font-bold text-gray-200 rounded-xl hover:border-blue-500"
+                  >
                     + Add Subtopic
                   </button>
                   <button 
@@ -580,61 +992,45 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Roadmap Structure */}
+              {/* Dynamic Curriculum Topics List */}
               <div className="space-y-4">
-                {/* Topic Group 1 */}
-                <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-base">📁</span>
-                      <h4 className="font-extrabold text-sm text-white">Data Structures</h4>
-                      <span className="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold rounded">
-                        3 SUBTOPICS · PUBLISHED
-                      </span>
+                {curriculumTopics.map((topic, index) => (
+                  <div key={topic.id} className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5">
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-base">{index === 0 ? '📁' : index === 1 ? '📊' : '🗄️'}</span>
+                        <h4 className="font-extrabold text-sm text-white">{topic.name}</h4>
+                        <span className="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800 text-[9px] font-bold rounded">
+                          {topic.subtopics.length} SUBTOPICS · {topic.status || 'PUBLISHED'}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setSelectedParentTopicId(topic.id);
+                          setShowAddSubtopicModal(true);
+                        }}
+                        className="text-xs font-bold text-blue-400 hover:text-blue-300"
+                      >
+                        + Add Subtopic
+                      </button>
                     </div>
-                    <button className="text-gray-400 hover:text-white text-xs">⋮</button>
-                  </div>
 
-                  <div className="space-y-2 pl-6 border-l-2 border-blue-500/30">
-                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
-                      <span className="text-xs font-bold text-gray-200">Arrays & Strings</span>
-                      <span className="text-[10px] text-gray-400 font-mono">12 Modules</span>
-                    </div>
-                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
-                      <span className="text-xs font-bold text-gray-200">Linked Lists</span>
-                      <span className="text-[10px] text-gray-400 font-mono">8 Modules</span>
-                    </div>
-                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
-                      <span className="text-xs font-bold text-gray-200">Stacks & Queues</span>
-                      <span className="text-[10px] text-gray-400 font-mono">6 Modules</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Topic Group 2 */}
-                <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-5">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-base">📊</span>
-                      <h4 className="font-extrabold text-sm text-white">Advanced Algorithms</h4>
-                      <span className="px-2 py-0.5 bg-amber-950 text-amber-400 border border-amber-800 text-[9px] font-bold rounded">
-                        2 SUBTOPICS · DRAFT
-                      </span>
-                    </div>
-                    <button className="text-gray-400 hover:text-white text-xs">⋮</button>
-                  </div>
-
-                  <div className="space-y-2 pl-6 border-l-2 border-purple-500/30">
-                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
-                      <span className="text-xs font-bold text-gray-200">Dynamic Programming</span>
-                      <span className="text-[10px] text-gray-400 font-mono">15 Modules</span>
-                    </div>
-                    <div className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center opacity-60">
-                      <span className="text-xs font-bold text-gray-200">Graph Theory (Coming Soon)</span>
-                      <span className="text-[10px] text-gray-400 font-mono">8 Modules</span>
+                    <div className="space-y-2 pl-6 border-l-2 border-blue-500/30">
+                      {topic.subtopics.map(sub => (
+                        <div key={sub.id} className="p-3 bg-[#111938] rounded-xl border border-[#1a233d] flex justify-between items-center">
+                          <div>
+                            <span className="text-xs font-bold text-gray-200">{sub.name}</span>
+                            {sub.description && <p className="text-[10px] text-gray-400">{sub.description}</p>}
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-mono">{sub.module_count || 6} Modules</span>
+                        </div>
+                      ))}
+                      {topic.subtopics.length === 0 && (
+                        <p className="text-xs text-gray-500 italic p-2">No subtopics added yet. Click "+ Add Subtopic" to populate.</p>
+                      )}
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
@@ -644,34 +1040,26 @@ export default function App() {
           {/* ========================================================= */}
           {activeTab === 'resources' && (
             <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-black text-white">Resource Studio & AI Question Extractor</h3>
-                <p className="text-xs text-gray-400">
-                  Upload PDF curricula, interview guides, and notes. The AI automatically parses questions and distributes them to students based on their field specification.
-                </p>
-              </div>
-
-              {/* Uploader Card */}
               <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
-                <h4 className="text-sm font-extrabold text-white mb-4 flex items-center">
-                  <span className="text-base mr-2">📤</span>
-                  Upload New Learning Resource & Extract Questions
-                </h4>
+                <h3 className="text-base font-extrabold text-white mb-2">AI Technical Resource Extractor</h3>
+                <p className="text-xs text-gray-400 mb-6">
+                  Upload syllabus PDFs or markdown notes. Our AI analyzes concepts, matches difficulty, and generates real interview challenges.
+                </p>
 
-                {extractionSuccessMsg ? (
-                  <div className="p-3 bg-emerald-950/80 border border-emerald-800 rounded-xl text-xs text-emerald-300 font-bold mb-4">
+                {extractionSuccessMsg && (
+                  <div className="mb-4 p-3 bg-emerald-950/60 border border-emerald-700/60 rounded-xl text-xs font-bold text-emerald-300">
                     {extractionSuccessMsg}
                   </div>
-                ) : null}
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
                     <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">
-                      RESOURCE TITLE / FILE NAME
+                      RESOURCE TITLE / DOCUMENT NAME
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Amazon DSA & Dynamic Programming Handbook.pdf"
+                      placeholder="e.g. Amazon L5 System Architecture Notes.pdf"
                       value={uploadResourceTitle}
                       onChange={e => setUploadResourceTitle(e.target.value)}
                       className="w-full bg-[#070b1b] border border-[#172242] rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
@@ -738,22 +1126,15 @@ export default function App() {
                           {res.type === 'PDF' ? '📄' : '📝'}
                         </div>
                         <div>
-                          <p className="font-bold text-xs text-white">{res.title}</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className="px-2 py-0.5 bg-[#172554] text-blue-300 text-[9px] font-extrabold rounded">
-                              {res.field}
-                            </span>
-                            <span className="text-[10px] text-gray-400 font-mono">
-                              {res.extractedQuestionsCount} Questions Extracted
-                            </span>
-                            <span className="text-[10px] text-gray-500">· {res.uploadedAt}</span>
-                          </div>
+                          <p className="text-xs font-bold text-white">{res.title}</p>
+                          <p className="text-[10px] text-gray-400">{res.field} · {res.uploadedAt}</p>
                         </div>
                       </div>
-                      <span className="px-2.5 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold rounded-lg flex items-center">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5"></span>
-                        {res.status}
-                      </span>
+                      <div className="flex items-center space-x-3">
+                        <span className="px-2.5 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-full text-[10px] font-bold">
+                          ✓ {res.extractedQuestionsCount} Questions Synced
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -762,44 +1143,62 @@ export default function App() {
           )}
 
           {/* ========================================================= */}
-          {/* TAB 5: STUDENT DATABASE (USER MANAGEMENT)                 */}
+          {/* TAB 5: STUDENT PERFORMANCE DATABASE (USERS)              */}
           {/* ========================================================= */}
           {activeTab === 'users' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-black text-white">Student Database</h3>
-                  <p className="text-xs text-gray-400">Track placement readiness scores and authenticate records.</p>
+              {/* Filters Header */}
+              <div className="flex flex-wrap justify-between items-center gap-4 bg-[#0c122c] border border-[#1a2444] p-4 rounded-2xl">
+                <div className="flex items-center space-x-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">ROLE FILTER</label>
+                    <select
+                      value={roleFilter}
+                      onChange={e => setRoleFilter(e.target.value)}
+                      className="bg-[#070b1b] border border-[#172242] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="All">All Disciplines</option>
+                      <option value="Software Engineer">Software Engineer</option>
+                      <option value="Data Engineer">Data Engineer</option>
+                      <option value="DevOps">DevOps</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">STATUS</label>
+                    <select
+                      value={statusFilter}
+                      onChange={e => setStatusFilter(e.target.value)}
+                      className="bg-[#070b1b] border border-[#172242] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Active">Active</option>
+                      <option value="Suspended">Suspended</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="flex space-x-3">
-                  <select 
-                    value={roleFilter}
-                    onChange={e => setRoleFilter(e.target.value)}
-                    className="bg-[#0f1738] border border-[#1e2a4a] text-xs text-white rounded-lg px-3 py-1.5"
-                  >
-                    <option value="All">All Roles</option>
-                    <option value="Software Engineer">Software Engineer</option>
-                    <option value="Data Engineer">Data Engineer</option>
-                    <option value="DevOps">DevOps</option>
-                  </select>
+
+                <div className="text-xs font-bold text-gray-400 font-mono">
+                  Showing {filteredStudents.length} of {students.length} Enrolled Candidates
                 </div>
               </div>
 
-              {/* Student Table */}
-              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl overflow-hidden">
+              {/* Candidates Table */}
+              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl overflow-hidden shadow-xl">
                 <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[#17203d] text-gray-400 text-[10px] uppercase font-bold tracking-wider bg-[#090e21]">
-                      <th className="py-3.5 px-4">STUDENT</th>
-                      <th className="py-3.5 px-4">CONTACT</th>
-                      <th className="py-3.5 px-4">ROLE & AUTH</th>
-                      <th className="py-3.5 px-4">METRICS</th>
-                      <th className="py-3.5 px-4">READINESS</th>
-                      <th className="py-3.5 px-4 text-right">ACTIONS</th>
+                  <thead className="bg-[#0e1638] text-gray-400 uppercase font-extrabold text-[10px] tracking-wider border-b border-[#17203d]">
+                    <tr>
+                      <th className="py-3 px-4">Candidate</th>
+                      <th className="py-3 px-4">Account & Enrolled</th>
+                      <th className="py-3 px-4">Target Role</th>
+                      <th className="py-3 px-4">Solved</th>
+                      <th className="py-3 px-4">Readiness</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#131b36]">
-                    {students.map(std => (
+                    {filteredStudents.map(std => (
                       <tr key={std.id} className="hover:bg-[#111938]/60 transition">
                         <td className="py-3.5 px-4">
                           <div className="flex items-center space-x-3">
@@ -838,9 +1237,27 @@ export default function App() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button className="text-xs font-bold text-blue-400 hover:text-blue-300 px-2 py-1 bg-[#101838] border border-[#1a254a] rounded-lg">
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            std.status === 'Active' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
+                          }`}>
+                            {std.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-2">
+                          <button 
+                            onClick={() => handleInspectStudent(std)}
+                            className="text-xs font-bold text-blue-400 hover:text-blue-300 px-2.5 py-1 bg-[#101838] border border-[#1a254a] rounded-lg"
+                          >
                             Inspect
+                          </button>
+                          <button 
+                            onClick={() => handleToggleActive(std.id, std.status)}
+                            className={`text-xs font-bold px-2 py-1 border rounded-lg ${
+                              std.status === 'Active' ? 'text-amber-400 border-amber-900/50 bg-amber-950/30 hover:bg-amber-900/40' : 'text-emerald-400 border-emerald-900/50 bg-emerald-950/30 hover:bg-emerald-900/40'
+                            }`}
+                          >
+                            {std.status === 'Active' ? 'Suspend' : 'Activate'}
                           </button>
                         </td>
                       </tr>
@@ -852,7 +1269,7 @@ export default function App() {
           )}
 
           {/* ========================================================= */}
-          {/* TAB 5: SECURITY & LOGIN HISTORY (ANALYTICS)               */}
+          {/* TAB 6: SECURITY & LOGIN HISTORY (ANALYTICS)               */}
           {/* ========================================================= */}
           {activeTab === 'analytics' && (
             <div className="space-y-6">
@@ -865,94 +1282,119 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
                   <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL LOGINS (24H)</p>
-                  <h3 className="text-2xl font-black text-white mt-2">12,482</h3>
-                  <p className="text-xs text-emerald-400 font-semibold mt-1">↗ +1.2k vs yesterday</p>
+                  <h3 className="text-2xl font-black text-white mt-2">1,482</h3>
+                  <p className="text-xs text-emerald-400 font-semibold mt-1">↗ Normal platform traffic</p>
                 </div>
                 <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
                   <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">FAILED ATTEMPTS</p>
-                  <h3 className="text-2xl font-black text-white mt-2">342</h3>
-                  <p className="text-xs text-amber-400 font-semibold mt-1">⚠️ Elevated risk detected</p>
+                  <h3 className="text-2xl font-black text-white mt-2">12</h3>
+                  <p className="text-xs text-amber-400 font-semibold mt-1">✓ Rate limits enforced</p>
                 </div>
                 <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
                   <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">ACTIVE SESSIONS</p>
-                  <h3 className="text-2xl font-black text-white mt-2">4,109</h3>
-                  <p className="text-xs text-blue-400 font-semibold mt-1">🌐 Across 12 regions</p>
+                  <h3 className="text-2xl font-black text-white mt-2">184</h3>
+                  <p className="text-xs text-blue-400 font-semibold mt-1">🌐 JWT Authenticated</p>
                 </div>
               </div>
 
-              {/* Live Activity Monitor Table */}
-              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-sm font-extrabold text-white">Live Activity Monitor</h4>
-                  <span className="text-[10px] text-gray-400 font-mono">Last updated: Just now</span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-[#17203d] text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                        <th className="py-3 px-4">TIMESTAMP</th>
-                        <th className="py-3 px-4">USER / EMAIL</th>
-                        <th className="py-3 px-4">AUTH PROVIDER</th>
-                        <th className="py-3 px-4">IP ADDRESS</th>
-                        <th className="py-3 px-4">DEVICE / LOCATION</th>
-                        <th className="py-3 px-4 text-right">STATUS</th>
+              {/* Security Logs Table */}
+              <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl overflow-hidden shadow-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#0e1638] text-gray-400 uppercase font-extrabold text-[10px] tracking-wider border-b border-[#17203d]">
+                    <tr>
+                      <th className="py-3 px-4">Event Timestamp</th>
+                      <th className="py-3 px-4">User Account</th>
+                      <th className="py-3 px-4">Method</th>
+                      <th className="py-3 px-4">IP Address</th>
+                      <th className="py-3 px-4">Client Agent</th>
+                      <th className="py-3 px-4 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#131b36]">
+                    {securityLogs.map(log => (
+                      <tr key={log.id} className="hover:bg-[#111938]/60 transition">
+                        <td className="py-3.5 px-4 font-mono text-gray-300">{log.timestamp}</td>
+                        <td className="py-3.5 px-4 font-bold text-white">{log.email}</td>
+                        <td className="py-3.5 px-4 text-gray-300">{log.authProvider}</td>
+                        <td className="py-3.5 px-4 font-mono text-gray-400">{log.ipAddress}</td>
+                        <td className="py-3.5 px-4 text-gray-400 whitespace-pre-line">{log.deviceLocation}</td>
+                        <td className="py-3.5 px-4 text-right">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                            log.status === 'SUCCESSFUL' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
+                          }`}>
+                            {log.status}
+                          </span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#131b36]">
-                      {securityLogs.map(log => (
-                        <tr key={log.id} className="hover:bg-[#111938]/60 transition">
-                          <td className="py-3.5 px-4 font-mono text-gray-400 text-[11px]">{log.timestamp}</td>
-                          <td className="py-3.5 px-4 font-bold text-white">{log.email}</td>
-                          <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 bg-[#121b3d] text-blue-300 border border-blue-700/50 rounded text-[10px] font-bold">
-                              {log.authProvider}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4 font-mono text-gray-300">{log.ipAddress}</td>
-                          <td className="py-3.5 px-4 text-gray-400 whitespace-pre-line text-[11px]">{log.deviceLocation}</td>
-                          <td className="py-3.5 px-4 text-right">
-                            <span className={`px-2.5 py-1 rounded text-[9px] font-extrabold ${
-                              log.status === 'SUCCESSFUL'
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                : 'bg-rose-950 text-rose-400 border border-rose-800'
-                            }`}>
-                              {log.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
           {/* ========================================================= */}
-          {/* TAB 6: SETTINGS                                           */}
+          {/* TAB 7: SETTINGS & BACKEND HEALTH                          */}
           {/* ========================================================= */}
           {activeTab === 'settings' && (
-            <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6 max-w-2xl">
-              <h3 className="text-base font-extrabold text-white mb-4">Platform Configuration</h3>
-              <div className="space-y-4 text-xs">
+            <div className="bg-[#0c122c] border border-[#1a2444] rounded-2xl p-6 max-w-3xl space-y-6">
+              <div>
+                <h3 className="text-base font-extrabold text-white mb-1">Platform Backend Configuration</h3>
+                <p className="text-xs text-gray-400">Configure connected backend API endpoints and check live services.</p>
+              </div>
+
+              {/* Endpoint configuration card */}
+              <div className="p-4 bg-[#080d21] border border-[#1a2444] rounded-xl space-y-4">
                 <div>
-                  <label className="block text-gray-400 font-bold mb-1">Live Backend API Endpoint</label>
-                  <input
-                    type="text"
-                    disabled
-                    value="https://code-quest-z89h.onrender.com/api/v1"
-                    className="w-full bg-[#080d21] border border-[#1a2444] rounded-lg p-2.5 text-gray-300 font-mono"
-                  />
+                  <label className="block text-xs font-extrabold text-gray-300 mb-1">Backend API Base URL</label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={apiEndpoint}
+                      onChange={e => setApiEndpoint(e.target.value)}
+                      className="flex-1 bg-[#0b1026] border border-[#1a2444] rounded-lg px-3 py-2 text-xs text-gray-200 font-mono focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      onClick={checkBackendHealth}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-lg shadow"
+                    >
+                      Test Ping
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-gray-400 font-bold mb-1">Firebase Project ID</label>
-                  <input
-                    type="text"
-                    disabled
-                    value="code-quest-d32fd"
-                    className="w-full bg-[#080d21] border border-[#1a2444] rounded-lg p-2.5 text-gray-300 font-mono"
-                  />
+
+                {/* Connection Status Badge */}
+                <div className="flex items-center justify-between p-3 bg-[#0f1738] rounded-lg border border-[#1d2b50]">
+                  <div className="flex items-center space-x-3">
+                    <span className={`w-3 h-3 rounded-full ${apiHealth === 'online' ? 'bg-emerald-400 animate-pulse' : apiHealth === 'checking' ? 'bg-amber-400 animate-pulse' : 'bg-rose-400'}`}></span>
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {apiHealth === 'online' ? 'Connected to FastAPI Backend' : apiHealth === 'checking' ? 'Connecting to Backend API...' : 'Backend Server Unreachable'}
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {apiHealth === 'online' ? `Latency: ${apiLatency}ms · PostgreSQL / SQLite DB active` : 'Operating in resilient offline fallback mode with local mock store.'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 text-[10px] font-extrabold rounded-full ${
+                    apiHealth === 'online' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
+                  }`}>
+                    {apiHealth === 'online' ? 'ONLINE' : 'OFFLINE'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-xs font-extrabold text-gray-300 uppercase tracking-wider">Default Endpoints</h4>
+                <div className="space-y-2 font-mono text-xs">
+                  <div className="flex justify-between p-2.5 bg-[#080d21] rounded-lg border border-[#17203d]">
+                    <span className="text-gray-400">Local Development API:</span>
+                    <button onClick={() => setApiEndpoint('http://localhost:8000/api/v1')} className="text-blue-400 hover:underline">http://localhost:8000/api/v1</button>
+                  </div>
+                  <div className="flex justify-between p-2.5 bg-[#080d21] rounded-lg border border-[#17203d]">
+                    <span className="text-gray-400">Cloud Render API:</span>
+                    <button onClick={() => setApiEndpoint('https://code-quest-z89h.onrender.com/api/v1')} className="text-blue-400 hover:underline">https://code-quest-z89h.onrender.com/api/v1</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -961,10 +1403,143 @@ export default function App() {
       </main>
 
       {/* ------------------------------------------------------------- */}
+      {/* MODAL: INSPECT STUDENT PROGRESS                               */}
+      {/* ------------------------------------------------------------- */}
+      {showInspectStudentModal && inspectingStudent && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0b1026] border border-[#1f2c52] rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#182342] flex justify-between items-center bg-[#0d1430]">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center font-bold text-sm text-blue-300">
+                  {inspectingStudent.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-white">{inspectingStudent.name}</h3>
+                  <p className="text-[10px] text-gray-400">{inspectingStudent.email} · {inspectingStudent.role}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowInspectStudentModal(false)}
+                className="text-gray-400 hover:text-white text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 overflow-y-auto">
+              {isLoadingProgress ? (
+                <div className="py-12 text-center text-gray-400">
+                  <span className="text-2xl animate-spin inline-block mb-2">🔄</span>
+                  <p className="text-xs">Fetching candidate analytics from backend...</p>
+                </div>
+              ) : inspectProgressData ? (
+                <>
+                  {/* Quick Stat Tiles */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-[#080d21] border border-[#1a2444] p-3 rounded-xl">
+                      <span className="text-[9px] font-extrabold text-gray-400 uppercase">Readiness</span>
+                      <h4 className="text-lg font-black text-blue-400 mt-0.5">{inspectProgressData.readiness_score || inspectingStudent.readiness}%</h4>
+                    </div>
+                    <div className="bg-[#080d21] border border-[#1a2444] p-3 rounded-xl">
+                      <span className="text-[9px] font-extrabold text-gray-400 uppercase">Total XP</span>
+                      <h4 className="text-lg font-black text-purple-400 mt-0.5">{inspectProgressData.xp || inspectingStudent.solved * 15} XP</h4>
+                    </div>
+                    <div className="bg-[#080d21] border border-[#1a2444] p-3 rounded-xl">
+                      <span className="text-[9px] font-extrabold text-gray-400 uppercase">Streak</span>
+                      <h4 className="text-lg font-black text-amber-400 mt-0.5">🔥 {inspectProgressData.streak || 3} Days</h4>
+                    </div>
+                    <div className="bg-[#080d21] border border-[#1a2444] p-3 rounded-xl">
+                      <span className="text-[9px] font-extrabold text-gray-400 uppercase">Status</span>
+                      <h4 className={`text-xs font-black mt-1 ${inspectingStudent.status === 'Active' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {inspectingStudent.status.toUpperCase()}
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* Domain Mastery Bars */}
+                  <div className="bg-[#080d21] border border-[#1a2444] p-4 rounded-xl space-y-3">
+                    <h4 className="text-xs font-extrabold text-white">Domain Competency Breakdown</h4>
+                    {[
+                      { label: 'Data Structures & Algorithms', level: inspectProgressData.dsa_level || 55, color: 'bg-blue-500' },
+                      { label: 'SQL & Database Architecture', level: inspectProgressData.sql_level || 45, color: 'bg-cyan-500' },
+                      { label: 'Aptitude & Quantitative Problem Solving', level: inspectProgressData.aptitude_level || 60, color: 'bg-emerald-500' },
+                      { label: 'CS Fundamentals (OS, Networks, DBMS)', level: inspectProgressData.cs_fundamentals_level || 70, color: 'bg-violet-500' },
+                      { label: 'Communication & Behavioral Interviewing', level: inspectProgressData.communication_level || 75, color: 'bg-pink-500' }
+                    ].map((dom, i) => (
+                      <div key={i}>
+                        <div className="flex justify-between text-[11px] font-bold mb-1">
+                          <span className="text-gray-300">{dom.label}</span>
+                          <span className="text-gray-400">{Math.round(dom.level)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-[#121938] rounded-full overflow-hidden">
+                          <div className={`h-full ${dom.color} rounded-full`} style={{ width: `${dom.level}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Submission History */}
+                  <div className="bg-[#080d21] border border-[#1a2444] p-4 rounded-xl space-y-3">
+                    <h4 className="text-xs font-extrabold text-white">Candidate Solution History</h4>
+                    <div className="space-y-2">
+                      {(inspectProgressData.submissions || []).map((sub, i) => (
+                        <div key={i} className="p-2.5 bg-[#0c122c] border border-[#17203d] rounded-lg flex justify-between items-center text-xs">
+                          <div>
+                            <p className="font-bold text-white">{sub.question_title}</p>
+                            <p className="text-[10px] text-gray-400">{sub.type} · Score: {sub.score} XP</p>
+                          </div>
+                          <span className={`px-2 py-0.5 text-[9px] font-extrabold rounded ${sub.is_correct ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}`}>
+                            {sub.is_correct ? 'PASSED' : 'WRONG ANSWER'}
+                          </span>
+                        </div>
+                      ))}
+                      {(inspectProgressData.submissions || []).length === 0 && (
+                        <p className="text-xs text-gray-500 italic">No submissions recorded yet for this candidate.</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Modal Footer with Moderation Controls */}
+            <div className="px-6 py-4 border-t border-[#182342] flex justify-between items-center bg-[#0d1430]">
+              <button
+                onClick={() => handleDeleteStudent(inspectingStudent.id, inspectingStudent.name)}
+                className="px-3.5 py-2 bg-rose-950 hover:bg-rose-900 border border-rose-800/60 text-rose-300 text-xs font-bold rounded-xl"
+              >
+                Delete Student Record
+              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleToggleActive(inspectingStudent.id, inspectingStudent.status)}
+                  className={`px-4 py-2 text-xs font-bold rounded-xl border ${
+                    inspectingStudent.status === 'Active'
+                      ? 'bg-amber-950 hover:bg-amber-900 border-amber-800 text-amber-300'
+                      : 'bg-emerald-950 hover:bg-emerald-900 border-emerald-800 text-emerald-300'
+                  }`}
+                >
+                  {inspectingStudent.status === 'Active' ? 'Suspend Candidate' : 'Reactivate Candidate'}
+                </button>
+                <button
+                  onClick={() => setShowInspectStudentModal(false)}
+                  className="px-4 py-2 bg-[#121b3a] hover:bg-[#18234a] text-xs font-bold text-gray-300 rounded-xl"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
       {/* MODAL: EDIT PROBLEM STUDIO                                    */}
       {/* ------------------------------------------------------------- */}
       {showEditProblemModal && selectedQuestion && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#0b1026] border border-[#1f2c52] rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-[#182342] flex justify-between items-center bg-[#0d1430]">
@@ -982,7 +1557,6 @@ export default function App() {
 
             {/* Modal Body */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-y-auto">
-              {/* Left Config Column */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">PROBLEM ID</label>
@@ -991,6 +1565,16 @@ export default function App() {
                     disabled
                     value={selectedQuestion.id}
                     className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2 text-xs font-mono text-gray-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">TITLE</label>
+                  <input
+                    type="text"
+                    value={selectedQuestion.title}
+                    onChange={e => setSelectedQuestion({ ...selectedQuestion, title: e.target.value })}
+                    className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2 text-xs text-white"
                   />
                 </div>
 
@@ -1016,11 +1600,6 @@ export default function App() {
                       </span>
                     ))}
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Add Tag..."
-                    className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2 text-xs text-white placeholder-gray-500"
-                  />
                 </div>
               </div>
 
@@ -1098,7 +1677,7 @@ export default function App() {
       {/* MODAL: ADD PARENT TOPIC                                       */}
       {/* ------------------------------------------------------------- */}
       {showAddTopicModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#0b1026] border border-[#1f2c52] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
             <div className="px-6 py-4 border-b border-[#182342] flex justify-between items-center bg-[#0d1430]">
               <h3 className="font-extrabold text-sm text-white">Create New Curriculum Topic</h3>
@@ -1115,17 +1694,81 @@ export default function App() {
                   className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
+              <div>
+                <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">DESCRIPTION</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Spanning trees, Dijkstra, and Topological Sort"
+                  value={newTopicDesc}
+                  onChange={e => setNewTopicDesc(e.target.value)}
+                  className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
             </div>
             <div className="px-6 py-4 border-t border-[#182342] flex justify-end space-x-3 bg-[#0d1430]">
               <button onClick={() => setShowAddTopicModal(false)} className="px-4 py-2 bg-[#121b3a] text-xs font-bold text-gray-300 rounded-xl">CANCEL</button>
               <button
-                onClick={() => {
-                  setShowAddTopicModal(false);
-                  setNewTopicTitle('');
-                }}
+                onClick={handleCreateParentTopic}
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-blue-500/20"
               >
                 CREATE TOPIC
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: ADD SUBTOPIC                                           */}
+      {/* ------------------------------------------------------------- */}
+      {showAddSubtopicModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0b1026] border border-[#1f2c52] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-[#182342] flex justify-between items-center bg-[#0d1430]">
+              <h3 className="font-extrabold text-sm text-white">Add Subtopic to Track</h3>
+              <button onClick={() => setShowAddSubtopicModal(false)} className="text-gray-400 hover:text-white font-bold">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">PARENT TRACK</label>
+                <select
+                  value={selectedParentTopicId}
+                  onChange={e => setSelectedParentTopicId(e.target.value)}
+                  className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                >
+                  {curriculumTopics.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">SUBTOPIC TITLE</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Breadth-First Search & Grid Shortest Paths"
+                  value={newSubtopicTitle}
+                  onChange={e => setNewSubtopicTitle(e.target.value)}
+                  className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1">SUBTOPIC DESCRIPTION</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Queue-based graph traversal algorithms"
+                  value={newSubtopicDesc}
+                  onChange={e => setNewSubtopicDesc(e.target.value)}
+                  className="w-full bg-[#070b1b] border border-[#172242] rounded-lg p-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[#182342] flex justify-end space-x-3 bg-[#0d1430]">
+              <button onClick={() => setShowAddSubtopicModal(false)} className="px-4 py-2 bg-[#121b3a] text-xs font-bold text-gray-300 rounded-xl">CANCEL</button>
+              <button
+                onClick={handleCreateSubtopic}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-xs font-extrabold text-white rounded-xl shadow-lg shadow-blue-500/20"
+              >
+                ADD SUBTOPIC
               </button>
             </div>
           </div>

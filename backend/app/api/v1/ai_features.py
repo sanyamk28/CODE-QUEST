@@ -1,6 +1,6 @@
 import os
 import json
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import google.generativeai as genai
@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.api.v1.deps import get_current_user
 from app.models import models
 from app.schemas import schemas
+from app.services.ats_scanner import calculate_ats_score
 
 router = APIRouter()
 
@@ -135,6 +136,14 @@ def respond_interview(
             
         session.transcripts = transcripts
         db.commit()
+
+        from app.core.analytics import record_analytics_event
+        record_analytics_event(
+            db=db,
+            event_type="mock_interview_completed",
+            user_id=current_user.id,
+            metadata={"mode": interview.mode, "overall_score": session.overall_score, "technical_score": session.technical_score}
+        )
         
         return schemas.InterviewMessageResponse(
             interview_id=interview.id,
@@ -163,13 +172,36 @@ def respond_interview(
             status="ongoing"
         )
 
+def extract_clean_json(text: str) -> Optional[dict]:
+    clean = text.strip()
+    if clean.startswith("```"):
+        lines = clean.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        clean = "\n".join(lines).strip()
+    try:
+        return json.loads(clean)
+    except Exception:
+        start = clean.find("{")
+        end = clean.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(clean[start:end+1])
+            except Exception:
+                pass
+    return None
+
 @router.post("/resume/upload", response_model=schemas.ResumeAnalysisResponse)
 async def upload_resume(
     file: UploadFile = File(...),
+    target_role: Optional[str] = Form(None),
+    job_description: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if not file.filename.endswith(".pdf"):
+    if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only PDF resume uploads are supported."
@@ -182,46 +214,53 @@ async def upload_resume(
     try:
         reader = PdfReader(BytesIO(contents))
         for page in reader.pages:
-            resume_text += page.extract_text() or ""
+            resume_text += (page.extract_text() or "") + "\n"
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to parse PDF text: {str(e)}"
         )
         
-    # 2. Match keywords and analyze via LLM
-    target_role = current_user.profile.target_role if current_user.profile else "Software Engineer"
-    
-    prompt = f"""
-    Analyze the following resume text for alignment with the role of '{target_role}'.
-    Generate a JSON object containing:
-    - ats_score (integer 0-100)
-    - matched_skills (list of strings found in the resume matching the role)
-    - missing_skills (list of critical skills for the role not found in the resume)
-    - formatting_feedback (string feedback)
-    - role_alignment (string summary)
-    - suggestions (list of strings for improvements)
+    # 2. Determine target role
+    effective_role = target_role.strip() if target_role and target_role.strip() else (
+        current_user.profile.target_role if (current_user.profile and current_user.profile.target_role) else "Software Engineer"
+    )
 
-    Resume Text: {resume_text}
-    """
-    
-    fallback_analysis = {
-        "ats_score": 74,
-        "matched_skills": ["Python", "SQL", "PostgreSQL", "Database Design"],
-        "missing_skills": ["Apache Spark", "Airflow", "Docker", "Data Warehousing"],
-        "formatting_feedback": "Clean layout. Make sure to use bullet points that start with action verbs.",
-        "role_alignment": "Moderate fit. Technical base is present, but lacks explicit big data tool experience.",
-        "suggestions": ["Add a section highlighting project orchestration using Apache Airflow.", "Use quantifiable metrics (e.g. reduced runtimes by 20%)."]
-    }
-    
-    analysis_str = generate_llm_response(prompt, json.dumps(fallback_analysis))
-    try:
-        analysis = json.loads(analysis_str)
-    except Exception:
-        analysis = fallback_analysis
+    # 3. Calculate genuine ATS score and full breakdown
+    ats_result = calculate_ats_score(
+        resume_text=resume_text,
+        target_role=effective_role,
+        job_description=job_description
+    )
 
-    # Save Resume metadata
-    # Save mock file locally or record metadata
+    # 4. Optional Gemini enrichment if API key configured
+    if settings.GEMINI_API_KEY:
+        prompt = f"""
+        You are an elite technical recruiter and ATS auditor.
+        Review the candidate's resume for the role: '{effective_role}'.
+        Computed ATS Score: {ats_result['ats_score']}/100.
+        Matched Skills: {', '.join(ats_result['matched_skills'][:10])}.
+        Missing Recommended Keywords: {', '.join(ats_result['missing_skills'][:8])}.
+
+        Provide a concise JSON response with:
+        - role_alignment: A concise 2-sentence executive recruiter summary.
+        - formatting_feedback: 1-2 sentences highlighting layout, readability, and ATS parsing notes.
+        - suggestions: List of 3-4 specific high-impact enhancements.
+
+        Candidate Resume Content:
+        {resume_text[:3500]}
+        """
+        llm_response_str = generate_llm_response(prompt, "")
+        parsed_llm = extract_clean_json(llm_response_str)
+        if parsed_llm:
+            if parsed_llm.get("role_alignment"):
+                ats_result["role_alignment"] = parsed_llm["role_alignment"]
+            if parsed_llm.get("formatting_feedback"):
+                ats_result["formatting_feedback"] = parsed_llm["formatting_feedback"]
+            if parsed_llm.get("suggestions") and isinstance(parsed_llm["suggestions"], list) and len(parsed_llm["suggestions"]) >= 2:
+                ats_result["suggestions"] = parsed_llm["suggestions"]
+
+    # 5. Save Resume metadata
     resume_rec = models.Resume(
         user_id=current_user.id,
         file_name=file.filename,
@@ -231,24 +270,94 @@ async def upload_resume(
     db.commit()
     db.refresh(resume_rec)
     
-    # Save analysis details
+    # 6. Save analysis details
     resume_analysis = models.ResumeAnalysis(
         resume_id=resume_rec.id,
-        ats_score=analysis.get("ats_score"),
-        matched_skills=analysis.get("matched_skills"),
-        missing_skills=analysis.get("missing_skills"),
-        formatting_feedback=analysis.get("formatting_feedback"),
-        role_alignment=analysis.get("role_alignment"),
-        suggestions=analysis.get("suggestions")
+        ats_score=ats_result["ats_score"],
+        matched_skills=ats_result["matched_skills"],
+        missing_skills=ats_result["missing_skills"],
+        formatting_feedback=ats_result["formatting_feedback"],
+        role_alignment=ats_result["role_alignment"],
+        suggestions=ats_result["suggestions"],
+        score_breakdown=ats_result["score_breakdown"],
+        metrics=ats_result["metrics"]
     )
     db.add(resume_analysis)
     db.commit()
+
+    from app.core.analytics import record_analytics_event
+    record_analytics_event(db, "resume_uploaded", current_user.id, {"filename": file.filename})
+    record_analytics_event(db, "resume_scored", current_user.id, {"ats_score": resume_analysis.ats_score, "matched_skills": resume_analysis.matched_skills})
     
     return schemas.ResumeAnalysisResponse(
-        ats_score=resume_analysis.ats_score,
-        matched_skills=resume_analysis.matched_skills,
-        missing_skills=resume_analysis.missing_skills,
-        formatting_feedback=resume_analysis.formatting_feedback,
-        role_alignment=resume_analysis.role_alignment,
-        suggestions=resume_analysis.suggestions
+        ats_score=ats_result["ats_score"],
+        target_role=effective_role,
+        matched_skills=ats_result["matched_skills"],
+        missing_skills=ats_result["missing_skills"],
+        formatting_feedback=ats_result["formatting_feedback"],
+        role_alignment=ats_result["role_alignment"],
+        suggestions=ats_result["suggestions"],
+        score_breakdown=schemas.ATSScoreBreakdown(**ats_result["score_breakdown"]),
+        metrics=schemas.ATSMetrics(
+            word_count=ats_result["metrics"]["word_count"],
+            estimated_pages=ats_result["metrics"]["estimated_pages"],
+            action_verbs_count=ats_result["metrics"]["action_verbs_count"],
+            quantified_metrics_count=ats_result["metrics"]["quantified_metrics_count"],
+            sections_found=ats_result["metrics"]["sections_found"],
+            sections_missing=ats_result["metrics"]["sections_missing"],
+            contact_info=schemas.ATSContactInfo(**ats_result["metrics"]["contact_info"])
+        ),
+        bullet_improvements=[
+            schemas.ATSBulletImprovement(**b) for b in ats_result.get("bullet_improvements", [])
+        ],
+        jd_match_score=ats_result.get("jd_match_score")
     )
+
+@router.post("/resume/rewrite-bullet", response_model=schemas.ResumeBulletRewriteResponse)
+def rewrite_resume_bullet(
+    payload: schemas.ResumeBulletRewriteRequest,
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Transforms a raw resume achievement bullet into the industry gold-standard
+    Google X-Y-Z formula: Accomplished [X] as measured by [Y], by doing [Z].
+    """
+    raw = payload.bullet_text.strip()
+    role = payload.target_role or "Software Engineer"
+
+    prompt = f"""
+    You are an executive resume coach and tech recruiter specializing in the Google X-Y-Z formula:
+    'Accomplished [X] as measured by [Y], by doing [Z]'.
+
+    Candidate Target Role: {role}
+    Raw Bullet Point: "{raw}"
+
+    Rewrite this bullet point to demonstrate exceptional engineering impact with:
+    1. Strong active verb at the start (e.g. Engineered, Architected, Accelerated, Reduced).
+    2. Quantifiable business/performance metric (e.g. 42% latency reduction, $120k savings, 250k DAU).
+    3. Technical tools/methods utilized (e.g. Python, PostgreSQL indexing, Redis caching).
+
+    Respond in raw JSON:
+    {{
+        "improved": "Rewritten X-Y-Z bullet text",
+        "action_verb": "Primary action verb used",
+        "key_metrics_added": ["Metric 1", "Metric 2"]
+    }}
+    """
+    fallback_improved = f"Architected scalable backend services using Python and PostgreSQL, reducing query latency by 38% and supporting 100K+ daily active users."
+    fallback_json = {
+        "improved": fallback_improved,
+        "action_verb": "Architected",
+        "key_metrics_added": ["38% query latency reduction", "100K+ daily active users"]
+    }
+
+    resp_str = generate_llm_response(prompt, json.dumps(fallback_json))
+    parsed = extract_clean_json(resp_str) or fallback_json
+
+    return schemas.ResumeBulletRewriteResponse(
+        original=raw,
+        improved=parsed.get("improved", fallback_improved),
+        action_verb=parsed.get("action_verb", "Architected"),
+        key_metrics_added=parsed.get("key_metrics_added", ["38% query latency reduction", "100K+ users"])
+    )
+

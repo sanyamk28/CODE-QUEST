@@ -40,13 +40,20 @@ def get_mcq_questions(
         ))
     return result
 
+import uuid
+
 @router.get("/{id}", response_model=schemas.QuestionDetailResponse)
 def get_mcq_detail(
     id: str,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    q = db.query(models.Question).filter(models.Question.id == id).first()
+    try:
+        qid = uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid question ID")
+
+    q = db.query(models.Question).filter(models.Question.id == qid).first()
     if not q:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -61,7 +68,12 @@ def attempt_mcq_question(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    q = db.query(models.Question).filter(models.Question.id == id).first()
+    try:
+        qid = uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid question ID")
+
+    q = db.query(models.Question).filter(models.Question.id == qid).first()
     if not q or not q.mcq_detail:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -103,6 +115,20 @@ def attempt_mcq_question(
             
     db.commit()
     db.refresh(sub)
+
+    from app.core.analytics import record_analytics_event
+    record_analytics_event(
+        db=db,
+        event_type="mcq_completed",
+        user_id=current_user.id,
+        metadata={
+            "question_id": str(q.id),
+            "question_title": q.title,
+            "domain": q.subtopic.name if q.subtopic else "General",
+            "score": score,
+            "is_correct": is_correct
+        }
+    )
     
     return schemas.SubmissionResponse(
         id=sub.id,

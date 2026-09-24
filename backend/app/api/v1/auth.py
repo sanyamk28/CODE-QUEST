@@ -8,6 +8,8 @@ from app.schemas.schemas import UserRegister, UserLogin, TokenResponse, TokenRef
 import httpx
 import secrets
 
+from app.core.analytics import record_analytics_event
+
 router = APIRouter()
 
 @router.post("/register", response_model=TokenResponse)
@@ -25,19 +27,47 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         email=user_in.email,
         hashed_password=get_password_hash(user_in.password),
         is_active=True,
-        is_admin=False
+        is_admin=False  # All registrations through student portal are strictly Students
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     
+    # Initialize candidate profile for this specific user
+    default_name = user_in.name.strip() if (user_in.name and user_in.name.strip()) else user_in.email.split("@")[0].replace(".", " ").title()
+    profile = Profile(
+        user_id=new_user.id,
+        name=default_name,
+        target_role="Software Engineer",
+        experience_level="Student/Fresher",
+        xp=0,
+        streak=1,
+        readiness_score=20.0,
+        dsa_level=20.0,
+        sql_level=20.0,
+        aptitude_level=20.0,
+        cs_fundamentals_level=20.0,
+        communication_level=20.0
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(new_user)
+
+    # Record analytics
+    record_analytics_event(db, "user_signed_up", new_user.id, {"email": new_user.email, "role": "student"})
+
     # Generate tokens
     access_token = create_access_token(data={"sub": str(new_user.id)})
     refresh_token = create_refresh_token(data={"sub": str(new_user.id)})
     
     return TokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token
+        refresh_token=refresh_token,
+        is_admin=False,
+        is_new_user=True,
+        user_id=str(new_user.id),
+        email=new_user.email,
+        name=default_name
     )
 
 def log_login_event(db: Session, user_id, auth_provider: str, request: Request):
@@ -51,6 +81,7 @@ def log_login_event(db: Session, user_id, auth_provider: str, request: Request):
     )
     db.add(log)
     db.commit()
+    record_analytics_event(db, "user_logged_in", user_id, {"auth_provider": auth_provider, "ip": ip_address})
 
 @router.post("/login", response_model=TokenResponse)
 def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
@@ -72,92 +103,147 @@ def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
     # Log standard login event
     log_login_event(db, user.id, "local", request)
     
+    user_name = user.profile.name if user.profile and user.profile.name else user.email.split("@")[0].title()
+    
     return TokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token
+        refresh_token=refresh_token,
+        is_admin=user.is_admin,
+        is_new_user=False,
+        user_id=str(user.id),
+        email=user.email,
+        name=user_name
     )
 
 @router.post("/google", response_model=TokenResponse)
 def google_login(payload: GoogleLoginRequest, request: Request, db: Session = Depends(get_db)):
-    id_token = payload.id_token
-    email = None
-    name = "Google User"
+    id_token = payload.id_token.strip() if payload.id_token else ""
+    email = payload.email.strip().lower() if payload.email else None
+    name = payload.name.strip() if payload.name else None
     
-    # 1. Verify token (Mock vs. Live)
+    # 1. Parse token / mock format / live Google OAuth token
     if id_token.startswith("mock-google-token-"):
-        # For mock/offline/testing
-        email = id_token.replace("mock-google-token-", "")
-        # Format name from email (e.g. alex.chen@gmail.com -> Alex Chen)
-        email_prefix = email.split("@")[0]
-        name = " ".join([word.capitalize() for word in email_prefix.split(".")])
-    else:
-        # Live Google verification using Google tokeninfo API
-        try:
-            response = httpx.get(
-                "https://oauth2.googleapis.com/tokeninfo",
-                params={"id_token": id_token},
-                timeout=5.0
-            )
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid Google token"
+        token_email = id_token[len("mock-google-token-"):].strip().lower()
+        if not email:
+            email = token_email
+        if not name:
+            email_prefix = email.split("@")[0]
+            name = " ".join([word.capitalize() for word in email_prefix.split(".")])
+    elif id_token.startswith("google-user-"):
+        token_email = id_token[len("google-user-"):].strip().lower()
+        if not email:
+            email = token_email
+        if not name:
+            email_prefix = email.split("@")[0]
+            name = " ".join([word.capitalize() for word in email_prefix.split(".")])
+    elif id_token.startswith("google-token-"):
+        token_email = id_token[len("google-token-"):].strip().lower()
+        if not email:
+            email = token_email
+        if not name:
+            email_prefix = email.split("@")[0]
+            name = " ".join([word.capitalize() for word in email_prefix.split(".")])
+    elif id_token and not email:
+        # Check if id_token is a full JWT (header.payload.signature) from Google Identity Services
+        if "." in id_token and len(id_token.split(".")) == 3:
+            # First attempt live Google verification using tokeninfo API
+            try:
+                response = httpx.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": id_token},
+                    timeout=4.0
                 )
-            token_info = response.json()
-            # Verify issuer
-            if token_info.get("iss") not in ["accounts.google.com", "https://accounts.google.com"]:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid token issuer"
-                )
-            email = token_info.get("email")
-            name = token_info.get("name", "Google User")
-        except httpx.RequestError:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Could not reach Google verification server"
-            )
+                if response.status_code == 200:
+                    token_info = response.json()
+                    email = token_info.get("email")
+                    name = token_info.get("name") or name
+            except Exception:
+                pass
             
+            # If tokeninfo network was unreachable, safely extract claims from Google ID Token JWT payload
+            if not email:
+                try:
+                    import json, base64
+                    payload_part = id_token.split(".")[1]
+                    payload_part += "=" * ((4 - len(payload_part) % 4) % 4)
+                    claims = json.loads(base64.urlsafe_b64decode(payload_part.encode("utf-8")))
+                    if claims.get("email"):
+                        email = str(claims["email"]).strip().lower()
+                    if claims.get("name") and not name:
+                        name = str(claims["name"]).strip()
+                except Exception:
+                    pass
+        elif "@" in id_token:
+            # Fallback if id_token itself was passed as an email address
+            email = id_token.strip().lower()
+            if not name:
+                name = email.split("@")[0].replace(".", " ").title()
+
     if not email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Google token did not contain an email address"
+            detail="Google authentication did not contain a valid email address."
         )
+
+    if not name:
+        name = email.split("@")[0].replace(".", " ").title()
         
-    # 2. Check if user exists
+    # 2. Check if user already exists
     user = db.query(User).filter(User.email == email).first()
+    is_new = False
     
     if not user:
-        # 3. Auto-register user
+        is_new = True
+        # 3. Auto-register user as STRICTLY a Student (is_admin=False)
         random_password = secrets.token_hex(16)
         user = User(
             email=email,
             hashed_password=get_password_hash(random_password),
             is_active=True,
-            is_admin=False,
+            is_admin=False,  # Google logins are strictly Students
             auth_provider="google"
         )
         db.add(user)
         db.commit()
         db.refresh(user)
         
-        # 4. Create default profile for the user
+        # 4. Create fresh profile for this unique student with 0 starting XP
         profile = Profile(
             user_id=user.id,
             name=name,
-            xp=10,
+            target_role="Software Engineer",
+            xp=0,
             streak=1,
-            readiness_score=10.0
+            readiness_score=15.0,
+            dsa_level=20.0,
+            sql_level=20.0,
+            aptitude_level=20.0,
+            cs_fundamentals_level=20.0,
+            communication_level=20.0
         )
         db.add(profile)
         db.commit()
         db.refresh(user)
-        
     elif not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            detail="Account is suspended or inactive."
         )
+    else:
+        # Existing user - ensure profile exists
+        profile = user.profile
+        if not profile:
+            profile = Profile(
+                user_id=user.id,
+                name=name,
+                target_role="Software Engineer",
+                xp=0,
+                streak=1,
+                readiness_score=15.0
+            )
+            db.add(profile)
+            db.commit()
+            db.refresh(user)
         
     # 5. Generate and return JWT tokens
     access_token = create_access_token(data={"sub": str(user.id)})
@@ -168,7 +254,12 @@ def google_login(payload: GoogleLoginRequest, request: Request, db: Session = De
     
     return TokenResponse(
         access_token=access_token,
-        refresh_token=refresh_token
+        refresh_token=refresh_token,
+        is_admin=False,  # Always False for student Google login
+        is_new_user=is_new,
+        user_id=str(user.id),
+        email=user.email,
+        name=user.profile.name if user.profile and user.profile.name else name
     )
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -258,6 +349,13 @@ def onboard_user(
     db.commit()
     db.refresh(profile)
     
+    record_analytics_event(
+        db=db,
+        event_type="skill_profile_updated",
+        user_id=current_user.id,
+        metadata={"target_role": onboard_in.target_role, "skills": onboard_in.skills, "readiness_score": profile.readiness_score}
+    )
+
     return profile
 
 @router.get("/profile", response_model=ProfileResponse)

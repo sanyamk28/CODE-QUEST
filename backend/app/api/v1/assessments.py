@@ -148,6 +148,19 @@ async def submit_assessment(
         current_user.profile.readiness_score = min(current_user.profile.readiness_score + 3.5, 100.0)
         db.commit()
 
+    from app.core.analytics import record_analytics_event
+    record_analytics_event(
+        db=db,
+        event_type="assessment_completed",
+        user_id=current_user.id,
+        metadata={
+            "assessment_id": str(assessment.id),
+            "assessment_title": assessment.title,
+            "score": max(total_score, 0),
+            "passed": passed
+        }
+    )
+
     return schemas.AssessmentResultResponse(
         assessment_id=assessment.id,
         total_questions=len(assessment.questions),
