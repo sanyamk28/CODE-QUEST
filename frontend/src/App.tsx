@@ -25,12 +25,14 @@ import { CompanyScraperAgentView } from './features/company/CompanyScraperAgentV
 import { Smartphone, Monitor, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Global user state
-  const [userName, setUserName] = useState<string>('Sanyam Kumar');
-  const [targetRole, setTargetRole] = useState<string>('Data Engineer');
+  // Global user state initialized from localStorage
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem('cq_user_name') || 'Alex Chen');
+  const [targetRole, setTargetRole] = useState<string>(() => localStorage.getItem('cq_target_role') || 'Software Engineer');
   const [streak, setStreak] = useState<number>(12);
   const [activeTab, setActiveTab] = useState<ActiveTabType>('dashboard');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('cq_token') || localStorage.getItem('cq_logged_in'));
+  });
   const [isPhonePreview, setIsPhonePreview] = useState<boolean>(false);
   const [isNativeMobile, setIsNativeMobile] = useState<boolean>(false);
 
@@ -52,6 +54,10 @@ export const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('cq_token');
+    localStorage.removeItem('cq_logged_in');
+    localStorage.removeItem('cq_user_name');
+    localStorage.removeItem('cq_target_role');
     setIsLoggedIn(false);
     setActiveTab('splash');
   };
@@ -68,6 +74,7 @@ export const App: React.FC = () => {
         initialScreen={activeTab === 'login' ? 'login' : 'splash'}
         onLoginSuccess={handleLoginSuccess}
         onSkipToDashboard={() => {
+          localStorage.setItem('cq_logged_in', 'true');
           setIsLoggedIn(true);
           setActiveTab('dashboard');
         }}

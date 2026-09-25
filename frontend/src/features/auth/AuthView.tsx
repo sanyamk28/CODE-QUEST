@@ -12,8 +12,13 @@ import {
   ArrowLeft,
   ShieldCheck,
   Laptop,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Zap,
+  UserCheck
 } from 'lucide-react';
+import { apiClient } from '../../services/api';
 
 interface AuthViewProps {
   onLoginSuccess: (name: string, role: string) => void;
@@ -28,23 +33,101 @@ export const AuthView: React.FC<AuthViewProps> = ({
 }) => {
   const [currentScreen, setCurrentScreen] = useState<'splash' | 'auth'>(initialScreen === 'splash' ? 'splash' : 'auth');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('sanyam.kumar@example.com');
-  const [password, setPassword] = useState('password123');
-  const [fullName, setFullName] = useState('Sanyam Kumar');
-  const [targetRole, setTargetRole] = useState('Data Engineer');
+  const [email, setEmail] = useState('alex.chen@codequest.dev');
+  const [password, setPassword] = useState('pass123');
+  const [fullName, setFullName] = useState('Alex Chen');
+  const [targetRole, setTargetRole] = useState('Software Engineer');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLoginSuccess(fullName || 'Sanyam Kumar', targetRole || 'Data Engineer');
+    setError(null);
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        // Register API call
+        const res = await apiClient.post('/auth/register', {
+          name: fullName.trim() || undefined,
+          email: email.trim().toLowerCase(),
+          password: password,
+        });
+
+        const data = res.data;
+        if (data.access_token) {
+          localStorage.setItem('cq_token', data.access_token);
+        }
+        const userDisplayName = data.name || fullName.trim() || 'Student';
+        localStorage.setItem('cq_user_name', userDisplayName);
+        localStorage.setItem('cq_target_role', targetRole);
+        localStorage.setItem('cq_logged_in', 'true');
+        onLoginSuccess(userDisplayName, targetRole);
+      } else {
+        // Login API call
+        const res = await apiClient.post('/auth/login', {
+          email: email.trim().toLowerCase(),
+          password: password,
+        });
+
+        const data = res.data;
+        if (data.access_token) {
+          localStorage.setItem('cq_token', data.access_token);
+        }
+        const userDisplayName = data.name || email.split('@')[0];
+        localStorage.setItem('cq_user_name', userDisplayName);
+        localStorage.setItem('cq_target_role', targetRole);
+        localStorage.setItem('cq_logged_in', 'true');
+        onLoginSuccess(userDisplayName, targetRole);
+      }
+    } catch (err: any) {
+      console.error('Authentication error:', err);
+      const detail = err.response?.data?.detail;
+      let msg = 'Authentication failed. Please verify your credentials.';
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail) && detail[0]?.msg) {
+        msg = detail[0].msg;
+      } else if (err.message === 'Network Error') {
+        msg = 'Backend connection offline or initializing. Click "Instant Guest Mode" below to proceed!';
+      }
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickFill = (fillEmail: string, fillPass: string, fillName: string, fillRole: string) => {
+    setEmail(fillEmail);
+    setPassword(fillPass);
+    setFullName(fillName);
+    setTargetRole(fillRole);
+    setIsSignUp(false);
+    setError(null);
+  };
+
+  const handleGuestAccess = () => {
+    const guestName = fullName.trim() || 'Guest Student';
+    localStorage.setItem('cq_token', `guest_${Date.now()}`);
+    localStorage.setItem('cq_user_name', guestName);
+    localStorage.setItem('cq_target_role', targetRole || 'Software Engineer');
+    localStorage.setItem('cq_logged_in', 'true');
+    onLoginSuccess(guestName, targetRole || 'Software Engineer');
   };
 
   const handleOAuth = (provider: 'Google' | 'GitHub') => {
-    onLoginSuccess('Sanyam Kumar', 'Data Engineer');
+    // Demo OAuth shortcut
+    const oauthName = provider === 'Google' ? 'Google Candidate' : 'GitHub Developer';
+    localStorage.setItem('cq_token', `mock_${provider.toLowerCase()}_token`);
+    localStorage.setItem('cq_user_name', oauthName);
+    localStorage.setItem('cq_target_role', targetRole);
+    localStorage.setItem('cq_logged_in', 'true');
+    onLoginSuccess(oauthName, targetRole);
   };
 
-  // SCREEN 1: Mobile Splash Screen matching Photo 1
+  // SCREEN 1: Mobile Splash Screen
   if (currentScreen === 'splash') {
     return (
       <div className="min-h-screen w-full bg-[#070a13] text-slate-100 flex flex-col justify-between items-center p-6 md:p-10 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-hidden select-none">
@@ -54,19 +137,18 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
         {/* Top bar with Skip button */}
         <div className="w-full max-w-md flex items-center justify-end z-10 pt-2">
-          {onSkipToDashboard && (
-            <button
-              onClick={onSkipToDashboard}
-              className="text-xs font-semibold text-slate-400 hover:text-sky-400 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 transition"
-            >
-              Skip to App ➔
-            </button>
-          )}
+          <button
+            onClick={handleGuestAccess}
+            className="text-xs font-semibold text-slate-400 hover:text-sky-400 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 transition flex items-center gap-1.5"
+          >
+            <span>Skip to App</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {/* Center Content: Monogram Logo & 3D Tech Elements */}
         <div className="w-full max-w-sm flex flex-col items-center text-center my-auto z-10 space-y-6">
-          {/* Glowing Monogram Logo matching Screen 1 */}
+          {/* Glowing Monogram Logo */}
           <div className="relative group">
             <div className="h-24 w-24 rounded-3xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-sky-400 p-[2px] shadow-2xl shadow-indigo-500/40 animate-pulse">
               <div className="h-full w-full bg-[#090d16] rounded-[22px] flex items-center justify-center">
@@ -75,7 +157,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 </span>
               </div>
             </div>
-            {/* Subtle glow ring */}
             <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-sky-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500" />
           </div>
 
@@ -87,7 +168,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
             </p>
           </div>
 
-          {/* 3D Floating Badges Illustration matching Screen 1 */}
+          {/* 3D Floating Badges Illustration */}
           <div className="relative w-72 h-44 my-4 flex items-center justify-center">
             {/* Floating Python Badge */}
             <div className="absolute top-2 left-4 bg-[#0d162b]/95 border border-sky-500/40 rounded-xl px-3 py-2 shadow-lg backdrop-blur-md flex items-center gap-2 transform -rotate-6 animate-float-slow">
@@ -117,7 +198,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </div>
         </div>
 
-        {/* Bottom Actions matching Screen 1 */}
+        {/* Bottom Actions */}
         <div className="w-full max-w-sm space-y-3 z-10 pb-4">
           <button
             onClick={() => setCurrentScreen('auth')}
@@ -144,7 +225,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     );
   }
 
-  // SCREEN 2: Login / Signup Screen matching Photo 2
+  // SCREEN 2: Login / Signup Screen
   return (
     <div className="min-h-screen w-full bg-[#070a13] text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-hidden select-none">
       {/* Background ambient lighting */}
@@ -153,7 +234,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
       {/* Main Container */}
       <div className="w-full max-w-4xl bg-[#090d16]/90 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
-        {/* Form Column matching Screen 2 */}
+        {/* Form Column */}
         <div className="p-6 sm:p-8 md:p-10 flex flex-col justify-between">
           <div>
             {/* Top Navigation & Back Arrow */}
@@ -166,31 +247,78 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <span>Splash</span>
               </button>
 
-              {onSkipToDashboard && (
-                <button
-                  onClick={onSkipToDashboard}
-                  className="text-xs text-slate-400 hover:text-sky-400 transition"
-                >
-                  Skip ➔
-                </button>
-              )}
+              <button
+                onClick={handleGuestAccess}
+                className="text-xs text-slate-400 hover:text-sky-400 transition flex items-center gap-1"
+              >
+                <span>Guest Mode</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
             </div>
 
             {/* Headline */}
-            <div className="space-y-1.5 mb-6">
-              <h2 className="text-2xl font-black tracking-tight text-white">
-                {isSignUp ? 'Create Your Account' : 'Welcome Back'}
+            <div className="space-y-1.5 mb-5">
+              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                {isSignUp ? 'Create your account' : 'Welcome back'}
               </h2>
-              <p className="text-xs text-slate-400 font-medium">
-                {isSignUp ? 'Start your journey to top-tier tech placements' : 'Continue your coding journey'}
+              <p className="text-xs text-slate-400">
+                {isSignUp
+                  ? 'Join Code Quest and accelerate your placement preparation'
+                  : 'Enter your credentials to access your interview workspace'}
               </p>
             </div>
 
-            {/* Segmented Switcher [Sign In | Sign Up] matching Screen 2 */}
-            <div className="p-1 rounded-xl bg-[#0e1424] border border-slate-800/80 flex mb-5">
+            {/* Quick Demo Pre-seed Logins Pill Box */}
+            <div className="mb-4 p-3 rounded-2xl bg-[#0b1020] border border-indigo-900/40 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+                <span className="flex items-center gap-1 text-indigo-400">
+                  <Zap className="h-3.5 w-3.5" /> 1-Click Demo Accounts:
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill('alex.chen@codequest.dev', 'pass123', 'Alex Chen', 'Software Engineer')}
+                  className="px-2.5 py-1.5 rounded-lg bg-indigo-950/70 hover:bg-indigo-900/90 border border-indigo-700/50 text-[11px] font-medium text-indigo-200 transition flex items-center gap-1.5"
+                >
+                  <UserCheck className="h-3 w-3 text-sky-400" />
+                  <span>Student (Alex)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill('admin@codequest.dev', 'Admin@1234', 'Admin User', 'Engineering Lead')}
+                  className="px-2.5 py-1.5 rounded-lg bg-purple-950/70 hover:bg-purple-900/90 border border-purple-700/50 text-[11px] font-medium text-purple-200 transition flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="h-3 w-3 text-purple-400" />
+                  <span>Admin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGuestAccess}
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-950/70 hover:bg-emerald-900/90 border border-emerald-700/50 text-[11px] font-medium text-emerald-200 transition flex items-center gap-1.5 ml-auto"
+                >
+                  <Sparkles className="h-3 w-3 text-emerald-400" />
+                  <span>Instant Guest</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Error Message Box */}
+            {error && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+                <span className="leading-relaxed">{error}</span>
+              </div>
+            )}
+
+            {/* Tab Selector: Sign In vs Sign Up */}
+            <div className="p-1 rounded-xl bg-[#0e1424] border border-slate-800/80 flex mb-4">
               <button
                 type="button"
-                onClick={() => setIsSignUp(false)}
+                onClick={() => {
+                  setIsSignUp(false);
+                  setError(null);
+                }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   !isSignUp
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
@@ -201,7 +329,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setIsSignUp(true)}
+                onClick={() => {
+                  setIsSignUp(true);
+                  setError(null);
+                }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   isSignUp
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
@@ -234,14 +365,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
                       list="auth-roles-list"
                       value={targetRole}
                       onChange={(e) => setTargetRole(e.target.value)}
-                      placeholder="e.g. Data Engineer, Software Engineer..."
+                      placeholder="e.g. Software Engineer, Data Engineer..."
                       className="w-full px-3.5 py-2.5 rounded-xl bg-[#0e1424] border border-slate-800 text-xs text-slate-200 outline-none focus:border-indigo-500 transition font-medium"
                       required
                     />
                     <datalist id="auth-roles-list">
+                      <option value="Software Engineer" />
                       <option value="Data Engineer" />
                       <option value="AI / Machine Learning Engineer" />
-                      <option value="Software Engineer" />
                       <option value="Backend Developer" />
                       <option value="Full Stack Developer" />
                       <option value="Cloud / DevOps Engineer" />
@@ -258,7 +389,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="sanyam@example.com"
+                    placeholder="student@codequest.dev"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-[#0e1424] border border-slate-800 text-xs text-slate-200 outline-none focus:border-indigo-500 transition font-medium"
                     required
                   />
@@ -273,7 +404,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                       href="#forgot"
                       onClick={(e) => {
                         e.preventDefault();
-                        alert('Password reset link sent to registered email!');
+                        alert('Password reset feature: Use demo password "pass123" for demo candidate or "Admin@1234" for admin.');
                       }}
                       className="text-[11px] text-sky-400 hover:text-sky-300 font-medium"
                     >
@@ -303,21 +434,31 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 mt-4 active:scale-[0.99]"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 mt-4 active:scale-[0.99]"
               >
-                <span>{isSignUp ? 'Create Free Account' : 'Sign In'}</span>
-                <ArrowRight className="h-4 w-4" />
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Authenticating...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{isSignUp ? 'Create Free Account' : 'Sign In'}</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </button>
             </form>
 
-            {/* Social Divider matching Screen 2 */}
-            <div className="flex items-center gap-3 my-5">
+            {/* Social Divider */}
+            <div className="flex items-center gap-3 my-4">
               <div className="h-px flex-1 bg-slate-800" />
               <span className="text-[11px] text-slate-500 font-medium">or continue with</span>
               <div className="h-px flex-1 bg-slate-800" />
             </div>
 
-            {/* Social Logins matching Screen 2: Google & GitHub */}
+            {/* Social Logins */}
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
@@ -346,14 +487,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
             </div>
           </div>
 
-          {/* Toggle bottom link matching Screen 2 */}
-          <div className="pt-4 border-t border-slate-800/80 text-center text-xs text-slate-400 mt-4">
+          {/* Toggle bottom link */}
+          <div className="pt-3 border-t border-slate-800/80 text-center text-xs text-slate-400 mt-4">
             {isSignUp ? (
               <span>
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => setIsSignUp(false)}
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setError(null);
+                  }}
                   className="text-sky-400 hover:text-sky-300 font-bold ml-1"
                 >
                   Sign In
@@ -364,7 +508,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 Don't have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => setIsSignUp(true)}
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setError(null);
+                  }}
                   className="text-sky-400 hover:text-sky-300 font-bold ml-1"
                 >
                   Sign Up
