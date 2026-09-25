@@ -1,273 +1,259 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Swords, Zap, Trophy, KeyRound, ArrowRight, RefreshCw, AlertCircle, Terminal, Play, CheckCircle2, Award
+  Swords,
+  Timer,
+  Play,
+  Send,
+  RotateCcw,
+  Sparkles,
+  Zap,
+  Users,
+  Copy,
+  CheckCircle2,
+  AlertCircle,
+  FileCode,
+  Flame,
+  Award,
+  RefreshCw,
+  Trophy
 } from 'lucide-react';
 
-interface BattleArenaViewProps {
-  inBattle: boolean;
-  battleStatus: 'idle' | 'lobby' | 'countdown' | 'active' | 'finished';
-  battleDifficulty: 'Easy' | 'Medium' | 'Hard';
-  battleQuickMatching: boolean;
-  battleJoinInput: string;
-  battleRoomCode: string;
-  battleProblem: any;
-  battleCode: string;
-  battleCountdown: number;
-  battleTimer: number;
-  battleWinner: { name: string; isYou: boolean; execution_time?: number } | null;
-  opponentTelemetry: {
-    lines: number;
-    charCount: number;
-    isTyping: boolean;
-    testsPassed: number;
-    totalTests: number;
-    status: string;
-  };
-  battlePlayers: Array<{ user_id: string; name: string; hasPassed: boolean; score: number }>;
-  battleError: string | null;
-  onSetDifficulty: (diff: 'Easy' | 'Medium' | 'Hard') => void;
-  onQuickMatch: () => void;
-  onCreateCustomRoom: () => void;
-  onJoinInput: (code: string) => void;
-  onJoinRoom: () => void;
-  onCodeChange: (code: string) => void;
-  onSubmitBattleCode: () => void;
-  onLeaveBattle: () => void;
-  onClearError: () => void;
-}
+const OPPONENTS = [
+  { name: 'Aditya Singh', college: 'IIT Roorkee', level: 6, avatar: 'AS' },
+  { name: 'Priya Sharma', college: 'IIT Delhi', level: 7, avatar: 'PS' },
+  { name: 'Rahul Verma', college: 'NIT Trichy', level: 5, avatar: 'RV' },
+];
 
-export const BattleArenaView: React.FC<BattleArenaViewProps> = ({
-  inBattle,
-  battleStatus,
-  battleDifficulty,
-  battleQuickMatching,
-  battleJoinInput,
-  battleRoomCode,
-  battleProblem,
-  battleCode,
-  battleCountdown,
-  battleTimer,
-  battleWinner,
-  opponentTelemetry,
-  battlePlayers,
-  battleError,
-  onSetDifficulty,
-  onQuickMatch,
-  onCreateCustomRoom,
-  onJoinInput,
-  onJoinRoom,
-  onCodeChange,
-  onSubmitBattleCode,
-  onLeaveBattle,
-  onClearError,
-}) => {
+export const BattleArenaView: React.FC = () => {
+  const [userCode, setUserCode] = useState(
+`class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        cur_sum = 0
+        max_sum = nums[0]
+        for n in nums:
+            cur_sum = max(n, cur_sum + n)
+            max_sum = max(max_sum, cur_sum)
+        return max_sum`
+  );
+
+  const [opponentIdx, setOpponentIdx] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(754); // 00:12:34
+  const [userLines, setUserLines] = useState(8);
+  const [opponentLines, setOpponentLines] = useState(5);
+  const [userTestsPassed, setUserTestsPassed] = useState(3);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBattleWon, setIsBattleWon] = useState(false);
+  const [submissionFeedback, setSubmissionFeedback] = useState<string | null>(null);
+  const [language, setLanguage] = useState('Python3');
+
+  const opponent = OPPONENTS[opponentIdx];
+
+  // Timer and opponent line generator
+  useEffect(() => {
+    const timerInterval = setInterval(() => {
+      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+
+    const opponentInterval = setInterval(() => {
+      if (!isBattleWon) {
+        setOpponentLines((prev) => Math.min(prev + 1, 14));
+      }
+    }, 4500);
+
+    return () => {
+      clearInterval(timerInterval);
+      clearInterval(opponentInterval);
+    };
+  }, [isBattleWon]);
+
+  const formatTimer = (totalSecs: number) => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `00:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleRun = () => {
+    setUserLines(userCode.split('\n').length);
+    setUserTestsPassed(5);
+    setSubmissionFeedback('Passed 5/10 Test Suites • Runtime: 34ms');
+  };
+
+  const handleSubmit = () => {
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setUserTestsPassed(10);
+      setIsBattleWon(true);
+      setSubmissionFeedback('🏆 All 10/10 Test Cases Passed! You Won The Battle (+50 XP)!');
+    }, 800);
+  };
+
+  const handleNextBattle = () => {
+    setIsBattleWon(false);
+    setSubmissionFeedback(null);
+    setOpponentIdx((prev) => (prev + 1) % OPPONENTS.length);
+    setSecondsLeft(900);
+    setOpponentLines(2);
+    setUserCode(
+`class Solution:
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        # Write your code here
+        char_set = set()
+        left = 0
+        res = 0
+        for right in range(len(s)):
+            while s[right] in char_set:
+                char_set.remove(s[left])
+                left += 1
+            char_set.add(s[right])
+            res = max(res, right - left + 1)
+        return res`
+    );
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {battleError && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
-            <span>{battleError}</span>
+    <div className="space-y-4 max-w-5xl mx-auto pb-6">
+      {/* Header Matchup Banner matching Screen 7 */}
+      <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl flex items-center justify-between gap-2">
+        {/* Player 1 (You) */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="h-10 sm:h-12 w-10 sm:w-12 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow ring-2 ring-indigo-500/30">
+            SK
           </div>
-          <button onClick={onClearError} className="text-slate-400 hover:text-white text-xs">
-            ✕
+          <div>
+            <div className="text-xs sm:text-sm font-black text-white flex items-center gap-1">
+              <span>Sanyam (You)</span>
+            </div>
+            <div className="text-[10px] sm:text-xs text-slate-400 font-medium">Level 5 • 1,200 XP</div>
+          </div>
+        </div>
+
+        {/* Center: VS Badge & Timer matching Screen 7 */}
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+              Medium
+            </span>
+            <span className="text-[10px] font-mono text-amber-400 font-bold">+50 XP</span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-1 px-3 py-1 rounded-xl bg-[#0e1424] border border-slate-800 text-xs font-mono font-bold text-rose-400">
+            <Timer className="h-3.5 w-3.5" />
+            <span>{formatTimer(secondsLeft)}</span>
+          </div>
+        </div>
+
+        {/* Player 2 (Opponent) */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="text-right">
+            <div className="text-xs sm:text-sm font-black text-white">{opponent.name}</div>
+            <div className="text-[10px] sm:text-xs text-slate-400 font-medium">Level {opponent.level} • {opponent.college}</div>
+          </div>
+          <div className="h-10 sm:h-12 w-10 sm:w-12 rounded-full bg-gradient-to-tr from-rose-500 to-amber-600 flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow ring-2 ring-rose-500/30">
+            {opponent.avatar}
+          </div>
+        </div>
+      </div>
+
+      {/* Problem Prompt Card matching Screen 7 */}
+      <div className="bg-[#0b101e] border border-slate-800/80 rounded-2xl p-4 shadow-md space-y-1.5">
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-bold font-mono text-sky-400"># Live Problem Challenge</div>
+          <span className="text-[10px] text-slate-400 font-mono">1v1 Realtime Arena</span>
+        </div>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Given an integer array <code className="text-sky-300 font-mono">nums</code>, find the subarray with the largest sum, and return its sum. Your solution must run in linear O(N) runtime.
+        </p>
+      </div>
+
+      {/* Code Editor matching Screen 7 */}
+      <div className="bg-[#0b101e] border border-slate-800/80 rounded-2xl overflow-hidden shadow-lg flex flex-col">
+        {/* Editor Top Bar with Language Selector */}
+        <div className="px-4 py-2 bg-[#090d16] border-b border-slate-800/80 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileCode className="h-3.5 w-3.5 text-sky-400" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-[#0e1424] border border-slate-700/60 rounded-lg px-2 py-0.5 text-xs text-slate-200 outline-none font-medium"
+            >
+              <option value="Python3">Python3</option>
+              <option value="JavaScript">JavaScript</option>
+              <option value="Java">Java</option>
+              <option value="C++">C++</option>
+            </select>
+          </div>
+
+          <button
+            onClick={() => setUserCode(
+`class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
+        # Write your code here
+        pass`
+            )}
+            className="p-1 rounded text-slate-400 hover:text-white"
+            title="Reset code"
+          >
+            <RotateCcw className="h-3 w-3" />
           </button>
         </div>
-      )}
 
-      {/* LOBBY / MATCHMAKING */}
-      {!inBattle ? (
-        <div className="space-y-6">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-[#0d1326] to-[#0a0f1d] border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
-            <div className="relative z-10 space-y-4 max-w-2xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold tracking-wide">
-                <Swords className="h-3.5 w-3.5 animate-pulse" /> Real-Time 1v1 Synchronized Code Duel
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                Code Battle{' '}
-                <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 bg-clip-text text-transparent">
-                  Live Arena
-                </span>
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Go head-to-head against peer duelists in synchronized dual split-screens. Same algorithmic problem, live keystroke & line telemetry, atomic Redis SETNX winner locking.
-              </p>
-            </div>
-
-            <div className="relative z-10 p-6 rounded-2xl bg-slate-950/70 border border-slate-800 max-w-xl mx-auto space-y-4">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-medium">Select Difficulty:</span>
-                <div className="flex gap-1.5">
-                  {(['Easy', 'Medium', 'Hard'] as const).map((diff) => (
-                    <button
-                      key={diff}
-                      onClick={() => onSetDifficulty(diff)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                        battleDifficulty === diff
-                          ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                          : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-                      }`}
-                    >
-                      {diff}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={onQuickMatch}
-                disabled={battleQuickMatching}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-black text-sm shadow-xl shadow-amber-500/25 transition flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {battleQuickMatching ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin text-white" />
-                    <span>Searching for waiting duelist...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4 text-amber-200 fill-amber-200" />
-                    <span>⚡ Quick Match (1-Click Auto-Pair)</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
-              <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                  <Trophy className="h-4 w-4" /> Create Private Room
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Generate a 6-character private room code to challenge a friend or peer.
-                </p>
-                <button
-                  onClick={onCreateCustomRoom}
-                  className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition flex items-center justify-center gap-1.5"
-                >
-                  Generate Duel Room ➔
-                </button>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-sky-400">
-                  <KeyRound className="h-4 w-4" /> Join with Room Code
-                </div>
-                <p className="text-[11px] text-slate-400">Enter a 6-character room code to enter the arena.</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={battleJoinInput}
-                    onChange={(e) => onJoinInput(e.target.value.toUpperCase())}
-                    placeholder="e.g. 8X42LK"
-                    className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono uppercase tracking-widest text-center text-amber-300 outline-none"
-                  />
-                  <button
-                    onClick={onJoinRoom}
-                    disabled={battleJoinInput.length < 4}
-                    className="px-4 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 font-bold text-xs text-white disabled:opacity-40"
-                  >
-                    Join
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Code Input Area */}
+        <div className="p-3 bg-[#070b14] min-h-[190px] flex flex-col">
+          <textarea
+            value={userCode}
+            onChange={(e) => setUserCode(e.target.value)}
+            className="w-full flex-1 bg-transparent text-slate-200 resize-none outline-none font-mono text-xs leading-relaxed"
+            spellCheck={false}
+            rows={7}
+          />
         </div>
-      ) : (
-        /* ACTIVE BATTLE ARENA */
-        <div className="space-y-4">
-          <div className="bg-[#0b101e] border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono font-bold">
-                ROOM: {battleRoomCode}
-              </span>
-              <span className="text-xs text-slate-300 font-bold">
-                {battleProblem?.title || 'Solving Live Challenge...'}
-              </span>
-            </div>
 
-            <div className="flex items-center gap-4">
-              <div className="text-xs font-mono font-bold text-amber-400">
-                ⏱️ {Math.floor(battleTimer / 60)}:{(battleTimer % 60).toString().padStart(2, '0')}
-              </div>
+        {/* Battle Feedback */}
+        {submissionFeedback && (
+          <div className="px-4 py-2.5 bg-emerald-950/40 border-t border-emerald-800/40 text-xs text-emerald-300 font-semibold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              <span>{submissionFeedback}</span>
+            </div>
+            {isBattleWon && (
               <button
-                onClick={onLeaveBattle}
-                className="px-3 py-1 rounded-lg bg-rose-950/40 text-rose-300 border border-rose-800/40 text-xs font-semibold hover:bg-rose-900/50"
+                onClick={handleNextBattle}
+                className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow"
               >
-                Leave Room
+                Next Match ➔
               </button>
-            </div>
+            )}
           </div>
+        )}
 
-          {/* Winner Banner */}
-          {battleWinner && (
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 border border-amber-500/50 text-center space-y-2 shadow-2xl">
-              <Award className="h-10 w-10 text-amber-400 mx-auto animate-bounce" />
-              <h2 className="text-xl font-black text-white">
-                {battleWinner.isYou ? '🏆 VICTORY! You won the Duel!' : `⚔️ Duel Finished! Winner: ${battleWinner.name}`}
-              </h2>
-              <p className="text-xs text-slate-300">
-                {battleWinner.isYou ? '+100 XP awarded to your profile!' : 'Great effort! Review solution and rematch.'}
-              </p>
-            </div>
-          )}
-
-          {/* Split Screen Duel */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px]">
-            {/* Player Editor */}
-            <div className="rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col overflow-hidden">
-              <div className="bg-[#0b101e] px-4 py-2 border-b border-slate-800 flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1.5">
-                  <Terminal className="h-3.5 w-3.5" /> Your Workspace
-                </span>
-                <button
-                  onClick={onSubmitBattleCode}
-                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
-                >
-                  <Play className="h-3 w-3 fill-white" /> Submit Solution
-                </button>
-              </div>
-              <textarea
-                value={battleCode}
-                onChange={(e) => onCodeChange(e.target.value)}
-                className="flex-1 w-full bg-[#070a13] p-4 text-xs font-mono text-emerald-200 outline-none resize-none leading-relaxed"
-                spellCheck={false}
-              />
-            </div>
-
-            {/* Opponent Telemetry Screen */}
-            <div className="rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col overflow-hidden">
-              <div className="bg-[#0b101e] px-4 py-2 border-b border-slate-800 flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-rose-400">⚔️ Opponent Live Telemetry</span>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  {opponentTelemetry.isTyping ? '⚡ Typing...' : 'Idle'}
-                </span>
-              </div>
-              <div className="flex-1 bg-[#070a13] p-6 flex flex-col justify-center items-center space-y-6">
-                <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                    <div className="text-2xl font-black font-mono text-amber-400">{opponentTelemetry.lines}</div>
-                    <div className="text-[10px] text-slate-500 uppercase font-bold">Lines Written</div>
-                  </div>
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                    <div className="text-2xl font-black font-mono text-sky-400">{opponentTelemetry.charCount}</div>
-                    <div className="text-[10px] text-slate-500 uppercase font-bold">Characters</div>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 w-full max-w-sm text-center space-y-1">
-                  <div className="text-xs font-bold text-slate-300">Test Cases Passed:</div>
-                  <div className="text-lg font-bold font-mono text-emerald-400">
-                    {opponentTelemetry.testsPassed} / {opponentTelemetry.totalTests || 3}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Action Buttons: Run & Submit */}
+        <div className="p-3 bg-[#090d16] border-t border-slate-800/80 grid grid-cols-2 gap-2">
+          <button
+            onClick={handleRun}
+            className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition border border-slate-700"
+          >
+            <Play className="h-3.5 w-3.5 fill-slate-200" />
+            <span>Run Tests</span>
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition"
+          >
+            <Send className="h-3.5 w-3.5" />
+            <span>{isSubmitting ? 'Evaluating...' : 'Submit Solution'}</span>
+          </button>
         </div>
-      )}
+
+        {/* Opponent Status Ticker matching Screen 7 */}
+        <div className="px-4 py-2 bg-[#060a12] border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+            <span className="italic">{opponent.name} is typing...</span>
+          </div>
+          <span className="font-mono text-[10px] text-slate-500">{opponentLines} lines written</span>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 export interface CodingProblem {
   id: string;
   title: string;
-  difficulty: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard' | string;
   type: string;
   xp_reward: number;
   company_tags: string[];
@@ -11,12 +11,15 @@ export interface CodingProblem {
   input: string;
   output: string;
   template: string;
+  hint?: string;
+  solution?: string;
+  solutionExplanation?: string;
 }
 
 export interface SqlProblem {
   id: string;
   title: string;
-  difficulty: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard' | string;
   company_tags: string[];
   schema: string;
   desc: string;
@@ -42,41 +45,21 @@ export interface PuzzleQuestion {
   solution: string;
 }
 
-export interface StudentRecord {
-  id: string;
-  email: string;
-  name: string;
-  college: string;
-  degree: string;
-  target_role: string;
-  xp: number;
-  readiness_score: number;
-  is_active: boolean;
-  created_at: string;
-  dsa_level: number;
-  sql_level: number;
-  cs_fundamentals_level: number;
-  aptitude_level: number;
-  submissions: any[];
-  logins: any[];
-}
-
 export type ActiveTabType =
+  | 'splash'
+  | 'login'
   | 'dashboard'
+  | 'practice'
+  | 'company-intel'
   | 'arena'
   | 'sql'
   | 'mcqs'
   | 'puzzles'
-  | 'assessments'
   | 'battle'
   | 'interview'
   | 'resume'
   | 'roadmaps'
-  | 'leaderboard';
-
-export type AdminTabType =
-  | 'overview'
-  | 'students'
-  | 'curriculum'
-  | 'telemetry'
-  | 'reports';
+  | 'assessments'
+  | 'leaderboard'
+  | 'profile'
+  | 'settings';
