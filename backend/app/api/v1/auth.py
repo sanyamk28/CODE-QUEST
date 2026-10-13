@@ -20,38 +20,56 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     # Check if user already exists (case-insensitive)
     user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email is already registered. Please sign in instead."
-        )
+        # If user exists, check if password matches for seamless login
+        if verify_password(user_in.password, user.hashed_password):
+            access_token = create_access_token(data={"sub": str(user.id)})
+            refresh_token = create_refresh_token(data={"sub": str(user.id)})
+            has_role = bool(user.profile and user.profile.target_role and user.profile.target_role.strip())
+            return TokenResponse(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                is_admin=user.is_admin,
+                is_new_user=False,
+                needs_onboarding=not has_role,
+                user_id=str(user.id),
+                email=user.email,
+                name=user.profile.name if user.profile else clean_email.split("@")[0].title(),
+                target_role=user.profile.target_role if user.profile else ""
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is already registered. Please sign in with your correct password."
+            )
     
-    # Create new user
+    # Create new user and store credentials securely
     new_user = User(
         email=clean_email,
         hashed_password=get_password_hash(user_in.password),
         is_active=True,
-        is_admin=False  # All registrations through student portal are strictly Students
+        is_admin=False
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    
     # Initialize candidate profile for this specific user
-    default_name = user_in.name.strip() if (user_in.name and user_in.name.strip()) else user_in.email.split("@")[0].replace(".", " ").title()
+    default_name = user_in.name.strip() if (user_in.name and user_in.name.strip()) else clean_email.split("@")[0].replace(".", " ").title()
     profile = Profile(
         user_id=new_user.id,
         name=default_name,
-        target_role="Software Engineer",
+        target_role="",  # Empty role indicates user must choose their role in onboarding
         experience_level="Student/Fresher",
+        prep_duration=3,
+        daily_study_goal=2,
         xp=0,
         streak=1,
-        readiness_score=20.0,
-        dsa_level=20.0,
-        sql_level=20.0,
-        aptitude_level=20.0,
-        cs_fundamentals_level=20.0,
-        communication_level=20.0
+        readiness_score=0.0,
+        dsa_level=0.0,
+        sql_level=0.0,
+        aptitude_level=0.0,
+        cs_fundamentals_level=0.0,
+        communication_level=0.0
     )
     db.add(profile)
     db.commit()
@@ -69,9 +87,11 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         refresh_token=refresh_token,
         is_admin=False,
         is_new_user=True,
+        needs_onboarding=True,
         user_id=str(new_user.id),
         email=new_user.email,
-        name=default_name
+        name=default_name,
+        target_role=""
     )
 
 def log_login_event(db: Session, user_id, auth_provider: str, request: Request):
@@ -91,17 +111,55 @@ def log_login_event(db: Session, user_id, auth_provider: str, request: Request):
 def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
     clean_email = user_in.email.strip().lower()
     user = db.query(User).filter(func.lower(User.email) == clean_email).first()
-    if not user or not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect email or password"
-        )
+    
+    is_new = False
+    needs_onboard = False
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+    if not user:
+        # If user does not exist yet, automatically create their account and save their password!
+        user = User(
+            email=clean_email,
+            hashed_password=get_password_hash(user_in.password),
+            is_active=True,
+            is_admin=False,
+            auth_provider="local"
         )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        default_name = clean_email.split("@")[0].replace(".", " ").title()
+        profile = Profile(
+            user_id=user.id,
+            name=default_name,
+            target_role="",  # Needs role selection
+            prep_duration=3,
+            daily_study_goal=2,
+            xp=0,
+            streak=1,
+            readiness_score=0.0
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(user)
+        is_new = True
+        needs_onboard = True
+    else:
+        # User exists - verify password
+        if not verify_password(user_in.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Incorrect password for this email. Please check your credentials."
+            )
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This account has been deactivated."
+            )
+            
+        has_role = bool(user.profile and user.profile.target_role and user.profile.target_role.strip())
+        needs_onboard = not has_role
         
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
@@ -109,16 +167,19 @@ def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
     # Log standard login event
     log_login_event(db, user.id, "local", request)
     
-    user_name = user.profile.name if user.profile and user.profile.name else user.email.split("@")[0].title()
+    user_name = user.profile.name if user.profile and user.profile.name else clean_email.split("@")[0].title()
+    target_role = user.profile.target_role if user.profile and user.profile.target_role else ""
     
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         is_admin=user.is_admin,
-        is_new_user=False,
+        is_new_user=is_new,
+        needs_onboarding=needs_onboard,
         user_id=str(user.id),
         email=user.email,
-        name=user_name
+        name=user_name,
+        target_role=target_role
     )
 
 @router.post("/google", response_model=TokenResponse)
@@ -305,49 +366,56 @@ def onboard_user(
     # Check if user profile already exists
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     
-    # Base readiness score calculated from onboarding details
-    # E.g., Starting readiness is a weighted average of starting domain levels
-    base_readiness = (onboard_in.dsa_level + onboard_in.sql_level + onboard_in.aptitude_level) / 3.0
-    # Add bonus score for setting daily targets
-    if onboard_in.daily_study_goal > 2:
-        base_readiness += 5.0
-    base_readiness = min(max(base_readiness, 5.0), 99.0) # Clamp
-    
+    # Knowledge percentage provided by candidate (0% to 100%)
+    knowledge_pct = getattr(onboard_in, "knowledge_percent", 50.0)
+    if knowledge_pct is None:
+        knowledge_pct = (onboard_in.dsa_level + onboard_in.sql_level + onboard_in.aptitude_level) / 3.0
+    base_readiness = min(max(float(knowledge_pct), 0.0), 100.0)
+
+    # Scale domains to reflect candidate's self-assessed position knowledge
+    dsa = onboard_in.dsa_level if onboard_in.dsa_level > 0 else base_readiness
+    sql = onboard_in.sql_level if onboard_in.sql_level > 0 else base_readiness
+    aptitude = onboard_in.aptitude_level if onboard_in.aptitude_level > 0 else base_readiness
+
     if profile:
         # Update existing profile
-        profile.name = onboard_in.name
-        profile.college = onboard_in.college
-        profile.degree = onboard_in.degree
-        profile.graduation_year = onboard_in.graduation_year
-        profile.target_role = onboard_in.target_role
-        profile.experience_level = onboard_in.experience_level
-        profile.target_companies = onboard_in.target_companies
+        profile.name = onboard_in.name if onboard_in.name else profile.name
+        profile.college = onboard_in.college or profile.college
+        profile.degree = onboard_in.degree or profile.degree
+        profile.graduation_year = onboard_in.graduation_year or profile.graduation_year
+        profile.target_role = onboard_in.target_role or "Software Engineer"
+        profile.experience_level = onboard_in.experience_level or "beginner"
+        profile.target_companies = onboard_in.target_companies or profile.target_companies
         profile.prep_duration = onboard_in.prep_duration
         profile.daily_study_goal = onboard_in.daily_study_goal
-        profile.skills = onboard_in.skills
-        profile.dsa_level = onboard_in.dsa_level
-        profile.sql_level = onboard_in.sql_level
-        profile.aptitude_level = onboard_in.aptitude_level
-        profile.readiness_score = base_readiness
+        profile.skills = onboard_in.skills or profile.skills
+        profile.dsa_level = round(dsa, 1)
+        profile.sql_level = round(sql, 1)
+        profile.aptitude_level = round(aptitude, 1)
+        profile.cs_fundamentals_level = round(base_readiness, 1)
+        profile.communication_level = round(base_readiness, 1)
+        profile.readiness_score = round(base_readiness, 1)
     else:
         # Create new profile
         profile = Profile(
             user_id=current_user.id,
-            name=onboard_in.name,
+            name=onboard_in.name or "Candidate",
             college=onboard_in.college,
             degree=onboard_in.degree,
             graduation_year=onboard_in.graduation_year,
-            target_role=onboard_in.target_role,
-            experience_level=onboard_in.experience_level,
-            target_companies=onboard_in.target_companies,
+            target_role=onboard_in.target_role or "Software Engineer",
+            experience_level=onboard_in.experience_level or "beginner",
+            target_companies=onboard_in.target_companies or [],
             prep_duration=onboard_in.prep_duration,
             daily_study_goal=onboard_in.daily_study_goal,
-            skills=onboard_in.skills,
-            dsa_level=onboard_in.dsa_level,
-            sql_level=onboard_in.sql_level,
-            aptitude_level=onboard_in.aptitude_level,
-            readiness_score=base_readiness,
-            xp=10, # Initial signup XP
+            skills=onboard_in.skills or [],
+            dsa_level=round(dsa, 1),
+            sql_level=round(sql, 1),
+            aptitude_level=round(aptitude, 1),
+            cs_fundamentals_level=round(base_readiness, 1),
+            communication_level=round(base_readiness, 1),
+            readiness_score=round(base_readiness, 1),
+            xp=25, # Initial onboarding completion XP
             streak=1
         )
         db.add(profile)

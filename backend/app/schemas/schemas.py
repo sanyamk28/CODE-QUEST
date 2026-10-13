@@ -21,9 +21,11 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     is_admin: bool = False
     is_new_user: bool = False
+    needs_onboarding: bool = False
     user_id: Optional[str] = None
     email: Optional[str] = None
     name: Optional[str] = None
+    target_role: Optional[str] = None
 
 class TokenRefresh(BaseModel):
     refresh_token: str
@@ -45,15 +47,16 @@ class UserResponse(BaseModel):
 # --- PROFILE SCHEMAS ---
 
 class OnboardingRequest(BaseModel):
-    name: str
+    name: str = "Candidate"
     college: Optional[str] = None
     degree: Optional[str] = None
     graduation_year: Optional[int] = None
-    target_role: Optional[str] = None
+    target_role: Optional[str] = "Software Engineer"
     experience_level: str = "beginner"  # beginner, intermediate, advanced
     target_companies: List[str] = []
     prep_duration: int = 3 # months
     daily_study_goal: int = 2 # hours
+    knowledge_percent: float = 50.0 # Percent of knowledge about target position (0 to 100)
     skills: List[str] = []
     dsa_level: float = 0.0
     sql_level: float = 0.0

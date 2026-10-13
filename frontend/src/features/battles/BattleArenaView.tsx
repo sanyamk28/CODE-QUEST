@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Trophy
 } from 'lucide-react';
+import { recordActivity } from '../../services/activityTracker';
 
 const OPPONENTS = [
   { name: 'Aditya Singh', college: 'IIT Roorkee', level: 6, avatar: 'AS' },
@@ -84,6 +85,7 @@ export const BattleArenaView: React.FC = () => {
       setIsSubmitting(false);
       setUserTestsPassed(10);
       setIsBattleWon(true);
+      recordActivity('battle', { xp: 50 });
       setSubmissionFeedback('🏆 All 10/10 Test Cases Passed! You Won The Battle (+50 XP)!');
     }, 800);
   };

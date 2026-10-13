@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Flame,
   CheckCircle2,
@@ -19,6 +19,7 @@ import {
   Shuffle
 } from 'lucide-react';
 import { ActiveTabType } from '../../types';
+import { getUserActivityStats, calculateProgressPercentages } from '../../services/activityTracker';
 
 interface DashboardViewProps {
   userName: string;
@@ -32,11 +33,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
 }) => {
   const [registeredAssessment, setRegisteredAssessment] = useState(false);
+  const [stats, setStats] = useState(() => getUserActivityStats());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setStats(getUserActivityStats());
+    };
+    window.addEventListener('cq_activity_updated', handleUpdate);
+    return () => window.removeEventListener('cq_activity_updated', handleUpdate);
+  }, []);
+
+  const percentages = useMemo(() => calculateProgressPercentages(stats), [stats]);
+
   const [quests, setQuests] = useState([
-    { id: 1, title: 'Solve 1 SQL Challenge', xp: '+20 XP', completed: true, tab: 'sql' as ActiveTabType },
-    { id: 2, title: 'Solve 2 DSA Problems', xp: '+30 XP', completed: false, tab: 'arena' as ActiveTabType },
-    { id: 3, title: 'Review DBMS Concepts', xp: '+15 XP', completed: false, tab: 'mcqs' as ActiveTabType },
-    { id: 4, title: 'Practice Interview Question', xp: '+25 XP', completed: false, tab: 'interview' as ActiveTabType },
+    { id: 1, title: 'Execute 1 SQL Query in Lab', xp: '+20 XP', completed: stats.sqlQueriesCount > 0, tab: 'sql' as ActiveTabType },
+    { id: 2, title: 'Solve 1 Coding Arena Problem', xp: '+30 XP', completed: stats.arenaSolvedCount > 0, tab: 'arena' as ActiveTabType },
+    { id: 3, title: 'Answer CS Fundamentals MCQ', xp: '+15 XP', completed: stats.mcqsAnsweredCount > 0, tab: 'mcqs' as ActiveTabType },
+    { id: 4, title: 'Solve 1 Logic Brainteaser', xp: '+25 XP', completed: stats.puzzlesSolvedCount > 0, tab: 'puzzles' as ActiveTabType },
   ]);
 
   const toggleQuest = (id: number) => {
@@ -44,8 +57,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto pb-6">
-      {/* Target Role & Readiness Hero Card matching Screen 3 */}
+    <div className="space-y-5 max-w-5xl mx-auto pb-6 font-['Plus_Jakarta_Sans'] text-slate-100">
+      {/* Target Role & Readiness Hero Card */}
       <div className="bg-gradient-to-br from-[#0c1326] via-[#0b1020] to-[#080d1a] border border-slate-800/90 rounded-3xl p-5 shadow-xl relative overflow-hidden">
         {/* Glow backdrop */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -53,12 +66,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/60 relative z-10">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
-              {userName ? userName.substring(0, 2).toUpperCase() : 'SK'}
+              {userName ? userName.substring(0, 2).toUpperCase() : 'ST'}
             </div>
             <div>
               <div className="text-xs text-slate-400 font-medium">Target Role</div>
               <div className="text-base font-black text-white flex items-center gap-2">
-                <span>{targetRole || 'Data Engineer'}</span>
+                <span>{targetRole || 'Full Stack Developer'}</span>
                 <button
                   onClick={() => onNavigate('settings')}
                   className="text-[10px] font-bold text-sky-400 hover:text-sky-300 px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 transition flex items-center gap-1"
@@ -77,9 +90,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Readiness and Core Stats Row matching Screen 3 */}
+        {/* Readiness and Real Live Stats Row: Starts at 0% and tracks user activity */}
         <div className="grid grid-cols-4 gap-2 pt-4 relative z-10">
-          {/* Stat 1: 78% Readiness */}
+          {/* Stat 1: Real Dynamic Readiness % */}
           <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#090e1b]/80 border border-slate-800/60">
             <div className="relative w-12 h-12 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
@@ -91,8 +104,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className="text-emerald-400"
-                  strokeDasharray="78, 100"
+                  className={percentages.overallReadiness >= 70 ? 'text-emerald-400' : percentages.overallReadiness >= 30 ? 'text-sky-400' : 'text-blue-500'}
+                  strokeDasharray={`${percentages.overallReadiness}, 100`}
                   strokeWidth="3.5"
                   strokeLinecap="round"
                   stroke="currentColor"
@@ -100,49 +113,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
               </svg>
-              <span className="absolute text-[11px] font-black text-white">78%</span>
+              <span className="absolute text-[11px] font-black text-white">{percentages.overallReadiness}%</span>
             </div>
             <span className="text-[10px] text-slate-400 font-medium mt-1">Readiness</span>
           </div>
 
-          {/* Stat 2: Level 5 */}
+          {/* Stat 2: Real Level */}
           <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#090e1b]/80 border border-slate-800/60">
             <div className="h-10 w-10 rounded-xl bg-indigo-950/40 border border-indigo-800/40 flex items-center justify-center text-indigo-400 font-black text-sm">
-              L5
+              L{percentages.level}
             </div>
-            <span className="text-[10px] text-slate-400 font-medium mt-1">Level 5</span>
+            <span className="text-[10px] text-slate-400 font-medium mt-1">Level {percentages.level}</span>
           </div>
 
-          {/* Stat 3: 12 Day Streak */}
+          {/* Stat 3: Real Streak */}
           <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#090e1b]/80 border border-slate-800/60">
             <div className="h-10 w-10 rounded-xl bg-orange-950/40 border border-orange-800/40 flex items-center justify-center text-orange-400 font-black text-sm">
               <Flame className="h-5 w-5 fill-orange-400 text-orange-400" />
             </div>
-            <span className="text-[10px] text-slate-400 font-medium mt-1">12 Streak</span>
+            <span className="text-[10px] text-slate-400 font-medium mt-1">{stats.streak} Streak</span>
           </div>
 
-          {/* Stat 4: 320 Problems */}
+          {/* Stat 4: Real Total Solved Problems */}
           <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[#090e1b]/80 border border-slate-800/60">
-            <div className="h-10 w-10 rounded-xl bg-sky-950/40 border border-sky-800/40 flex items-center justify-center text-sky-400 font-black text-sm">
-              320
+            <div className="h-10 w-10 rounded-xl bg-sky-950/40 border border-sky-800/40 flex items-center justify-center text-sky-400 font-black text-sm font-mono">
+              {percentages.totalSolved}
             </div>
-            <span className="text-[10px] text-slate-400 font-medium mt-1">Problems</span>
+            <span className="text-[10px] text-slate-400 font-medium mt-1">Solved</span>
           </div>
         </div>
       </div>
 
-      {/* Today's Quest Section matching Screen 3 */}
+      {/* Today's Quest Section */}
       <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-5 shadow-lg space-y-3.5">
         <div className="flex items-center justify-between pb-1 border-b border-slate-800/60">
           <h2 className="text-sm font-extrabold text-white tracking-tight flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-amber-400" />
-            Today's Quest
+            Today's Quests & Progress
           </h2>
           <button
             onClick={() => onNavigate('arena')}
             className="text-[11px] font-bold text-sky-400 hover:text-sky-300 transition flex items-center gap-1"
           >
-            <span>See All</span>
+            <span>See Arena</span>
             <ChevronRight className="h-3 w-3" />
           </button>
         </div>
@@ -151,65 +164,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {quests.map((q) => (
             <div
               key={q.id}
-              className="flex items-center justify-between p-3 rounded-2xl bg-[#0e1424] border border-slate-800/60 hover:border-slate-700 transition"
+              className="p-3 rounded-2xl bg-[#0e1424] border border-slate-800/60 flex items-center justify-between transition hover:border-slate-700"
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3">
                 <button
+                  type="button"
                   onClick={() => toggleQuest(q.id)}
-                  className={`h-5 w-5 rounded-full flex items-center justify-center border transition shrink-0 ${
+                  className={`h-5 w-5 rounded-md border flex items-center justify-center transition ${
                     q.completed
-                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
-                      : 'border-slate-700 bg-slate-900 text-transparent hover:border-slate-500'
+                      ? 'bg-emerald-500 border-emerald-400 text-white'
+                      : 'border-slate-700 hover:border-slate-500'
                   }`}
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {q.completed && <CheckCircle2 className="h-3.5 w-3.5" />}
                 </button>
-                <span
-                  onClick={() => onNavigate(q.tab)}
-                  className={`text-xs font-semibold cursor-pointer truncate transition ${
-                    q.completed ? 'text-slate-400 line-through' : 'text-slate-200 hover:text-sky-300'
-                  }`}
-                >
+                <span className={`text-xs font-semibold ${q.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
                   {q.title}
                 </span>
               </div>
-              <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0 ml-2">
-                {q.xp}
-              </span>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  {q.xp}
+                </span>
+                <button
+                  onClick={() => onNavigate(q.tab)}
+                  className="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600 text-sky-300 hover:text-white text-[11px] font-bold transition flex items-center gap-1"
+                >
+                  <span>Start</span>
+                  <Play className="h-2.5 w-2.5 fill-current" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Quick Categories 4 Tiles matching Screen 3 (DSA, SQL, MCQ, AI Interview) */}
-      <div className="grid grid-cols-4 gap-2.5">
-        {[
-          { id: 'arena' as ActiveTabType, label: 'DSA', icon: Code2, color: 'from-blue-600 to-indigo-600' },
-          { id: 'sql' as ActiveTabType, label: 'SQL', icon: Database, color: 'from-cyan-600 to-blue-600' },
-          { id: 'mcqs' as ActiveTabType, label: 'MCQ', icon: Layers, color: 'from-purple-600 to-indigo-600' },
-          { id: 'interview' as ActiveTabType, label: 'AI Interview', icon: Bot, color: 'from-emerald-600 to-teal-600' },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.label}
-              onClick={() => onNavigate(item.id)}
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[#0b101e] hover:bg-[#0e1526] border border-slate-800/80 hover:border-indigo-500/50 transition shadow-md group active:scale-[0.98]"
-            >
-              <div className={`h-11 w-11 rounded-2xl bg-gradient-to-tr ${item.color} p-0.5 flex items-center justify-center shadow-md mb-2 group-hover:scale-105 transition-transform`}>
-                <div className="h-full w-full bg-[#0a0f1d]/85 rounded-[14px] flex items-center justify-center text-white">
-                  <Icon className="h-5 w-5" />
-                </div>
-              </div>
-              <span className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Continue Learning Row matching Screen 3 */}
+      {/* Continue Learning Row: Real activity percentages starting at 0% */}
       <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-5 shadow-lg space-y-3.5">
         <div className="flex items-center justify-between pb-1 border-b border-slate-800/60">
           <h2 className="text-sm font-extrabold text-white tracking-tight flex items-center gap-2">
@@ -220,28 +211,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onNavigate('practice')}
             className="text-[11px] font-bold text-sky-400 hover:text-sky-300 transition flex items-center gap-1"
           >
-            <span>See All</span>
+            <span>Practice Hub</span>
             <ChevronRight className="h-3 w-3" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { title: 'Data Structures', progress: 56, tab: 'arena' as ActiveTabType, color: 'from-sky-500 to-indigo-500' },
-            { title: 'SQL', progress: 72, tab: 'sql' as ActiveTabType, color: 'from-cyan-500 to-blue-500' },
-            { title: 'Python', progress: 45, tab: 'arena' as ActiveTabType, color: 'from-emerald-500 to-teal-500' },
+            { title: 'Coding Arena', progress: percentages.arenaPct, tab: 'arena' as ActiveTabType, color: 'from-sky-500 to-indigo-500', sub: `${stats.arenaSolvedCount} solved` },
+            { title: 'SQL Lab', progress: percentages.sqlPct, tab: 'sql' as ActiveTabType, color: 'from-cyan-500 to-blue-500', sub: `${stats.sqlQueriesCount} queries` },
+            { title: 'CS Fundamentals', progress: percentages.mcqPct, tab: 'mcqs' as ActiveTabType, color: 'from-emerald-500 to-teal-500', sub: `${stats.mcqsAnsweredCount} topics` },
           ].map((item) => (
             <div
               key={item.title}
               onClick={() => onNavigate(item.tab)}
               className="p-3.5 rounded-2xl bg-[#0e1424] border border-slate-800/60 hover:border-slate-700 cursor-pointer transition group"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-bold text-slate-200 group-hover:text-white">
                   {item.title}
                 </span>
                 <span className="text-[10px] font-bold text-slate-400 font-mono">{item.progress}%</span>
               </div>
+              <div className="text-[10px] text-slate-500 mb-2 font-mono">{item.sub}</div>
               <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                 <div
                   className={`h-full rounded-full bg-gradient-to-r ${item.color}`}
@@ -257,23 +249,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1324] to-[#090e1a] border border-slate-800/80 flex items-center justify-between">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-white">TCS NQT Mock Test</span>
+            <span className="text-xs font-bold text-white">TCS NQT Placement Simulation</span>
             <span className="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold">
-              Live Jan 15
+              Available Now
             </span>
           </div>
-          <div className="text-[11px] text-slate-400">90 mins • 70 questions</div>
+          <div className="text-[11px] text-slate-400">90 mins • Coding + SQL + Aptitude</div>
         </div>
 
         <button
-          onClick={() => setRegisteredAssessment(!registeredAssessment)}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
-            registeredAssessment
-              ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-              : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30'
-          }`}
+          onClick={() => onNavigate('assessments')}
+          className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30"
         >
-          {registeredAssessment ? 'Registered ✓' : 'Register'}
+          Take Assessment ➔
         </button>
       </div>
     </div>

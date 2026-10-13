@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, KeyRound, ArrowRight, UserPlus, LogIn, AlertCircle } from 'lucide-react';
+import { Mail, KeyRound, UserPlus, LogIn, AlertCircle } from 'lucide-react';
 
 interface AuthModalProps {
   authMode: 'login' | 'signup';
@@ -13,7 +13,6 @@ interface AuthModalProps {
   onPassChange: (val: string) => void;
   onNameChange: (val: string) => void;
   onSubmit: (e: React.FormEvent) => void;
-  onQuickDemoLogin: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -28,7 +27,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onPassChange,
   onNameChange,
   onSubmit,
-  onQuickDemoLogin,
 }) => {
   return (
     <div className="min-h-screen bg-[#070a13] flex flex-col justify-center items-center p-6 text-slate-100 font-['Plus_Jakarta_Sans'] selection:bg-indigo-500">
@@ -67,7 +65,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     required
                     value={authName}
                     onChange={(e) => onNameChange(e.target.value)}
-                    placeholder="e.g. Alex Chen"
+                    placeholder="e.g. Sanyam Kumar"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -98,7 +96,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={authPass}
                   onChange={(e) => onPassChange(e.target.value)}
-                  placeholder="Min 8 characters"
+                  placeholder="••••••••••••"
                   className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 outline-none focus:border-indigo-500"
                 />
               </div>
@@ -133,16 +131,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               className="text-sky-400 font-bold hover:underline"
             >
               {authMode === 'login' ? 'Sign Up' : 'Sign In'}
-            </button>
-          </div>
-
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={onQuickDemoLogin}
-              className="w-full py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 font-semibold text-[11px] border border-slate-700 transition"
-            >
-              ⚡ Quick Demo Login (Alex Chen)
             </button>
           </div>
         </div>

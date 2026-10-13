@@ -7,6 +7,7 @@ import { MobileHeader } from './components/MobileHeader';
 
 // Feature Views
 import { AuthView } from './features/auth/AuthView';
+import { OnboardingView } from './features/auth/OnboardingView';
 import { DashboardView } from './features/dashboard/DashboardView';
 import { PracticeHubView } from './features/practice/PracticeHubView';
 import { ArenaView } from './features/arena/ArenaView';
@@ -26,13 +27,27 @@ import { Smartphone, Monitor, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Global user state initialized from localStorage
-  const [userName, setUserName] = useState<string>(() => localStorage.getItem('cq_user_name') || 'Alex Chen');
-  const [targetRole, setTargetRole] = useState<string>(() => localStorage.getItem('cq_target_role') || 'Software Engineer');
-  const [streak, setStreak] = useState<number>(12);
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem('cq_user_name') || 'Student');
+  const [targetRole, setTargetRole] = useState<string>(() => localStorage.getItem('cq_target_role') || '');
+  const [streak, setStreak] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<ActiveTabType>('dashboard');
+  
+  // Real login verification - demo/guest tokens are invalidated
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return Boolean(localStorage.getItem('cq_token') || localStorage.getItem('cq_logged_in'));
+    const token = localStorage.getItem('cq_token');
+    if (!token || token.startsWith('guest_') || token.startsWith('mock_')) {
+      return false;
+    }
+    return localStorage.getItem('cq_logged_in') === 'true';
   });
+
+  // User must complete role selection, duration, and knowledge percentage calibration
+  const [needsOnboarding, setNeedsOnboarding] = useState<boolean>(() => {
+    const role = localStorage.getItem('cq_target_role');
+    const onboarded = localStorage.getItem('cq_onboarded');
+    return !onboarded || !role;
+  });
+
   const [isPhonePreview, setIsPhonePreview] = useState<boolean>(false);
   const [isNativeMobile, setIsNativeMobile] = useState<boolean>(false);
 
@@ -46,11 +61,17 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('resize', checkScreen);
   }, []);
 
-  const handleLoginSuccess = (name: string, role: string) => {
+  const handleLoginSuccess = (name: string, role: string, userNeedsOnboarding?: boolean) => {
     if (name) setUserName(name);
-    if (role) setTargetRole(role);
     setIsLoggedIn(true);
-    setActiveTab('dashboard');
+
+    if (userNeedsOnboarding || !role) {
+      setNeedsOnboarding(true);
+    } else {
+      if (role) setTargetRole(role);
+      setNeedsOnboarding(false);
+      setActiveTab('dashboard');
+    }
   };
 
   const handleLogout = () => {
@@ -58,7 +79,12 @@ export const App: React.FC = () => {
     localStorage.removeItem('cq_logged_in');
     localStorage.removeItem('cq_user_name');
     localStorage.removeItem('cq_target_role');
+    localStorage.removeItem('cq_onboarded');
+    localStorage.removeItem('cq_study_duration');
+    localStorage.removeItem('cq_daily_goal');
+    localStorage.removeItem('cq_knowledge_percent');
     setIsLoggedIn(false);
+    setNeedsOnboarding(false);
     setActiveTab('splash');
   };
 
@@ -67,15 +93,26 @@ export const App: React.FC = () => {
     setTargetRole(role);
   };
 
-  // If user selected 'login', 'splash', or is logged out, render AuthView
+  // 1. If not logged in, force AuthView (Login / Signup)
   if (activeTab === 'login' || activeTab === 'splash' || !isLoggedIn) {
     return (
       <AuthView
         initialScreen={activeTab === 'login' ? 'login' : 'splash'}
         onLoginSuccess={handleLoginSuccess}
-        onSkipToDashboard={() => {
-          localStorage.setItem('cq_logged_in', 'true');
-          setIsLoggedIn(true);
+      />
+    );
+  }
+
+  // 2. Once logged in, if onboarding is not finished, require Role & Calibration step
+  if (isLoggedIn && needsOnboarding) {
+    return (
+      <OnboardingView
+        userName={userName}
+        initialRole={targetRole || 'Full Stack Developer'}
+        onComplete={(finalRole, finalName) => {
+          setTargetRole(finalRole);
+          if (finalName) setUserName(finalName);
+          setNeedsOnboarding(false);
           setActiveTab('dashboard');
         }}
       />
@@ -106,7 +143,7 @@ export const App: React.FC = () => {
       case 'resume':
         return <ResumeAtsView targetRole={targetRole} />;
       case 'roadmaps':
-        return <RoadmapsView />;
+        return <RoadmapsView userRole={targetRole} userName={userName} onNavigate={setActiveTab} />;
       case 'assessments':
         return <AssessmentsView />;
       case 'leaderboard':

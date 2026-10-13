@@ -78,24 +78,228 @@ FROM Employee e;`,
   }
 ];
 
-const MCQ_QUIZ_QUESTIONS = [
+// --- MCQ BATTLE DEFINITIONS & AUTO-GENERATOR ENGINE ---
+export interface BattleMCQ {
+  id: string;
+  topic: string;
+  question: string;
+  options: string[];
+  correctAnswers: string[]; // e.g. ['A', 'C'] for multi-answer
+  isMultiSelect: boolean;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  explanation: string;
+  hasPhoto?: boolean;
+}
+
+export const SEED_MCQ_BANK: BattleMCQ[] = [
   {
-    topic: "Data Structures",
-    question: "What is the time complexity to access an element by index in an array?",
-    options: ["O(1)", "O(log N)", "O(N)", "O(N log N)"],
-    answer: "A",
-    difficulty: "Easy",
-    explanation: "Arrays offer constant time O(1) random access because elements are stored in contiguous memory locations."
+    id: 'mcq-1',
+    topic: 'Data Structures',
+    question: 'Which of the following data structures guarantee O(1) worst-case or average-case lookup time? [Select All That Apply]',
+    options: [
+      'Hash Map (average lookup)',
+      'Direct-Access Array by index',
+      'Balanced Binary Search Tree (AVL)',
+      'Singly Linked List'
+    ],
+    correctAnswers: ['A', 'B'],
+    isMultiSelect: true,
+    difficulty: 'Easy',
+    explanation: 'Both Hash Maps (average O(1)) and Arrays accessed by index (O(1) direct offset) provide constant-time lookup. AVL trees require O(log N) and Linked Lists require O(N).'
   },
   {
-    topic: "System Design",
-    question: "Which pattern is primarily used to prevent cascading failures in distributed microservices?",
-    options: ["Circuit Breaker", "Singleton", "Observer", "Flyweight"],
-    answer: "A",
-    difficulty: "Medium",
-    explanation: "The Circuit Breaker pattern detects failures and encapsulates the logic of preventing a failure from constantly recurring during service outages."
+    id: 'mcq-2',
+    topic: 'System Design',
+    question: 'Which techniques are commonly employed to prevent cascading failures and scale high-throughput microservices? [Select All That Apply]',
+    options: [
+      'Circuit Breaker Pattern',
+      'Rate Limiting & Token Bucket',
+      'Synchronous RPC chaining without timeouts',
+      'Distributed Message Queues (Kafka / RabbitMQ)'
+    ],
+    correctAnswers: ['A', 'B', 'D'],
+    isMultiSelect: true,
+    difficulty: 'Medium',
+    explanation: 'Circuit Breakers trip to prevent cascading outages; Rate limiters shed load; Message queues buffer asynchronous bursts. Unbounded synchronous chaining exacerbates cascading failures.'
+  },
+  {
+    id: 'mcq-3',
+    topic: 'DBMS & SQL',
+    question: 'Which properties are TRUE regarding database indexes and B+ Trees? [Select All That Apply]',
+    options: [
+      'All leaf nodes are linked in a linked list for rapid range scans',
+      'Indexes always speed up both INSERT and DELETE operations',
+      'Internal nodes store only keys and child pointers (no data records)',
+      'Composite indexes can utilize leftmost prefix filtering'
+    ],
+    correctAnswers: ['A', 'C', 'D'],
+    isMultiSelect: true,
+    difficulty: 'Medium',
+    explanation: 'B+ tree leaf nodes are linked for sequential scans and internal nodes hold only keys. Indexes accelerate reads, but SLOW DOWN writes (INSERT/DELETE) due to index maintenance overhead.'
+  },
+  {
+    id: 'mcq-4',
+    topic: 'Algorithms',
+    question: 'Which of the following algorithms have an average or guaranteed time complexity of O(N log N)? [Select All That Apply]',
+    options: [
+      'Merge Sort (guaranteed O(N log N))',
+      'Heap Sort (guaranteed O(N log N))',
+      'Quick Sort (average O(N log N))',
+      'Bubble Sort (average O(N log N))'
+    ],
+    correctAnswers: ['A', 'B', 'C'],
+    isMultiSelect: true,
+    difficulty: 'Easy',
+    explanation: 'Merge Sort and Heap Sort are guaranteed O(N log N). Quick Sort averages O(N log N). Bubble Sort is O(N²) on average.'
+  },
+  {
+    id: 'mcq-5',
+    topic: 'Operating Systems',
+    question: 'Which resources are shared among multiple threads belonging to the same process? [Select All That Apply]',
+    options: [
+      'Heap Memory space',
+      'Individual Thread Call Stacks',
+      'Global Variables & Text Segment',
+      'Open File Descriptors'
+    ],
+    correctAnswers: ['A', 'C', 'D'],
+    isMultiSelect: true,
+    difficulty: 'Medium',
+    explanation: 'Threads within a process share the heap, data/text segments, and open file descriptors. However, each thread gets its OWN independent stack and CPU register state.'
+  },
+  {
+    id: 'mcq-6',
+    topic: 'Computer Networks',
+    question: 'Which statements correctly distinguish TCP from UDP? [Select All That Apply]',
+    options: [
+      'TCP provides connection-oriented ordered byte streams with retransmission',
+      'UDP has lower latency overhead and no 3-way handshake',
+      'TCP headers are fixed at 8 bytes without checksums',
+      'UDP is preferred for real-time multiplayer gaming and DNS queries'
+    ],
+    correctAnswers: ['A', 'B', 'D'],
+    isMultiSelect: true,
+    difficulty: 'Easy',
+    explanation: 'TCP guarantees delivery and order with connection state. UDP is connectionless and lightweight (8-byte header), ideal for low-latency voice/gaming and DNS. TCP headers are 20-60 bytes.'
+  },
+  {
+    id: 'mcq-7',
+    topic: 'React & Frontend',
+    question: 'Which of the following are valid rules and best practices when utilizing React Hooks? [Select All That Apply]',
+    options: [
+      'Call hooks only at the top level (never inside loops or conditions)',
+      'Call hooks from regular JavaScript functions without prefix "use"',
+      'useEffect cleanup functions run before unmounting or re-running effects',
+      'useMemo caches calculated values across re-renders'
+    ],
+    correctAnswers: ['A', 'C', 'D'],
+    isMultiSelect: true,
+    difficulty: 'Medium',
+    explanation: 'Hooks must execute in the exact same order each render (top level only). They must be called from React components or custom hooks. Cleanup runs on unmount or deps change; useMemo memoizes computed values.'
+  },
+  {
+    id: 'mcq-8',
+    topic: 'Cloud & DevOps',
+    question: 'Which components and concepts are fundamental to Docker containerization and Kubernetes orchestration? [Select All That Apply]',
+    options: [
+      'Docker images use layered copy-on-write storage',
+      'Containers share the host OS kernel unlike full Virtual Machines',
+      'Kubernetes Pods can only ever run on bare metal without networking',
+      'Kubernetes Deployments provide automated rolling updates and rollbacks'
+    ],
+    correctAnswers: ['A', 'B', 'D'],
+    isMultiSelect: true,
+    difficulty: 'Hard',
+    explanation: 'Containers share the host kernel and use layered images. Kubernetes provides automated self-healing, rolling updates, and works on clouds or VMs.'
   }
 ];
+
+// Generator function that auto-creates MCQs for ANY topics and questions requested by teacher
+export function generateBattleMCQs(
+  topics: string[],
+  isMultiSelect: boolean,
+  count: number,
+  difficulty: 'Easy' | 'Medium' | 'Hard' | 'Mixed',
+  customTopic?: string,
+  hasPhoto?: boolean
+): BattleMCQ[] {
+  const allTopics = [...topics];
+  if (customTopic && customTopic.trim() && !allTopics.includes(customTopic.trim())) {
+    allTopics.push(customTopic.trim());
+  }
+  if (allTopics.length === 0) {
+    allTopics.push('Computer Science & Engineering');
+  }
+
+  const generated: BattleMCQ[] = [];
+  const validCount = Math.max(1, Math.min(count, 20));
+
+  // 1. Try to pick from matched seed bank
+  const matchedSeeds = SEED_MCQ_BANK.filter(q => 
+    allTopics.some(t => q.topic.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(q.topic.toLowerCase()))
+  );
+
+  matchedSeeds.forEach((q, idx) => {
+    if (generated.length < validCount) {
+      generated.push({
+        ...q,
+        id: `gen-${idx + 1}-${Date.now()}`,
+        hasPhoto: hasPhoto || false,
+        isMultiSelect: isMultiSelect
+      });
+    }
+  });
+
+  // 2. Synthesize dynamic, deep technical questions if more are required or for custom topics
+  let synthIdx = 1;
+  while (generated.length < validCount) {
+    const topic = allTopics[synthIdx % allTopics.length];
+    const diff = difficulty === 'Mixed' ? (synthIdx % 3 === 0 ? 'Hard' : synthIdx % 2 === 0 ? 'Medium' : 'Easy') : difficulty;
+
+    if (isMultiSelect) {
+      // Multiple-Answer auto-generated question
+      const synthQuestion: BattleMCQ = {
+        id: `dyn-multi-${synthIdx}-${Date.now()}`,
+        topic: topic,
+        question: `In production ${topic} architecture, which of the following statements and practices are valid? [Select All That Apply]`,
+        options: [
+          `Implement automated telemetry and latency metrics for ${topic} bottlenecks`,
+          `Enforce immutability and state isolation to minimize side-effects in ${topic}`,
+          `Disable memory compaction and garbage collection across all nodes`,
+          `Apply horizontal scaling with health probes to eliminate single points of failure`
+        ],
+        correctAnswers: ['A', 'B', 'D'],
+        isMultiSelect: true,
+        difficulty: diff,
+        explanation: `Options A, B, and D represent core industry best-practices for robust ${topic} systems: observability, immutability/isolation, and resilient horizontal scaling. Option C degrades long-term process stability.`,
+        hasPhoto: hasPhoto || false
+      };
+      generated.push(synthQuestion);
+    } else {
+      // Single-Answer auto-generated question
+      const synthQuestion: BattleMCQ = {
+        id: `dyn-single-${synthIdx}-${Date.now()}`,
+        topic: topic,
+        question: `What is the primary architectural advantage of implementing asynchronous decoupling in ${topic}?`,
+        options: [
+          `Guarantees synchronous blocking on every client thread`,
+          `Isolates consumer latency from producer throughput to absorb high traffic bursts`,
+          `Eliminates the requirement for any network transport protocols`,
+          `Forces all operations into quadratic O(N²) execution cycles`
+        ],
+        correctAnswers: ['B'],
+        isMultiSelect: false,
+        difficulty: diff,
+        explanation: `Asynchronous decoupling (e.g. via buffers or queues) separates producers from consumers, allowing ${topic} services to absorb bursts without starving system threads.`,
+        hasPhoto: hasPhoto || false
+      };
+      generated.push(synthQuestion);
+    }
+    synthIdx++;
+  }
+
+  return generated.slice(0, validCount);
+}
 
 export default function App() {
   // Navigation
@@ -163,9 +367,136 @@ export default function App() {
   const [executionHint, setExecutionHint] = useState('');
   const [isRunningCode, setIsRunningCode] = useState(false);
 
-  // MCQ state
-  const [selectedMcqOption, setSelectedMcqOption] = useState<string | null>(null);
-  const [showMcqExplanation, setShowMcqExplanation] = useState(false);
+  // MCQ Battle & Teacher Studio State
+  const [mcqSubTab, setMcqSubTab] = useState<'battle' | 'teacher_studio' | 'results'>('battle');
+  const [battleRoomCode, setBattleRoomCode] = useState<string>('CQ-ROOM-8492');
+  const [teacherQuestionType, setTeacherQuestionType] = useState<'multi' | 'single'>('multi');
+  const [teacherAvailableTopics, setTeacherAvailableTopics] = useState<string[]>([
+    'Data Structures',
+    'System Design',
+    'DBMS & SQL',
+    'Algorithms',
+    'Operating Systems',
+    'Computer Networks',
+    'React & Frontend',
+    'Cloud & DevOps'
+  ]);
+  const [teacherSelectedTopics, setTeacherSelectedTopics] = useState<string[]>([
+    'Data Structures',
+    'System Design'
+  ]);
+  const [teacherCustomTopic, setTeacherCustomTopic] = useState<string>('');
+  const [teacherQuestionCount, setTeacherQuestionCount] = useState<number>(5);
+  const [teacherCountInput, setTeacherCountInput] = useState<string>('5');
+  const [teacherDifficulty, setTeacherDifficulty] = useState<'Easy' | 'Medium' | 'Hard' | 'Mixed'>('Mixed');
+  const [teacherAttachPhoto, setTeacherAttachPhoto] = useState<boolean>(true);
+  const [isGeneratingBattle, setIsGeneratingBattle] = useState<boolean>(false);
+
+  // Active Battle Run State
+  const [battleQuestions, setBattleQuestions] = useState<BattleMCQ[]>(() =>
+    generateBattleMCQs(['Data Structures', 'System Design'], true, 5, 'Mixed', '', true)
+  );
+  const [battleCurrentQIndex, setBattleCurrentQIndex] = useState<number>(0);
+  const [battleSelectedAnswers, setBattleSelectedAnswers] = useState<string[]>([]);
+  const [battleAnswerSubmitted, setBattleAnswerSubmitted] = useState<boolean>(false);
+  const [battleScore, setBattleScore] = useState<number>(0);
+  const [battleOpponentScore, setBattleOpponentScore] = useState<number>(0);
+  const [battleOpponentName, setBattleOpponentName] = useState<string>('Priya Sharma (IIT Delhi)');
+  const [battleTimer, setBattleTimer] = useState<number>(45);
+
+  // Battle countdown timer per question
+  useEffect(() => {
+    let interval: any = null;
+    if (activeTab === 'Arena' && arenaMode === 'mcq' && mcqSubTab === 'battle' && !battleAnswerSubmitted) {
+      interval = setInterval(() => {
+        setBattleTimer(prev => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab, arenaMode, mcqSubTab, battleAnswerSubmitted, battleCurrentQIndex]);
+
+  // Handle Teacher auto-generating new battle questions
+  const handleAutoGenerateBattle = () => {
+    setIsGeneratingBattle(true);
+    setTimeout(() => {
+      const generated = generateBattleMCQs(
+        teacherSelectedTopics,
+        teacherQuestionType === 'multi',
+        teacherQuestionCount,
+        teacherDifficulty,
+        teacherCustomTopic,
+        teacherAttachPhoto
+      );
+      setBattleQuestions(generated);
+      setBattleCurrentQIndex(0);
+      setBattleSelectedAnswers([]);
+      setBattleAnswerSubmitted(false);
+      setBattleScore(0);
+      setBattleOpponentScore(0);
+      setBattleTimer(45);
+      // Generate new room code
+      setBattleRoomCode(`CQ-ROOM-${Math.floor(1000 + Math.random() * 9000)}`);
+      setIsGeneratingBattle(false);
+      setMcqSubTab('battle');
+    }, 450);
+  };
+
+  // Toggle selection for multiple-answer questions
+  const handleToggleAnswerOption = (letter: string) => {
+    if (battleAnswerSubmitted) return;
+    const currentQ = battleQuestions[battleCurrentQIndex] || battleQuestions[0];
+    if (currentQ.isMultiSelect) {
+      if (battleSelectedAnswers.includes(letter)) {
+        setBattleSelectedAnswers(battleSelectedAnswers.filter(a => a !== letter));
+      } else {
+        setBattleSelectedAnswers([...battleSelectedAnswers, letter]);
+      }
+    } else {
+      setBattleSelectedAnswers([letter]);
+    }
+  };
+
+  // Submit current answer and evaluate
+  const handleSubmitBattleAnswer = () => {
+    if (battleAnswerSubmitted || battleSelectedAnswers.length === 0) return;
+    setBattleAnswerSubmitted(true);
+    const currentQ = battleQuestions[battleCurrentQIndex] || battleQuestions[0];
+    
+    // Check if user answer matches
+    const userSorted = [...battleSelectedAnswers].sort().join('');
+    const correctSorted = [...currentQ.correctAnswers].sort().join('');
+    const isCorrect = userSorted === correctSorted;
+
+    if (isCorrect) {
+      setBattleScore(prev => prev + 20);
+      setXp(prev => prev + 25);
+    }
+
+    // Opponent simulation: 70% chance opponent answers correctly
+    const opponentCorrect = Math.random() > 0.3;
+    if (opponentCorrect) {
+      setBattleOpponentScore(prev => prev + 20);
+    }
+  };
+
+  // Advance to next question or show results
+  const handleNextBattleQuestion = () => {
+    if (battleCurrentQIndex < battleQuestions.length - 1) {
+      setBattleCurrentQIndex(prev => prev + 1);
+      setBattleSelectedAnswers([]);
+      setBattleAnswerSubmitted(false);
+      setBattleTimer(45);
+    } else {
+      setMcqSubTab('results');
+    }
+  };
 
   // Roadmap State
   const [sqlModuleExpanded, setSqlModuleExpanded] = useState(true);
@@ -832,206 +1163,640 @@ export default function App() {
               }}
             >
               <Text style={[styles.arenaModeSegmentText, arenaMode === mode && styles.arenaModeSegmentTextActive]}>
-                {mode === 'coding' ? 'Coding' : mode === 'sql' ? 'SQL' : 'MCQ'}
+                {mode === 'coding' ? 'Coding' : mode === 'sql' ? 'SQL' : '⚔️ MCQ Battle'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Coding Challenge Selector */}
-        {arenaMode === 'coding' && (
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-            {CONTEST_QUESTIONS.filter(q => q.type === 'coding').map((q, idx) => (
-              <TouchableOpacity
-                key={q.title}
-                style={[
-                  styles.problemSelectTab,
-                  selectedQuestionIndex === idx && styles.problemSelectTabActive
-                ]}
-                onPress={() => {
-                  setSelectedQuestionIndex(idx);
-                  setUserCode(q.template);
-                  setCodeExecutionResult('');
-                  setExecutionHint('');
-                }}
-              >
-                <Text style={[
-                  styles.problemSelectTabText,
-                  selectedQuestionIndex === idx && styles.problemSelectTabTextActive
-                ]}>
-                  {q.title} {q.solved ? '✓' : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* Problem Header Card */}
-        <View style={styles.problemHeaderCard}>
-          <View style={styles.problemTitleRow}>
-            <Text style={styles.problemMainTitle}>{currentQ.title}</Text>
-            <View style={styles.difficultyBadgeGreen}>
-              <Text style={styles.difficultyBadgeGreenText}>{currentQ.difficulty.toUpperCase()}</Text>
-            </View>
-          </View>
-          <View style={styles.companyPillRow}>
-            {currentQ.companies.map(comp => (
-              <View key={comp} style={styles.companyPill}>
-                <Text style={styles.companyPillText}>{comp}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Description Card */}
-        <View style={styles.arenaDescCard}>
-          <Text style={styles.arenaDescText}>{currentQ.desc}</Text>
-          <View style={styles.exampleBlock}>
-            <Text style={styles.exampleBold}>Example 1:</Text>
-            <Text style={styles.exampleBlue}>Input: {currentQ.input}</Text>
-            <Text style={styles.exampleBlue}>Output: {currentQ.output}</Text>
-          </View>
-        </View>
-
-        {/* Editor Container - User types code; answer is NOT shown! */}
-        {arenaMode === 'coding' && (
-          <View style={styles.codeEditorBox}>
-            <View style={styles.codeEditorTopBar}>
-              <Text style={styles.codeFileName}>Solution.js (Type your code below)</Text>
-              <TouchableOpacity onPress={() => {
-                setUserCode(currentQ.template);
-                setCodeExecutionResult('');
-                setExecutionHint('');
-              }}>
-                <Text style={{ color: '#94a3b8', fontSize: 11 }}>↺ Reset Code</Text>
-              </TouchableOpacity>
-            </View>
-            <TextInput
-              style={styles.codeTextInput}
-              multiline
-              value={userCode}
-              onChangeText={(text) => {
-                setUserCode(text);
-                if (codeExecutionResult) {
-                  setCodeExecutionResult('');
-                  setExecutionHint('');
-                }
-              }}
-              placeholder="// Write your solution here..."
-              placeholderTextColor="#64748b"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            {/* Execution Result with Error and Hint Feedback */}
-            {codeExecutionResult ? (
-              <View style={[
-                styles.executionResultBar,
-                codeExecutionResult.includes('❌') ? styles.resultErrorBox : styles.resultSuccessBox
-              ]}>
-                <Text style={[
-                  styles.executionResultText,
-                  codeExecutionResult.includes('❌') ? { color: '#f87171' } : { color: '#34d399' }
-                ]}>
-                  {codeExecutionResult}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.executionResultBar}>
-                <Text style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace' }}>
-                  ℹ️ Write your function logic above and tap "Run Code" to compile & execute tests.
-                </Text>
+        {/* ----------------------------------------------------------- */}
+        {/* VIEW A: CODING & SQL MODES */}
+        {/* ----------------------------------------------------------- */}
+        {arenaMode !== 'mcq' && (
+          <>
+            {/* Coding Challenge Selector */}
+            {arenaMode === 'coding' && (
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                {CONTEST_QUESTIONS.filter(q => q.type === 'coding').map((q, idx) => (
+                  <TouchableOpacity
+                    key={q.title}
+                    style={[
+                      styles.problemSelectTab,
+                      selectedQuestionIndex === idx && styles.problemSelectTabActive
+                    ]}
+                    onPress={() => {
+                      setSelectedQuestionIndex(idx);
+                      setUserCode(q.template);
+                      setCodeExecutionResult('');
+                      setExecutionHint('');
+                    }}
+                  >
+                    <Text style={[
+                      styles.problemSelectTabText,
+                      selectedQuestionIndex === idx && styles.problemSelectTabTextActive
+                    ]}>
+                      {q.title} {q.solved ? '✓' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
 
-            {/* Hint Box */}
-            {executionHint ? (
-              <View style={styles.hintContainerBox}>
-                <Text style={styles.hintHeadingText}>💡 Dynamic Hint & Guidance</Text>
-                <Text style={styles.hintBodyText}>{executionHint}</Text>
+            {/* Problem Header Card */}
+            <View style={styles.problemHeaderCard}>
+              <View style={styles.problemTitleRow}>
+                <Text style={styles.problemMainTitle}>{currentQ.title}</Text>
+                <View style={styles.difficultyBadgeGreen}>
+                  <Text style={styles.difficultyBadgeGreenText}>{currentQ.difficulty.toUpperCase()}</Text>
+                </View>
               </View>
-            ) : null}
-
-            <View style={styles.editorActionButtonsRow}>
-              <TouchableOpacity style={styles.runCodeBtn} onPress={runCode} disabled={isRunningCode}>
-                <Text style={styles.runCodeBtnText}>{isRunningCode ? 'Compiling...' : '▶ Run Code'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode} disabled={isRunningCode}>
-                <Text style={styles.submitCodeBtnText}>Submit Solution</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {arenaMode === 'sql' && (
-          <View style={styles.codeEditorBox}>
-            <View style={styles.codeEditorTopBar}>
-              <Text style={styles.codeFileName}>PostgreSQL Engine (Query.sql)</Text>
-            </View>
-            <TextInput
-              style={styles.codeTextInput}
-              multiline
-              value={userCode}
-              onChangeText={setUserCode}
-              placeholder="-- Write your SQL query here..."
-              placeholderTextColor="#64748b"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {codeExecutionResult ? (
-              <View style={[
-                styles.executionResultBar,
-                codeExecutionResult.includes('❌') ? styles.resultErrorBox : styles.resultSuccessBox
-              ]}>
-                <Text style={[
-                  styles.executionResultText,
-                  codeExecutionResult.includes('❌') ? { color: '#f87171' } : { color: '#34d399' }
-                ]}>
-                  {codeExecutionResult}
-                </Text>
+              <View style={styles.companyPillRow}>
+                {currentQ.companies.map(comp => (
+                  <View key={comp} style={styles.companyPill}>
+                    <Text style={styles.companyPillText}>{comp}</Text>
+                  </View>
+                ))}
               </View>
-            ) : null}
-            {executionHint ? (
-              <View style={styles.hintContainerBox}>
-                <Text style={styles.hintHeadingText}>💡 SQL Hint</Text>
-                <Text style={styles.hintBodyText}>{executionHint}</Text>
-              </View>
-            ) : null}
-            <View style={styles.editorActionButtonsRow}>
-              <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode} disabled={isRunningCode}>
-                <Text style={styles.submitCodeBtnText}>{isRunningCode ? 'Executing...' : 'Execute SQL Query'}</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        )}
 
-        {arenaMode === 'mcq' && (
-          <View style={styles.codeEditorBox}>
-            <Text style={styles.mcqQuestionTitle}>{MCQ_QUIZ_QUESTIONS[0].question}</Text>
-            {MCQ_QUIZ_QUESTIONS[0].options.map((opt, i) => {
-              const letter = ['A', 'B', 'C', 'D'][i];
-              const selected = selectedMcqOption === letter;
-              return (
-                <TouchableOpacity
-                  key={letter}
-                  style={[styles.mcqOptionItem, selected && styles.mcqOptionItemSelected]}
-                  onPress={() => {
-                    setSelectedMcqOption(letter);
-                    setShowMcqExplanation(true);
+            {/* Description Card */}
+            <View style={styles.arenaDescCard}>
+              <Text style={styles.arenaDescText}>{currentQ.desc}</Text>
+              <View style={styles.exampleBlock}>
+                <Text style={styles.exampleBold}>Example 1:</Text>
+                <Text style={styles.exampleBlue}>Input: {currentQ.input}</Text>
+                <Text style={styles.exampleBlue}>Output: {currentQ.output}</Text>
+              </View>
+            </View>
+
+            {/* Coding Editor */}
+            {arenaMode === 'coding' && (
+              <View style={styles.codeEditorBox}>
+                <View style={styles.codeEditorTopBar}>
+                  <Text style={styles.codeFileName}>Solution.js (Type your code below)</Text>
+                  <TouchableOpacity onPress={() => {
+                    setUserCode(currentQ.template);
+                    setCodeExecutionResult('');
+                    setExecutionHint('');
+                  }}>
+                    <Text style={{ color: '#94a3b8', fontSize: 11 }}>↺ Reset Code</Text>
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  style={styles.codeTextInput}
+                  multiline
+                  value={userCode}
+                  onChangeText={(text) => {
+                    setUserCode(text);
+                    if (codeExecutionResult) {
+                      setCodeExecutionResult('');
+                      setExecutionHint('');
+                    }
                   }}
+                  placeholder="// Write your solution here..."
+                  placeholderTextColor="#64748b"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                {codeExecutionResult ? (
+                  <View style={[
+                    styles.executionResultBar,
+                    codeExecutionResult.includes('❌') ? styles.resultErrorBox : styles.resultSuccessBox
+                  ]}>
+                    <Text style={[
+                      styles.executionResultText,
+                      codeExecutionResult.includes('❌') ? { color: '#f87171' } : { color: '#34d399' }
+                    ]}>
+                      {codeExecutionResult}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.executionResultBar}>
+                    <Text style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace' }}>
+                      ℹ️ Write your function logic above and tap "Run Code" to compile & execute tests.
+                    </Text>
+                  </View>
+                )}
+
+                {executionHint ? (
+                  <View style={styles.hintContainerBox}>
+                    <Text style={styles.hintHeadingText}>💡 Dynamic Hint & Guidance</Text>
+                    <Text style={styles.hintBodyText}>{executionHint}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.editorActionButtonsRow}>
+                  <TouchableOpacity style={styles.runCodeBtn} onPress={runCode} disabled={isRunningCode}>
+                    <Text style={styles.runCodeBtnText}>{isRunningCode ? 'Compiling...' : '▶ Run Code'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode} disabled={isRunningCode}>
+                    <Text style={styles.submitCodeBtnText}>Submit Solution</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* SQL Query Editor */}
+            {arenaMode === 'sql' && (
+              <View style={styles.codeEditorBox}>
+                <View style={styles.codeEditorTopBar}>
+                  <Text style={styles.codeFileName}>PostgreSQL Engine (Query.sql)</Text>
+                </View>
+                <TextInput
+                  style={styles.codeTextInput}
+                  multiline
+                  value={userCode}
+                  onChangeText={setUserCode}
+                  placeholder="-- Write your SQL query here..."
+                  placeholderTextColor="#64748b"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {codeExecutionResult ? (
+                  <View style={[
+                    styles.executionResultBar,
+                    codeExecutionResult.includes('❌') ? styles.resultErrorBox : styles.resultSuccessBox
+                  ]}>
+                    <Text style={[
+                      styles.executionResultText,
+                      codeExecutionResult.includes('❌') ? { color: '#f87171' } : { color: '#34d399' }
+                    ]}>
+                      {codeExecutionResult}
+                    </Text>
+                  </View>
+                ) : null}
+                {executionHint ? (
+                  <View style={styles.hintContainerBox}>
+                    <Text style={styles.hintHeadingText}>💡 SQL Hint</Text>
+                    <Text style={styles.hintBodyText}>{executionHint}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.editorActionButtonsRow}>
+                  <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode} disabled={isRunningCode}>
+                    <Text style={styles.submitCodeBtnText}>{isRunningCode ? 'Executing...' : 'Execute SQL Query'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </>
+        )}
+
+        {/* ----------------------------------------------------------- */}
+        {/* VIEW B: BATTLE OF MCQ & TEACHER AUTO-GENERATOR STUDIO */}
+        {/* ----------------------------------------------------------- */}
+        {arenaMode === 'mcq' && (
+          <View style={{ marginBottom: 30 }}>
+            {/* MCQ Sub-Navigation Bar */}
+            <View style={styles.battleSubNavRow}>
+              <TouchableOpacity
+                style={[styles.battleSubNavItem, mcqSubTab === 'battle' && styles.battleSubNavItemActive]}
+                onPress={() => setMcqSubTab('battle')}
+              >
+                <Text style={[styles.battleSubNavText, mcqSubTab === 'battle' && styles.battleSubNavTextActive]}>
+                  ⚔️ Live Battle
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.battleSubNavItem, mcqSubTab === 'teacher_studio' && styles.battleSubNavItemActive]}
+                onPress={() => setMcqSubTab('teacher_studio')}
+              >
+                <Text style={[styles.battleSubNavText, mcqSubTab === 'teacher_studio' && styles.battleSubNavTextActive]}>
+                  👨‍🏫 Teacher Studio
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.battleSubNavItem, mcqSubTab === 'results' && styles.battleSubNavItemActive]}
+                onPress={() => setMcqSubTab('results')}
+              >
+                <Text style={[styles.battleSubNavText, mcqSubTab === 'results' && styles.battleSubNavTextActive]}>
+                  🏆 Scoreboard
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 1. TEACHER STUDIO VIEW (Create & Auto-Generate Questions) */}
+            {mcqSubTab === 'teacher_studio' && (
+              <View style={styles.teacherStudioCard}>
+                {/* Room Info Header */}
+                <View style={styles.roomHeaderRow}>
+                  <View>
+                    <Text style={styles.roomCodeLabel}>BATTLE ROOM CODE</Text>
+                    <Text style={styles.roomCodeValue}>{battleRoomCode}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.newRoomBtn}
+                    onPress={() => setBattleRoomCode(`CQ-ROOM-${Math.floor(1000 + Math.random() * 9000)}`)}
+                  >
+                    <Text style={styles.newRoomBtnText}>🔄 New Code</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Section 1: Question Type Selector */}
+                <Text style={styles.teacherSectionHeading}>1. SELECT QUESTION TYPE</Text>
+                <View style={styles.teacherTypeRow}>
+                  <TouchableOpacity
+                    style={[styles.typeOptionCard, teacherQuestionType === 'multi' && styles.typeOptionCardSelected]}
+                    onPress={() => setTeacherQuestionType('multi')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.typeOptionIcon}>☑️</Text>
+                    <Text style={[styles.typeOptionTitle, teacherQuestionType === 'multi' && styles.typeOptionTitleSelected]}>
+                      Multiple-Answer MCQ
+                    </Text>
+                    <Text style={styles.typeOptionSub}>Allows multiple correct choices per question</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.typeOptionCard, teacherQuestionType === 'single' && styles.typeOptionCardSelected]}
+                    onPress={() => setTeacherQuestionType('single')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.typeOptionIcon}>🔘</Text>
+                    <Text style={[styles.typeOptionTitle, teacherQuestionType === 'single' && styles.typeOptionTitleSelected]}>
+                      Single-Answer MCQ
+                    </Text>
+                    <Text style={styles.typeOptionSub}>Standard 1-choice multiple choice questions</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Section 2: Choose / Enter Topics */}
+                <Text style={styles.teacherSectionHeading}>2. CHOOSE TOPICS OR TYPE CUSTOM TOPIC</Text>
+                <View style={styles.topicsTagGrid}>
+                  {teacherAvailableTopics.map(t => {
+                    const isSelected = teacherSelectedTopics.includes(t);
+                    return (
+                      <TouchableOpacity
+                        key={t}
+                        style={[styles.teacherTopicTag, isSelected && styles.teacherTopicTagSelected]}
+                        onPress={() => {
+                          if (isSelected) {
+                            if (teacherSelectedTopics.length > 1) {
+                              setTeacherSelectedTopics(teacherSelectedTopics.filter(item => item !== t));
+                            }
+                          } else {
+                            setTeacherSelectedTopics([...teacherSelectedTopics, t]);
+                          }
+                        }}
+                      >
+                        <Text style={[styles.teacherTopicTagText, isSelected && styles.teacherTopicTagTextSelected]}>
+                          {isSelected ? '✓ ' : '+ '} {t}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Custom Topic Input */}
+                <View style={styles.customTopicInputRow}>
+                  <TextInput
+                    style={styles.customTopicInput}
+                    placeholder="Type custom topic (e.g. React Hooks, Kafka, AI/ML)..."
+                    placeholderTextColor="#64748b"
+                    value={teacherCustomTopic}
+                    onChangeText={setTeacherCustomTopic}
+                  />
+                  <TouchableOpacity
+                    style={styles.addCustomTopicBtn}
+                    onPress={() => {
+                      if (teacherCustomTopic.trim() && !teacherAvailableTopics.includes(teacherCustomTopic.trim())) {
+                        setTeacherAvailableTopics([...teacherAvailableTopics, teacherCustomTopic.trim()]);
+                        setTeacherSelectedTopics([...teacherSelectedTopics, teacherCustomTopic.trim()]);
+                      }
+                    }}
+                  >
+                    <Text style={styles.addCustomTopicBtnText}>+ ADD</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Attach Topic Photo / Notes toggle */}
+                <TouchableOpacity
+                  style={styles.photoTopicRow}
+                  onPress={() => setTeacherAttachPhoto(!teacherAttachPhoto)}
+                  activeOpacity={0.8}
                 >
-                  <Text style={[styles.mcqOptionItemText, selected && styles.mcqOptionItemTextSelected]}>
-                    {letter}.  {opt}
+                  <Text style={{ fontSize: 18, marginRight: 8 }}>📸</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.photoTopicTitle}>Attach Topic Diagram / Reference Photo</Text>
+                    <Text style={styles.photoTopicSub}>Auto-attaches architecture & code diagrams to questions</Text>
+                  </View>
+                  <Switch
+                    value={teacherAttachPhoto}
+                    onValueChange={setTeacherAttachPhoto}
+                    trackColor={{ false: '#1e2748', true: '#38bdf8' }}
+                    thumbColor="#ffffff"
+                  />
+                </TouchableOpacity>
+
+                {/* Section 3: Amount of Questions */}
+                <Text style={styles.teacherSectionHeading}>3. AMOUNT OF MCQ QUESTIONS</Text>
+                <View style={styles.questionAmountRow}>
+                  {[3, 5, 10, 15].map(amt => (
+                    <TouchableOpacity
+                      key={amt}
+                      style={[styles.amountPill, teacherQuestionCount === amt && styles.amountPillSelected]}
+                      onPress={() => {
+                        setTeacherQuestionCount(amt);
+                        setTeacherCountInput(String(amt));
+                      }}
+                    >
+                      <Text style={[styles.amountPillText, teacherQuestionCount === amt && styles.amountPillTextSelected]}>
+                        {amt} MCQs
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  <View style={styles.customAmountBox}>
+                    <Text style={{ color: '#94a3b8', fontSize: 11, marginRight: 6 }}>Custom:</Text>
+                    <TextInput
+                      style={styles.customAmountInput}
+                      keyboardType="numeric"
+                      value={teacherCountInput}
+                      onChangeText={(val) => {
+                        setTeacherCountInput(val);
+                        const parsed = parseInt(val, 10);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          setTeacherQuestionCount(Math.min(20, Math.max(1, parsed)));
+                        }
+                      }}
+                      maxLength={2}
+                    />
+                  </View>
+                </View>
+
+                {/* Section 4: Difficulty */}
+                <Text style={styles.teacherSectionHeading}>4. DIFFICULTY TIER</Text>
+                <View style={styles.diffPillRow}>
+                  {(['Easy', 'Medium', 'Hard', 'Mixed'] as const).map(d => (
+                    <TouchableOpacity
+                      key={d}
+                      style={[styles.diffPill, teacherDifficulty === d && styles.diffPillSelected]}
+                      onPress={() => setTeacherDifficulty(d)}
+                    >
+                      <Text style={[styles.diffPillText, teacherDifficulty === d && styles.diffPillTextSelected]}>
+                        {d}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Auto-Generate Button */}
+                <TouchableOpacity
+                  style={styles.autoGenerateBattleBtn}
+                  onPress={handleAutoGenerateBattle}
+                  disabled={isGeneratingBattle}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.autoGenerateBattleBtnText}>
+                    {isGeneratingBattle ? '⚡ Auto-Generating Questions...' : '🚀 AUTO-GENERATE & LAUNCH BATTLE'}
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
-            {showMcqExplanation && (
-              <View style={styles.mcqExplanationCard}>
-                <Text style={styles.mcqExplanationTitle}>
-                  {selectedMcqOption === MCQ_QUIZ_QUESTIONS[0].answer ? '✓ Correct Answer!' : '✕ Incorrect'} ({MCQ_QUIZ_QUESTIONS[0].answer})
+              </View>
+            )}
+
+            {/* 2. LIVE BATTLE VIEW */}
+            {mcqSubTab === 'battle' && (
+              <View>
+                {/* 1v1 Battle Matchup Header Card */}
+                <View style={styles.battleMatchupCard}>
+                  {/* Player 1 (You) */}
+                  <View style={styles.playerCol}>
+                    <View style={styles.playerAvatarGlow}>
+                      <Text style={styles.playerAvatarText}>YOU</Text>
+                    </View>
+                    <Text style={styles.playerNameText}>{userName || 'Student'}</Text>
+                    <Text style={styles.playerScoreText}>{battleScore} pts</Text>
+                  </View>
+
+                  {/* Center Match Status */}
+                  <View style={styles.matchCenterCol}>
+                    <View style={styles.timerBadge}>
+                      <Text style={styles.timerBadgeText}>⏱️ {battleTimer}s</Text>
+                    </View>
+                    <Text style={styles.vsBadgeText}>VS</Text>
+                    <Text style={styles.roomCodeSmall}>{battleRoomCode}</Text>
+                  </View>
+
+                  {/* Player 2 (Opponent) */}
+                  <View style={styles.playerCol}>
+                    <View style={[styles.playerAvatarGlow, { borderColor: '#f43f5e' }]}>
+                      <Text style={[styles.playerAvatarText, { color: '#f43f5e' }]}>OPP</Text>
+                    </View>
+                    <Text style={styles.playerNameText}>{battleOpponentName.split(' ')[0]}</Text>
+                    <Text style={[styles.playerScoreText, { color: '#f43f5e' }]}>{battleOpponentScore} pts</Text>
+                  </View>
+                </View>
+
+                {/* Question Info Bar */}
+                {battleQuestions.length > 0 && (
+                  <View style={styles.questionCounterBar}>
+                    <View style={styles.topicPill}>
+                      <Text style={styles.topicPillText}>{battleQuestions[battleCurrentQIndex]?.topic}</Text>
+                    </View>
+                    <Text style={styles.questionCounterText}>
+                      Question {battleCurrentQIndex + 1} of {battleQuestions.length}
+                    </Text>
+                    <View style={styles.multiAnswerIndicator}>
+                      <Text style={styles.multiAnswerIndicatorText}>
+                        {battleQuestions[battleCurrentQIndex]?.isMultiSelect ? '☑️ MULTI-SELECT' : '🔘 SINGLE'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Active Question Box */}
+                {battleQuestions.length > 0 && (
+                  <View style={styles.codeEditorBox}>
+                    {/* Multi-Select Instruction Hint */}
+                    {battleQuestions[battleCurrentQIndex]?.isMultiSelect && (
+                      <View style={styles.multiSelectBanner}>
+                        <Text style={styles.multiSelectBannerText}>
+                          💡 Multiple-Answer Question: Select all options that apply before submitting!
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Question Text */}
+                    <Text style={styles.battleQuestionText}>
+                      {battleQuestions[battleCurrentQIndex]?.question}
+                    </Text>
+
+                    {/* Photo / Diagram Illustration preview if attached */}
+                    {battleQuestions[battleCurrentQIndex]?.hasPhoto && (
+                      <View style={styles.diagramMockupBox}>
+                        <View style={styles.diagramTopRow}>
+                          <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
+                          <Text style={styles.diagramTitleText}>Topic Diagram & Schema Architecture</Text>
+                        </View>
+                        <View style={styles.diagramGraphicPlaceholder}>
+                          <Text style={styles.diagramNodeLeft}>Client Node</Text>
+                          <Text style={styles.diagramArrow}>➔ [Router/LB] ➔</Text>
+                          <Text style={styles.diagramNodeRight}>{battleQuestions[battleCurrentQIndex]?.topic} Engine</Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Options List with Checkbox style for Multi-Select */}
+                    {battleQuestions[battleCurrentQIndex]?.options.map((opt, i) => {
+                      const letter = ['A', 'B', 'C', 'D'][i];
+                      const isSelected = battleSelectedAnswers.includes(letter);
+                      const isCorrect = battleQuestions[battleCurrentQIndex]?.correctAnswers.includes(letter);
+
+                      let optionCardStyle: any = styles.battleOptionItem;
+                      if (isSelected) optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemSelected];
+                      if (battleAnswerSubmitted) {
+                        if (isCorrect) {
+                          optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemCorrect];
+                        } else if (isSelected && !isCorrect) {
+                          optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemWrong];
+                        }
+                      }
+
+                      return (
+                        <TouchableOpacity
+                          key={letter}
+                          style={optionCardStyle}
+                          onPress={() => handleToggleAnswerOption(letter)}
+                          disabled={battleAnswerSubmitted}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[
+                            styles.checkboxBox,
+                            isSelected && styles.checkboxBoxSelected,
+                            battleAnswerSubmitted && isCorrect && styles.checkboxBoxCorrect
+                          ]}>
+                            <Text style={styles.checkboxLetter}>
+                              {isSelected ? '✓' : letter}
+                            </Text>
+                          </View>
+                          <Text style={[
+                            styles.battleOptionText,
+                            isSelected && styles.battleOptionTextSelected,
+                            battleAnswerSubmitted && isCorrect && { color: '#34d399', fontWeight: 'bold' }
+                          ]}>
+                            {opt}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    {/* Submit or Next Question Action Row */}
+                    {!battleAnswerSubmitted ? (
+                      <TouchableOpacity
+                        style={[
+                          styles.submitAnswerBtn,
+                          battleSelectedAnswers.length === 0 && { opacity: 0.5 }
+                        ]}
+                        onPress={handleSubmitBattleAnswer}
+                        disabled={battleSelectedAnswers.length === 0}
+                      >
+                        <Text style={styles.submitAnswerBtnText}>
+                          CONFIRM ANSWER ({battleSelectedAnswers.length} selected) ➔
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.answerFeedbackCard}>
+                        {/* Status Heading */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                          <Text style={{ fontSize: 18, marginRight: 6 }}>
+                            {[...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('') ? '🎉' : '❌'}
+                          </Text>
+                          <Text style={[
+                            styles.feedbackTitleText,
+                            [...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('')
+                              ? { color: '#34d399' }
+                              : { color: '#f43f5e' }
+                          ]}>
+                            {[...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('')
+                              ? 'Correct! (+20 pts earned)'
+                              : 'Incorrect Choice'}
+                          </Text>
+                        </View>
+
+                        <Text style={styles.correctAnswersLabel}>
+                          Correct Answers: {battleQuestions[battleCurrentQIndex]?.correctAnswers.join(', ')}
+                        </Text>
+                        <Text style={styles.feedbackExplanationText}>
+                          {battleQuestions[battleCurrentQIndex]?.explanation}
+                        </Text>
+
+                        {/* Next question button */}
+                        <TouchableOpacity
+                          style={styles.nextBattleQBtn}
+                          onPress={handleNextBattleQuestion}
+                        >
+                          <Text style={styles.nextBattleQBtnText}>
+                            {battleCurrentQIndex < battleQuestions.length - 1 ? 'NEXT QUESTION ➔' : 'VIEW BATTLE RESULTS 🏆'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* 3. BATTLE RESULTS / SCOREBOARD VIEW */}
+            {mcqSubTab === 'results' && (
+              <View style={styles.resultsCard}>
+                <View style={styles.trophyGlowBox}>
+                  <Text style={{ fontSize: 44 }}>🏆</Text>
+                </View>
+
+                <Text style={styles.resultsMainTitle}>
+                  {battleScore >= battleOpponentScore ? 'BATTLE VICTORY!' : 'MATCH COMPLETED'}
                 </Text>
-                <Text style={styles.mcqExplanationBody}>{MCQ_QUIZ_QUESTIONS[0].explanation}</Text>
+                <Text style={styles.resultsSubTitle}>
+                  Room {battleRoomCode} · {battleQuestions.length} Questions Completed
+                </Text>
+
+                {/* Score Comparison Grid */}
+                <View style={styles.scoreComparisonRow}>
+                  <View style={styles.scoreBoxPlayer}>
+                    <Text style={styles.scoreBoxLabel}>YOU</Text>
+                    <Text style={styles.scoreBoxNum}>{battleScore}</Text>
+                    <Text style={styles.scoreBoxPts}>POINTS</Text>
+                  </View>
+                  <Text style={styles.scoreVsText}>VS</Text>
+                  <View style={[styles.scoreBoxPlayer, { borderColor: '#f43f5e' }]}>
+                    <Text style={[styles.scoreBoxLabel, { color: '#f43f5e' }]}>OPPONENT</Text>
+                    <Text style={[styles.scoreBoxNum, { color: '#f43f5e' }]}>{battleOpponentScore}</Text>
+                    <Text style={styles.scoreBoxPts}>POINTS</Text>
+                  </View>
+                </View>
+
+                {/* XP Earned Banner */}
+                <View style={styles.xpEarnedCard}>
+                  <Text style={{ fontSize: 20, marginRight: 8 }}>💎</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.xpEarnedTitle}>+50 Placement XP Added</Text>
+                    <Text style={styles.xpEarnedSub}>Added to your total readiness progress.</Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.resultsActionsRow}>
+                  <TouchableOpacity
+                    style={styles.rematchBtn}
+                    onPress={() => {
+                      setBattleCurrentQIndex(0);
+                      setBattleSelectedAnswers([]);
+                      setBattleAnswerSubmitted(false);
+                      setBattleScore(0);
+                      setBattleOpponentScore(0);
+                      setBattleTimer(45);
+                      setMcqSubTab('battle');
+                    }}
+                  >
+                    <Text style={styles.rematchBtnText}>🔄 Rematch</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.configureNewBtn}
+                    onPress={() => setMcqSubTab('teacher_studio')}
+                  >
+                    <Text style={styles.configureNewBtnText}>👨‍🏫 Teacher Studio (New Battle)</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -2684,6 +3449,692 @@ const styles = StyleSheet.create({
   },
   navTabLabelActive: {
     color: '#38bdf8',
+    fontWeight: '800',
+  },
+
+  // -----------------------------------------------------------
+  // BATTLE OF MCQ & TEACHER STUDIO STYLES
+  // -----------------------------------------------------------
+  battleSubNavRow: {
+    flexDirection: 'row',
+    backgroundColor: '#0a1020',
+    borderRadius: 14,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#192542',
+    marginBottom: 14,
+  },
+  battleSubNavItem: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  battleSubNavItemActive: {
+    backgroundColor: '#1d2a4d',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+  },
+  battleSubNavText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  battleSubNavTextActive: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+
+  // Teacher Studio Card
+  teacherStudioCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 18,
+  },
+  roomHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#070c1a',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    marginBottom: 16,
+  },
+  roomCodeLabel: {
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  roomCodeValue: {
+    color: '#38bdf8',
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: 'monospace',
+    marginTop: 2,
+  },
+  newRoomBtn: {
+    backgroundColor: '#182444',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2b3d6f',
+  },
+  newRoomBtnText: {
+    color: '#93c5fd',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  teacherSectionHeading: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  teacherTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
+  },
+  typeOptionCard: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 10,
+  },
+  typeOptionCardSelected: {
+    borderColor: '#38bdf8',
+    backgroundColor: '#0c1b33',
+  },
+  typeOptionIcon: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  typeOptionTitle: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  typeOptionTitleSelected: {
+    color: '#38bdf8',
+  },
+  typeOptionSub: {
+    color: '#64748b',
+    fontSize: 9,
+    lineHeight: 12,
+  },
+  topicsTagGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  teacherTopicTag: {
+    backgroundColor: '#070c1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  teacherTopicTagSelected: {
+    backgroundColor: '#0f2942',
+    borderColor: '#38bdf8',
+  },
+  teacherTopicTagText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  teacherTopicTagTextSelected: {
+    color: '#38bdf8',
+    fontWeight: '800',
+  },
+  customTopicInputRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 10,
+  },
+  customTopicInput: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    color: '#ffffff',
+    fontSize: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  addCustomTopicBtn: {
+    backgroundColor: '#1e293b',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  addCustomTopicBtnText: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  photoTopicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#070c1a',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  photoTopicTitle: {
+    color: '#e2e8f0',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  photoTopicSub: {
+    color: '#64748b',
+    fontSize: 9,
+  },
+  questionAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 4,
+  },
+  amountPill: {
+    backgroundColor: '#070c1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  amountPillSelected: {
+    backgroundColor: '#1d2a4d',
+    borderColor: '#38bdf8',
+  },
+  amountPillText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  amountPillTextSelected: {
+    color: '#38bdf8',
+    fontWeight: '800',
+  },
+  customAmountBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#070c1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  customAmountInput: {
+    color: '#ffffff',
+    width: 32,
+    fontSize: 12,
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    padding: 0,
+  },
+  diffPillRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 16,
+  },
+  diffPill: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  diffPillSelected: {
+    backgroundColor: '#1d2a4d',
+    borderColor: '#a855f7',
+  },
+  diffPillText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  diffPillTextSelected: {
+    color: '#c084fc',
+    fontWeight: '800',
+  },
+  autoGenerateBattleBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  autoGenerateBattleBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+
+  // Live Battle Styles
+  battleMatchupCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  playerCol: {
+    alignItems: 'center',
+    width: 76,
+  },
+  playerAvatarGlow: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#101d3b',
+    borderWidth: 2,
+    borderColor: '#38bdf8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  playerAvatarText: {
+    color: '#38bdf8',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  playerNameText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  playerScoreText: {
+    color: '#34d399',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  matchCenterCol: {
+    alignItems: 'center',
+  },
+  timerBadge: {
+    backgroundColor: '#1e1124',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f43f5e',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginBottom: 2,
+  },
+  timerBadgeText: {
+    color: '#fb7185',
+    fontSize: 12,
+    fontWeight: '900',
+    fontFamily: 'monospace',
+  },
+  vsBadgeText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  roomCodeSmall: {
+    color: '#38bdf8',
+    fontSize: 9,
+    fontFamily: 'monospace',
+  },
+  questionCounterBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  topicPill: {
+    backgroundColor: '#0b233a',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#0284c7',
+  },
+  topicPillText: {
+    color: '#38bdf8',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  questionCounterText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  multiAnswerIndicator: {
+    backgroundColor: '#181230',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#9333ea',
+  },
+  multiAnswerIndicatorText: {
+    color: '#c084fc',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  multiSelectBanner: {
+    backgroundColor: '#0c1b33',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#1d4ed8',
+    marginBottom: 12,
+  },
+  multiSelectBannerText: {
+    color: '#93c5fd',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  battleQuestionText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  diagramMockupBox: {
+    backgroundColor: '#070c1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 10,
+    marginBottom: 12,
+  },
+  diagramTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  diagramTitleText: {
+    color: '#94a3b8',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  diagramGraphicPlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0d152a',
+    borderRadius: 6,
+    padding: 8,
+  },
+  diagramNodeLeft: {
+    color: '#38bdf8',
+    fontSize: 9,
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+  },
+  diagramArrow: {
+    color: '#64748b',
+    fontSize: 9,
+    fontFamily: 'monospace',
+  },
+  diagramNodeRight: {
+    color: '#34d399',
+    fontSize: 9,
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+  },
+  battleOptionItem: {
+    backgroundColor: '#070c1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  battleOptionItemSelected: {
+    backgroundColor: '#0c1f3d',
+    borderColor: '#38bdf8',
+  },
+  battleOptionItemCorrect: {
+    backgroundColor: '#072418',
+    borderColor: '#10b981',
+  },
+  battleOptionItemWrong: {
+    backgroundColor: '#2b0b14',
+    borderColor: '#f43f5e',
+  },
+  checkboxBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#10172e',
+    borderWidth: 1,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  checkboxBoxSelected: {
+    backgroundColor: '#0284c7',
+    borderColor: '#38bdf8',
+  },
+  checkboxBoxCorrect: {
+    backgroundColor: '#059669',
+    borderColor: '#34d399',
+  },
+  checkboxLetter: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: 'monospace',
+  },
+  battleOptionText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 16,
+  },
+  battleOptionTextSelected: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  submitAnswerBtn: {
+    backgroundColor: '#0284c7',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  submitAnswerBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  answerFeedbackCard: {
+    backgroundColor: '#070c1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 12,
+    marginTop: 10,
+  },
+  feedbackTitleText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  correctAnswersLabel: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  feedbackExplanationText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  nextBattleQBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  nextBattleQBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  // Battle Results / Scoreboard Styles
+  resultsCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 24,
+    alignItems: 'center',
+  },
+  trophyGlowBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#1b1a38',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#f59e0b',
+  },
+  resultsMainTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  resultsSubTitle: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginBottom: 20,
+  },
+  scoreComparisonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 20,
+    width: '100%',
+  },
+  scoreBoxPlayer: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#38bdf8',
+    padding: 14,
+    alignItems: 'center',
+  },
+  scoreBoxLabel: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  scoreBoxNum: {
+    color: '#ffffff',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  scoreBoxPts: {
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  scoreVsText: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  xpEarnedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0b1c2e',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0284c7',
+    padding: 12,
+    marginBottom: 20,
+    width: '100%',
+  },
+  xpEarnedTitle: {
+    color: '#38bdf8',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  xpEarnedSub: {
+    color: '#94a3b8',
+    fontSize: 10,
+  },
+  resultsActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  rematchBtn: {
+    flex: 1,
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  rematchBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  configureNewBtn: {
+    flex: 1.5,
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  configureNewBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '800',
   },
 });

@@ -14,6 +14,7 @@ import {
   Award,
   BookOpen
 } from 'lucide-react';
+import { recordActivity } from '../../services/activityTracker';
 
 export interface LeveledMcq {
   id: number;
@@ -415,6 +416,7 @@ export const CsFundamentalsView: React.FC = () => {
         ...prev,
         [selectedLevel]: (prev[selectedLevel] || 0) + 1,
       }));
+      recordActivity('mcq', { xp: 10 });
     }
   };
 

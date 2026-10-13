@@ -20,6 +20,7 @@ import {
   Award
 } from 'lucide-react';
 import { CodingProblem } from '../../types';
+import { recordActivity } from '../../services/activityTracker';
 
 const PROBLEMS_DATA: CodingProblem[] = [
   {
@@ -235,6 +236,7 @@ export const ArenaView: React.FC = () => {
     setTimeout(() => {
       setIsSubmitting(false);
       setSubmissionSuccess(true);
+      recordActivity('arena', { xp: 30 });
       setRunResult({
         status: 'success',
         runtime: '38 ms (beats 94.2% of solutions)',

@@ -15,6 +15,7 @@ import {
   Copy,
   Zap
 } from 'lucide-react';
+import { recordActivity } from '../../services/activityTracker';
 
 interface DbConfig {
   name: string;
@@ -143,6 +144,7 @@ export const SqlLabView: React.FC = () => {
     setTimeout(() => {
       setIsRunning(false);
       setExecutionTime(`${Math.floor(Math.random() * 12 + 18)} ms`);
+      recordActivity('sql', { xp: 15 });
 
       // Dynamically simulate filtered results based on query terms
       if (query.toLowerCase().includes('count')) {

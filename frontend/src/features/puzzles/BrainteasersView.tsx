@@ -11,6 +11,7 @@ import {
   HelpCircle,
   Award
 } from 'lucide-react';
+import { recordActivity } from '../../services/activityTracker';
 
 interface BrainteaserItem {
   id: number;
@@ -105,7 +106,9 @@ export const BrainteasersView: React.FC = () => {
   };
 
   const handleToggleSolved = (id: number) => {
-    setSolvedMap((prev) => ({ ...prev, [id]: !prev[id] }));
+    const isNowSolved = !solvedMap[id];
+    setSolvedMap((prev) => ({ ...prev, [id]: isNowSolved }));
+    recordActivity('puzzle', { xp: isNowSolved ? 15 : 0, delta: isNowSolved ? 1 : -1 });
   };
 
   return (

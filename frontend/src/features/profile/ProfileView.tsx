@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   User,
   Flame,
@@ -22,6 +22,9 @@ import {
   Trophy
 } from 'lucide-react';
 
+import { ActiveTabType } from '../../types';
+import { getUserActivityStats, calculateProgressPercentages } from '../../services/activityTracker';
+
 interface ProfileViewProps {
   userName: string;
   targetRole: string;
@@ -35,8 +38,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   streak,
   onUpdateRole,
 }) => {
+  const [stats, setStats] = useState(() => getUserActivityStats());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setStats(getUserActivityStats());
+    };
+    window.addEventListener('cq_activity_updated', handleUpdate);
+    return () => window.removeEventListener('cq_activity_updated', handleUpdate);
+  }, []);
+
+  const percentages = useMemo(() => calculateProgressPercentages(stats), [stats]);
+
   const [skills, setSkills] = useState([
-    'Python', 'SQL', 'Pandas', 'PySpark', 'AWS', 'Airflow', 'Databricks'
+    'Python', 'SQL', 'Algorithms', 'System Design'
   ]);
   const [newSkill, setNewSkill] = useState('');
   const [isAddingSkill, setIsAddingSkill] = useState(false);
@@ -99,7 +114,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        {/* Circular Readiness Gauge matching Screen 15: 78% */}
+        {/* Circular Readiness Gauge: Dynamically tracks overall activity progress, starts at 0% */}
         <div className="relative w-14 h-14 flex items-center justify-center">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
             <path
@@ -110,8 +125,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
             />
             <path
-              className="text-emerald-400"
-              strokeDasharray="78, 100"
+              className={percentages.overallReadiness >= 70 ? 'text-emerald-400' : percentages.overallReadiness >= 30 ? 'text-sky-400' : 'text-blue-500'}
+              strokeDasharray={`${percentages.overallReadiness}, 100`}
               strokeWidth="3.5"
               strokeLinecap="round"
               stroke="currentColor"
@@ -119,7 +134,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
             />
           </svg>
-          <span className="absolute text-xs font-black text-white">78%</span>
+          <span className="absolute text-xs font-black text-white">{percentages.overallReadiness}%</span>
         </div>
       </div>
 
@@ -148,15 +163,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       )}
 
-      {/* 6 Stats Grid matching Screen 15: 12 Streak, 450 Solved, 56 SQL, 8 Battles, Level 5, 320 XP */}
+      {/* 6 Stats Grid: Real-time user stats starting at 0 */}
       <div className="grid grid-cols-3 gap-2.5">
         {[
-          { label: 'Streak', val: `${streak || 12}`, sub: '12 Days', icon: Flame, color: 'text-orange-400', bg: 'bg-orange-950/30' },
-          { label: 'Solved', val: '450', sub: 'DSA Problems', icon: Code2, color: 'text-sky-400', bg: 'bg-sky-950/30' },
-          { label: 'SQL', val: '56', sub: 'Queries', icon: Database, color: 'text-cyan-400', bg: 'bg-cyan-950/30' },
-          { label: 'Battles', val: '8', sub: 'Won', icon: Swords, color: 'text-rose-400', bg: 'bg-rose-950/30' },
-          { label: 'Level', val: 'L5', sub: 'Rank Tier', icon: Zap, color: 'text-indigo-400', bg: 'bg-indigo-950/30' },
-          { label: 'XP', val: '320', sub: 'Total Points', icon: Award, color: 'text-amber-400', bg: 'bg-amber-950/30' },
+          { label: 'Streak', val: `${stats.streak} Days`, sub: 'Consistency', icon: Flame, color: 'text-orange-400', bg: 'bg-orange-950/30' },
+          { label: 'Solved', val: `${stats.arenaSolvedCount}`, sub: 'DSA Problems', icon: Code2, color: 'text-sky-400', bg: 'bg-sky-950/30' },
+          { label: 'SQL', val: `${stats.sqlQueriesCount}`, sub: 'Queries Run', icon: Database, color: 'text-cyan-400', bg: 'bg-cyan-950/30' },
+          { label: 'Battles', val: `${stats.battlesWonCount}`, sub: 'Matches Won', icon: Swords, color: 'text-rose-400', bg: 'bg-rose-950/30' },
+          { label: 'Level', val: `L${percentages.level}`, sub: 'Rank Tier', icon: Zap, color: 'text-indigo-400', bg: 'bg-indigo-950/30' },
+          { label: 'XP', val: `${stats.totalXp}`, sub: 'Total Points', icon: Award, color: 'text-amber-400', bg: 'bg-amber-950/30' },
         ].map((st, idx) => {
           const Icon = st.icon;
           return (

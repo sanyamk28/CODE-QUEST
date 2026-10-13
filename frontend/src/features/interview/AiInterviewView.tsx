@@ -18,6 +18,7 @@ import {
   FileCheck,
   Check
 } from 'lucide-react';
+import { recordActivity } from '../../services/activityTracker';
 
 const INTERVIEW_QUESTIONS = [
   {
@@ -61,6 +62,8 @@ export const AiInterviewView: React.FC = () => {
 
   const currentQ = INTERVIEW_QUESTIONS[currentQIndex];
 
+  const [interviewScore, setInterviewScore] = useState(85);
+
   const handleNextQuestion = () => {
     if (currentQIndex < INTERVIEW_QUESTIONS.length - 1) {
       const nextIdx = currentQIndex + 1;
@@ -68,6 +71,9 @@ export const AiInterviewView: React.FC = () => {
       setUserTranscript(INTERVIEW_QUESTIONS[nextIdx].sampleAnswer);
       setIsRecording(false);
     } else {
+      const calculatedScore = Math.floor(Math.random() * 15 + 80);
+      setInterviewScore(calculatedScore);
+      recordActivity('interview', { xp: 50 });
       setViewMode('results');
     }
   };
@@ -105,7 +111,7 @@ export const AiInterviewView: React.FC = () => {
             </button>
           </div>
 
-          {/* Overall Score Gauge matching Screen 9: 78% */}
+          {/* Dynamic Overall Score Gauge */}
           <div className="flex flex-col items-center justify-center py-2">
             <div className="relative w-28 h-28 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
@@ -117,8 +123,8 @@ export const AiInterviewView: React.FC = () => {
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className="text-emerald-400"
-                  strokeDasharray="78, 100"
+                  className={interviewScore >= 70 ? 'text-emerald-400' : 'text-sky-400'}
+                  strokeDasharray={`${interviewScore}, 100`}
                   strokeWidth="3.5"
                   strokeLinecap="round"
                   stroke="currentColor"
@@ -127,7 +133,7 @@ export const AiInterviewView: React.FC = () => {
                 />
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="text-2xl font-black text-white">78%</span>
+                <span className="text-2xl font-black text-white">{interviewScore}%</span>
                 <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Overall Score</span>
               </div>
             </div>

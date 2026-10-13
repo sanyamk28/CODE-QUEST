@@ -1,5 +1,6 @@
 {
   "expo": {
+    "platforms": ["android","ios","web"],
     "name": "Code Quest",
     "slug": "placementforge-mobile",
     "owner": "sanyamk",
