@@ -25,7 +25,12 @@ import {
   Cloud,
   Smartphone,
   Shield,
-  Bot
+  Bot,
+  Play,
+  Share2,
+  Trophy,
+  Star,
+  Filter
 } from 'lucide-react';
 import { apiClient } from '../../services/api';
 import { showToast } from '../../components/Toast';
@@ -438,6 +443,10 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
   const [projectTasksCompleted, setProjectTasksCompleted] = useState<Record<string, boolean>>({});
   const [awardingStepId, setAwardingStepId] = useState<string | null>(null);
   const [showPreferenceTuner, setShowPreferenceTuner] = useState(false);
+  const [viewMode, setViewMode] = useState<'journey' | 'curriculum'>('journey');
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>('All');
+  const [showCertificateModal, setShowCertificateModal] = useState<boolean>(false);
+  const [copiedCertificate, setCopiedCertificate] = useState<boolean>(false);
 
   // Preference tuning state
   const [customDuration, setCustomDuration] = useState(storedDuration);
@@ -477,6 +486,45 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
     return Object.values(completedSteps).filter(Boolean).length;
   }, [completedSteps]);
 
+  // Flattened steps across all phases
+  const flattenedSteps = useMemo(() => {
+    const list: (StepItem & { phaseNumber: number; phaseTitle: string; stepNumber: number })[] = [];
+    currentTrackData.phases.forEach(p => {
+      p.steps.forEach((s, idx) => {
+        list.push({
+          ...s,
+          phaseNumber: p.phaseNumber,
+          phaseTitle: p.title,
+          stepNumber: idx + 1
+        });
+      });
+    });
+    return list;
+  }, [currentTrackData]);
+
+  // Next Priority Step
+  const nextStep = useMemo(() => {
+    return flattenedSteps.find(s => !completedSteps[s.id]) || null;
+  }, [flattenedSteps, completedSteps]);
+
+  // Skill category readiness breakdown
+  const skillReadiness = useMemo(() => {
+    const phases = currentTrackData.phases;
+    const calcPhase = (phaseIdx: number) => {
+      const p = phases[phaseIdx];
+      if (!p || p.steps.length === 0) return 0;
+      const done = p.steps.filter(s => completedSteps[s.id]).length;
+      return Math.round((done / p.steps.length) * 100);
+    };
+
+    return [
+      { name: 'Foundations & Web Core', pct: calcPhase(0), icon: Code2, color: 'from-blue-500 to-cyan-400' },
+      { name: 'Scalable Architecture', pct: calcPhase(1), icon: Layers, color: 'from-indigo-500 to-purple-400' },
+      { name: 'Backend & Relational DBs', pct: calcPhase(2), icon: Database, color: 'from-emerald-500 to-teal-400' },
+      { name: 'System Scaling & Interviews', pct: calcPhase(3), icon: Cpu, color: 'from-amber-500 to-rose-400' }
+    ];
+  }, [currentTrackData, completedSteps]);
+
   // Baseline progress automatically derived from their entered knowledge percentage!
   const progressPercentage = useMemo(() => {
     const baseline = Math.round(customKnowledge * 0.5); // Initial baseline from self-assessment
@@ -491,6 +539,13 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
     now.setMonth(now.getMonth() + monthsToAdd);
     return now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }, [customDuration]);
+
+  const handleCopyCertificate = () => {
+    const certText = `🎓 Verified Achievement: ${userName} has mastered ${progressPercentage}% of the ${currentTrackData.roleName} Placement Curriculum on CodeQuest! (${markedCompletedCount}/${totalStepsCount} core milestones completed). Verified at: https://codequest.app/verify/${encodeURIComponent(userName)}`;
+    navigator.clipboard?.writeText(certText);
+    setCopiedCertificate(true);
+    setTimeout(() => setCopiedCertificate(false), 2500);
+  };
 
   const handleToggleStepComplete = async (step: StepItem) => {
     const isNowDone = !completedSteps[step.id];
@@ -685,7 +740,327 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
         })}
       </div>
 
-      {/* 4. STEP-BY-STEP ADAPTIVE CURRICULUM PHASES */}
+      {/* 4. TODAY'S PRIORITY NEXT STEP HERO CARD */}
+      {nextStep ? (
+        <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-purple-950/50 border border-blue-500/40 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 relative z-10">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+                  <Zap className="h-3 w-3 text-blue-400 fill-blue-400" />
+                  <span>Today&apos;s Recommended Next Step</span>
+                </span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  Step {nextStep.phaseNumber}.{nextStep.stepNumber} • Phase {nextStep.phaseNumber}
+                </span>
+                <span className="text-[11px] font-bold text-amber-300 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-800/40">
+                  +35 XP
+                </span>
+              </div>
+
+              <h2 className="text-lg sm:text-xl font-black text-white leading-tight">
+                {nextStep.title}
+              </h2>
+              
+              <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                <strong className="text-sky-300">Interview Context:</strong> {nextStep.interviewFocus}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-slate-400 font-semibold mr-1">Targeted by:</span>
+                {nextStep.companies.map((c, i) => (
+                  <span key={i} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800/90 text-slate-200 border border-slate-700">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full lg:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNavigate) {
+                    if (nextStep.practiceType === 'sql') onNavigate('sql');
+                    else if (nextStep.practiceType === 'interview') onNavigate('interview');
+                    else onNavigate('practice');
+                  } else {
+                    setSelectedStepModal(nextStep);
+                  }
+                }}
+                className="flex-1 sm:flex-initial px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition active:scale-95"
+              >
+                <Play className="h-4 w-4 fill-white" />
+                <span>START PRACTICE NOW</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedStepModal(nextStep)}
+                className="px-4 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5"
+              >
+                <BookOpen className="h-3.5 w-3.5 text-sky-400" />
+                <span>Concept Recap</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleStepComplete(nextStep)}
+                className="p-3 rounded-2xl bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition flex items-center justify-center shadow-md"
+                title="Mark this step complete"
+              >
+                <Check className="h-4 w-4 stroke-[3]" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 rounded-3xl bg-gradient-to-r from-emerald-950/70 to-teal-950/70 border border-emerald-500/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl font-black">
+              🏆
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-white">All Core Roadmap Milestones Completed!</h3>
+              <p className="text-xs text-emerald-200">
+                You have satisfied 100% of curriculum competencies. Proceed to Placement Capstone Projects.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowCertificateModal(true)}
+            className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center gap-2"
+          >
+            <Award className="h-4 w-4" />
+            <span>View Credential</span>
+          </button>
+        </div>
+      )}
+
+      {/* 5. SKILL READINESS RADAR CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {skillReadiness.map((skill, idx) => {
+          const IconComp = skill.icon;
+          return (
+            <div key={idx} className="p-4 rounded-2xl bg-[#090f21] border border-slate-800/90 shadow-md space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="h-7 w-7 rounded-lg bg-slate-800/80 flex items-center justify-center text-sky-400">
+                  <IconComp className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-xs font-mono font-bold text-white">{skill.pct}%</span>
+              </div>
+              <div className="text-[11px] font-bold text-slate-300 leading-snug truncate">
+                {skill.name}
+              </div>
+              <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${skill.color} transition-all duration-500`}
+                  style={{ width: `${skill.pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 6. INTERACTIVE CONTROLS TOOLBAR: View Switcher, Company Filter & Certificate */}
+      <div className="p-3.5 rounded-2xl bg-[#080d1a] border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* View Switcher: Metro Journey vs Detailed Curriculum */}
+        <div className="flex items-center bg-[#0d1426] p-1 rounded-xl border border-slate-800 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode('journey')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+              viewMode === 'journey'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>🗺️ Metro Journey Path</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('curriculum')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+              viewMode === 'curriculum'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>📋 Detailed Curriculum</span>
+          </button>
+        </div>
+
+        {/* Company Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mr-1">
+            <Filter className="h-3 w-3" />
+            <span>Target:</span>
+          </span>
+          {['All', 'Google', 'Meta', 'Amazon', 'Microsoft', 'Stripe'].map((comp) => {
+            const active = selectedCompanyFilter === comp;
+            return (
+              <button
+                key={comp}
+                onClick={() => setSelectedCompanyFilter(comp)}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition border ${
+                  active
+                    ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm'
+                    : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                {comp}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Certificate Button */}
+        <button
+          onClick={() => setShowCertificateModal(true)}
+          className="w-full md:w-auto px-3.5 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-600/50 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+        >
+          <Award className="h-3.5 w-3.5 text-amber-400" />
+          <span>Credential</span>
+        </button>
+      </div>
+
+      {/* 7A. VIEW MODE: METRO JOURNEY PATH (Duolingo / Subway Visual Flow) */}
+      {viewMode === 'journey' && (
+        <div className="p-6 rounded-3xl bg-[#090e1c] border border-slate-800/80 shadow-xl space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                <span>Interactive Learning Path • {currentTrackData.roleName}</span>
+                <span className="text-[10px] font-normal text-slate-400 font-mono">
+                  ({markedCompletedCount}/{totalStepsCount} Mastered)
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">Click any milestone node to start practice or inspect concepts</p>
+            </div>
+            <div className="text-xs font-mono text-sky-400 font-bold">
+              {progressPercentage}% Ready
+            </div>
+          </div>
+
+          <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 sm:before:left-4 before:top-4 before:bottom-4 before:w-0.5 before:bg-gradient-to-b before:from-emerald-500 before:via-blue-500 before:to-slate-800">
+            {flattenedSteps
+              .filter(step => selectedCompanyFilter === 'All' || step.companies.some(c => c.toLowerCase().includes(selectedCompanyFilter.toLowerCase())))
+              .map((step) => {
+                const isDone = !!completedSteps[step.id];
+                const isCurrent = nextStep?.id === step.id;
+                const matchesCompany = selectedCompanyFilter !== 'All' && step.companies.some(c => c.toLowerCase().includes(selectedCompanyFilter.toLowerCase()));
+
+                return (
+                  <div key={step.id} className="relative group">
+                    {/* Glowing Subway Node Circle */}
+                    <div
+                      onClick={() => setSelectedStepModal(step)}
+                      className={`absolute -left-[30px] sm:-left-[35px] top-4 h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md ${
+                        isDone
+                          ? 'bg-emerald-500 text-white border-2 border-emerald-300 shadow-emerald-500/40'
+                          : isCurrent
+                          ? 'bg-blue-600 text-white border-2 border-cyan-400 ring-4 ring-blue-500/30 animate-pulse'
+                          : 'bg-[#0d1426] text-slate-500 border-2 border-slate-700'
+                      }`}
+                    >
+                      {isDone ? (
+                        <Check className="h-4 w-4 stroke-[3]" />
+                      ) : isCurrent ? (
+                        <Zap className="h-3.5 w-3.5 fill-white text-white" />
+                      ) : (
+                        <span className="text-[10px] font-black">{step.phaseNumber}.{step.stepNumber}</span>
+                      )}
+                    </div>
+
+                    {/* Step Content Card */}
+                    <div
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 ${
+                        isCurrent
+                          ? 'bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border-blue-500/60 shadow-lg shadow-blue-500/10'
+                          : isDone
+                          ? 'bg-emerald-950/15 border-emerald-800/40'
+                          : 'bg-[#0d1426]/70 border-slate-800 hover:border-slate-700 hover:bg-[#0f172e]'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="space-y-1.5 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-mono font-bold text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/40">
+                              Phase {step.phaseNumber} • Step {step.stepNumber}
+                            </span>
+                            {isCurrent && (
+                              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[9px] font-extrabold uppercase tracking-wide">
+                                ⚡ Current Focus
+                              </span>
+                            )}
+                            {matchesCompany && (
+                              <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[9px] font-bold">
+                                🎯 Asked at {selectedCompanyFilter}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              ⏱️ {step.estimatedHours} hrs
+                            </span>
+                          </div>
+
+                          <h4 className="text-sm font-extrabold text-white leading-snug">
+                            {step.title}
+                          </h4>
+
+                          <p className="text-xs text-slate-400 line-clamp-2">
+                            {step.description}
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            {step.skills.map((sk, skIdx) => (
+                              <span key={skIdx} className="text-[9px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                {sk}
+                              </span>
+                            ))}
+                            <span className="text-[10px] text-slate-500 font-medium ml-1">
+                              Targeted by: <span className="text-slate-300">{step.companies.join(', ')}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Node Actions */}
+                        <div className="flex items-center sm:flex-col items-end gap-2 shrink-0 pt-2 sm:pt-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStepComplete(step)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${
+                              isDone
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                                : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                            }`}
+                          >
+                            <CheckCircle2 className={`h-4 w-4 ${isDone ? 'text-white' : 'text-slate-400'}`} />
+                            <span>{isDone ? 'Completed' : 'Mark Done (+25 XP)'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStepModal(step)}
+                            className="px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-semibold flex items-center gap-1 transition"
+                          >
+                            <span>Inspect Tasks</span>
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* 7B. VIEW MODE: DETAILED CURRICULUM ACCORDIONS */}
+      {viewMode === 'curriculum' && (
       <div className="space-y-6">
         {currentTrackData.phases.map((phase) => {
           // Determine if this phase is auto-unlocked based on knowledge %
@@ -807,6 +1182,7 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* 5. PLACEMENT CAPSTONE PROJECTS */}
       <div className="p-6 sm:p-7 rounded-3xl bg-[#090e1c] border border-slate-800/80 shadow-xl space-y-4">
@@ -995,6 +1371,84 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
                 className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-600/30 active:scale-95"
               >
                 Done & Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VERIFIED CREDENTIAL CERTIFICATE MODAL */}
+      {showCertificateModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#0b1124] border-2 border-indigo-500/50 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl relative overflow-hidden">
+            {/* Ambient background glows */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Certificate Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4 relative z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <Award className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    Verified Competency Certificate
+                  </h3>
+                  <span className="text-[10px] text-slate-400 font-mono">Issued by CodeQuest Engineering Registry</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowCertificateModal(false)}
+                className="h-8 w-8 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Certificate Graphic Card */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-[#0c1429] via-[#090d1c] to-[#070b16] border border-indigo-600/40 text-center space-y-4 shadow-inner relative z-10">
+              <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-400">
+                VERIFIED CANDIDATE • {progressPercentage}% CURRICULUM SATISFIED
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-xs text-slate-400 uppercase tracking-widest font-mono">Presented to</div>
+                <div className="text-2xl font-black text-white tracking-tight">{userName}</div>
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed px-2">
+                For demonstrating verifiable mastery in the <strong>{currentTrackData.roleName}</strong> roadmap curriculum, including real-time architectural components, database indexing, and system scaling paradigms.
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 text-left pt-2 border-t border-slate-800/80 text-[11px] font-mono">
+                <div>
+                  <span className="text-slate-500 block">Milestones Completed:</span>
+                  <span className="text-emerald-400 font-bold">{markedCompletedCount} of {totalStepsCount} Core Steps</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Placement Status:</span>
+                  <span className="text-sky-400 font-bold">{progressPercentage >= 70 ? 'Interview Ready' : 'In Progress'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 relative z-10">
+              <button
+                onClick={handleCopyCertificate}
+                className="w-full sm:flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2"
+              >
+                <Share2 className="h-4 w-4" />
+                <span>{copiedCertificate ? 'Link Copied to Clipboard!' : 'Share & Copy Credential Link'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowCertificateModal(false)}
+                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs"
+              >
+                Close
               </button>
             </div>
           </div>

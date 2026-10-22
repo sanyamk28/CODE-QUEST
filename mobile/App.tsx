@@ -452,6 +452,25 @@ export default function App() {
     }));
   };
 
+  // Enhanced Roadmap State: Company Filters & View Modes
+  const [roadmapCompanyFilter, setRoadmapCompanyFilter] = useState<'All' | 'MAANG' | 'FinTech' | 'Startups'>('All');
+  const [roadmapViewMode, setRoadmapViewMode] = useState<'journey' | 'modules'>('journey');
+
+  // 1-Tap MCQ Practice Launcher for Roadmap Topics
+  const handleStartRoadmapTopicTest = (topicName: string) => {
+    const questions = generateBattleMCQs([topicName], true, 5, 'Mixed', '', true);
+    setBattleQuestions(questions);
+    setBattleRoomCode(`CQ-${topicName.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setBattleTimer(battleTimerDuration);
+    setBattleCurrentQIndex(0);
+    setBattleSelectedAnswers([]);
+    setBattleAnswerSubmitted(false);
+    setBattleScore(0);
+    setBattleOpponentScore(0);
+    setActiveTab('Arena');
+    setMcqSubTab('battle');
+  };
+
   // MCQ Battle & Room Test State
   const [mcqSubTab, setMcqSubTab] = useState<'battle' | 'join_room' | 'create_room' | 'results'>('battle');
   const [battleRoomCode, setBattleRoomCode] = useState<string>('CQ-MCQ-8492');
@@ -1899,7 +1918,7 @@ export default function App() {
         </View>
       ) : (
         <>
-          {/* Active Track Banner */}
+          {/* Active Track Banner & Readiness Index */}
           <View style={styles.activeTrackBanner}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={styles.activeTrackTag}>🧭 ACTIVE TRACK</Text>
@@ -1907,104 +1926,351 @@ export default function App() {
                 <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '700' }}>Change Track</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.activeTrackTitle}>Current Track: {targetRole || 'Software Engineer'} Placement</Text>
+            <Text style={styles.activeTrackTitle}>{targetRole || 'Full Stack'} Placement Path</Text>
             
-            {/* Dynamic Progress Bar (starts at 0%) */}
+            {/* Dynamic Progress Bar */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 4 }}>
-              <Text style={{ color: '#94a3b8', fontSize: 11 }}>Progress</Text>
-              <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800' }}>{roadmapProgressPercent}% Completed</Text>
+              <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '600' }}>Overall Role Readiness</Text>
+              <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800' }}>{roadmapProgressPercent}% Ready</Text>
             </View>
             <View style={styles.overallProgressBar}>
               <View style={[styles.overallProgressFill, { width: `${roadmapProgressPercent}%` }]} />
             </View>
-          </View>
 
-          {/* Module 1: Core Foundations */}
-          <View style={[styles.moduleCardActive, roadmapModules[0].done && styles.moduleCardCompleted]}>
-            <TouchableOpacity 
-              style={styles.moduleHeaderRow}
-              onPress={() => toggleModule('mod-1')}
-            >
-              <Text style={{ color: roadmapModules[0].done ? '#34d399' : '#94a3b8', fontSize: 18, marginRight: 12 }}>
-                {roadmapModules[0].done ? '✓' : '○'}
-              </Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.moduleTitle}>{roadmapModules[0].title}</Text>
-                <Text style={styles.moduleSubtitle}>{roadmapModules[0].subtitle}</Text>
+            {/* Domain Readiness Mini Badges */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, gap: 4 }}>
+              <View style={styles.domainMiniPill}>
+                <Text style={styles.domainMiniPillLabel}>Core Logic</Text>
+                <Text style={styles.domainMiniPillVal}>{roadmapModules[0].done ? '100%' : '0%'}</Text>
               </View>
-              <View style={roadmapModules[0].done ? styles.pillGreen : styles.pillInactive}>
-                <Text style={roadmapModules[0].done ? styles.pillGreenText : styles.pillInactiveText}>
-                  {roadmapModules[0].done ? '100%' : '0%'}
+              <View style={styles.domainMiniPill}>
+                <Text style={styles.domainMiniPillLabel}>SQL & DBs</Text>
+                <Text style={styles.domainMiniPillVal}>
+                  {Math.round(((roadmapModules[1].subtopics?.filter(s => s.done).length || 0) / 3) * 100)}%
                 </Text>
               </View>
-            </TouchableOpacity>
+              <View style={styles.domainMiniPill}>
+                <Text style={styles.domainMiniPillLabel}>Systems</Text>
+                <Text style={styles.domainMiniPillVal}>{roadmapModules[2].done ? '100%' : '0%'}</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Module 2: SQL Mastery (Interactive Subtopics) */}
-          <View style={styles.moduleCardActive}>
-            <TouchableOpacity 
-              style={styles.moduleHeaderRow} 
-              onPress={() => setSqlModuleExpanded(!sqlModuleExpanded)}
-            >
-              <Text style={{ fontSize: 18, marginRight: 12 }}>🗄️</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.moduleTitle}>{roadmapModules[1].title}</Text>
-                <Text style={styles.moduleSubtitle}>{roadmapModules[1].subtitle}</Text>
-              </View>
-              <Text style={{ color: '#60a5fa', fontWeight: 'bold' }}>{sqlModuleExpanded ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
+          {/* Today's Recommended Next Step Focus Card */}
+          {(() => {
+            let nextTopic = 'Core Web & Algorithm Logic';
+            let nextTopicDesc = 'Master DOM trees, asynchronous event loops and data structures';
+            let nextModuleId = 'mod-1';
+            let nextSubtopicName = '';
 
-            {sqlModuleExpanded && roadmapModules[1].subtopics && (
-              <View style={styles.subtopicsList}>
-                {roadmapModules[1].subtopics.map(sub => (
-                  <View key={sub.name} style={styles.subtopicItem}>
-                    <TouchableOpacity 
-                      onPress={() => toggleSubtopic('mod-2', sub.name)}
-                      style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
-                    >
-                      <Text style={{ color: sub.done ? '#34d399' : '#64748b', marginRight: 10, fontSize: 16 }}>
-                        {sub.done ? '☑' : '☐'}
-                      </Text>
-                      <Text style={[styles.subtopicName, sub.done && { textDecorationLine: 'line-through', color: '#64748b' }]}>
-                        {sub.name}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.startSubtopicBtn}
-                      onPress={() => {
-                        setActiveTab('Arena');
-                        setMcqSubTab('battle');
-                        setBattleTimer(battleTimerDuration);
-                      }}
-                    >
-                      <Text style={styles.startSubtopicBtnText}>TEST</Text>
-                    </TouchableOpacity>
+            if (!roadmapModules[0].done) {
+              nextTopic = 'Core Web & Algorithm Logic';
+              nextTopicDesc = 'JavaScript primitives, closures & memory references';
+              nextModuleId = 'mod-1';
+            } else if (roadmapModules[1].subtopics && !roadmapModules[1].subtopics[0].done) {
+              nextTopic = 'SQL Joins & Group By';
+              nextTopicDesc = 'INNER, LEFT, FULL joins with GROUP BY and HAVING clauses';
+              nextModuleId = 'mod-2';
+              nextSubtopicName = 'SQL Joins & Group By';
+            } else if (roadmapModules[1].subtopics && !roadmapModules[1].subtopics[1].done) {
+              nextTopic = 'Aggregations & Subqueries';
+              nextTopicDesc = 'Correlated subqueries, nested CTEs and partition filters';
+              nextModuleId = 'mod-2';
+              nextSubtopicName = 'Aggregations & Subqueries';
+            } else if (roadmapModules[1].subtopics && !roadmapModules[1].subtopics[2].done) {
+              nextTopic = 'Window Functions & Indexes';
+              nextTopicDesc = 'ROW_NUMBER, DENSE_RANK, LEAD/LAG and composite B-Trees';
+              nextModuleId = 'mod-2';
+              nextSubtopicName = 'Window Functions & Indexes';
+            } else if (!roadmapModules[2].done) {
+              nextTopic = 'Advanced Systems & Scaling';
+              nextTopicDesc = 'Distributed caches, message brokers and horizontal partitions';
+              nextModuleId = 'mod-3';
+            } else {
+              return (
+                <View style={styles.roadmapAllDoneCard}>
+                  <Text style={{ fontSize: 24, marginBottom: 4 }}>🏆</Text>
+                  <Text style={styles.roadmapAllDoneTitle}>Curriculum 100% Completed!</Text>
+                  <Text style={styles.roadmapAllDoneSub}>
+                    You have mastered all milestones for your target track. Ready for senior placement rounds!
+                  </Text>
+                </View>
+              );
+            }
+
+            return (
+              <View style={styles.nextStepFocusCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <View style={styles.nextStepBadge}>
+                    <Text style={styles.nextStepBadgeText}>⚡ RECOMMENDED NEXT STEP</Text>
                   </View>
-                ))}
+                  <Text style={styles.nextStepXpText}>+35 XP</Text>
+                </View>
+
+                <Text style={styles.nextStepTitle}>{nextTopic}</Text>
+                <Text style={styles.nextStepDesc}>{nextTopicDesc}</Text>
+
+                <View style={styles.nextStepButtonsRow}>
+                  <TouchableOpacity
+                    style={styles.nextStepStartBtn}
+                    onPress={() => handleStartRoadmapTopicTest(nextTopic)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.nextStepStartBtnText}>▶ START 5-Q MCQ TEST</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.nextStepCompleteBtn}
+                    onPress={() => {
+                      if (nextSubtopicName) {
+                        toggleSubtopic('mod-2', nextSubtopicName);
+                      } else {
+                        toggleModule(nextModuleId);
+                      }
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.nextStepCompleteBtnText}>✓ Mark Done</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            )}
+            );
+          })()}
+
+          {/* Controls: View Mode & Company Filters */}
+          <View style={styles.roadmapControlsRow}>
+            {/* View Mode Toggle */}
+            <View style={styles.roadmapViewToggle}>
+              <TouchableOpacity
+                style={[styles.roadmapToggleBtn, roadmapViewMode === 'journey' && styles.roadmapToggleBtnActive]}
+                onPress={() => setRoadmapViewMode('journey')}
+              >
+                <Text style={[styles.roadmapToggleText, roadmapViewMode === 'journey' && styles.roadmapToggleTextActive]}>
+                  🗺️ Metro Path
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.roadmapToggleBtn, roadmapViewMode === 'modules' && styles.roadmapToggleBtnActive]}
+                onPress={() => setRoadmapViewMode('modules')}
+              >
+                <Text style={[styles.roadmapToggleText, roadmapViewMode === 'modules' && styles.roadmapToggleTextActive]}>
+                  📋 Modules
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Company Chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 5, paddingVertical: 2 }}>
+              {(['All', 'MAANG', 'FinTech', 'Startups'] as const).map(comp => {
+                const active = roadmapCompanyFilter === comp;
+                return (
+                  <TouchableOpacity
+                    key={comp}
+                    style={[styles.roadmapCompanyChip, active && styles.roadmapCompanyChipActive]}
+                    onPress={() => setRoadmapCompanyFilter(comp)}
+                  >
+                    <Text style={[styles.roadmapCompanyChipText, active && styles.roadmapCompanyChipTextActive]}>
+                      {comp}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
-          {/* Module 3: Advanced Topics */}
-          <View style={[styles.moduleCardActive, roadmapModules[2].done && styles.moduleCardCompleted]}>
-            <TouchableOpacity 
-              style={styles.moduleHeaderRow}
-              onPress={() => toggleModule('mod-3')}
-            >
-              <Text style={{ color: roadmapModules[2].done ? '#34d399' : '#94a3b8', fontSize: 18, marginRight: 12 }}>
-                {roadmapModules[2].done ? '✓' : '○'}
-              </Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.moduleTitle}>{roadmapModules[2].title}</Text>
-                <Text style={styles.moduleSubtitle}>{roadmapModules[2].subtitle}</Text>
+          {/* VIEW 1: METRO JOURNEY TIMELINE */}
+          {roadmapViewMode === 'journey' ? (
+            <View style={styles.metroJourneyContainer}>
+              {[
+                {
+                  id: 'stop-1',
+                  title: 'Core Web & Algorithm Logic',
+                  sub: 'Data structures, DOM manipulation and event loops',
+                  topic: 'Data Structures',
+                  companies: 'Google, Amazon, Meta',
+                  done: roadmapModules[0].done,
+                  onToggle: () => toggleModule('mod-1')
+                },
+                {
+                  id: 'stop-2',
+                  title: 'SQL Joins & Group By',
+                  sub: 'Relational queries, multi-table joins and aggregation',
+                  topic: 'DBMS & SQL',
+                  companies: 'Amazon, Oracle, Uber',
+                  done: !!roadmapModules[1].subtopics?.[0]?.done,
+                  onToggle: () => toggleSubtopic('mod-2', 'SQL Joins & Group By')
+                },
+                {
+                  id: 'stop-3',
+                  title: 'Aggregations & Subqueries',
+                  sub: 'Complex filters, nested CTEs and windowing logic',
+                  topic: 'DBMS & SQL',
+                  companies: 'Goldman Sachs, Stripe',
+                  done: !!roadmapModules[1].subtopics?.[1]?.done,
+                  onToggle: () => toggleSubtopic('mod-2', 'Aggregations & Subqueries')
+                },
+                {
+                  id: 'stop-4',
+                  title: 'Window Functions & Indexing',
+                  sub: 'DENSE_RANK, partitions, composite B-Trees',
+                  topic: 'DBMS & SQL',
+                  companies: 'Microsoft, Razorpay',
+                  done: !!roadmapModules[1].subtopics?.[2]?.done,
+                  onToggle: () => toggleSubtopic('mod-2', 'Window Functions & Indexes')
+                },
+                {
+                  id: 'stop-5',
+                  title: 'Distributed Systems & Caching',
+                  sub: 'Redis, token-bucket rate limiting and queues',
+                  topic: 'System Design',
+                  companies: 'Netflix, Cloudflare',
+                  done: roadmapModules[2].done,
+                  onToggle: () => toggleModule('mod-3')
+                }
+              ].map((stop, sIdx) => {
+                const isNext = !stop.done && (sIdx === 0 || [
+                  roadmapModules[0].done,
+                  roadmapModules[1].subtopics?.[0]?.done,
+                  roadmapModules[1].subtopics?.[1]?.done,
+                  roadmapModules[1].subtopics?.[2]?.done,
+                  roadmapModules[2].done
+                ][sIdx - 1]);
+
+                return (
+                  <View key={stop.id} style={styles.metroStopRow}>
+                    {/* Visual Connector Line */}
+                    {sIdx < 4 && <View style={styles.metroConnectorLine} />}
+
+                    {/* Subway Stop Node Circle */}
+                    <TouchableOpacity
+                      style={[
+                        styles.metroNodeCircle,
+                        stop.done && styles.metroNodeCircleDone,
+                        isNext && styles.metroNodeCircleCurrent
+                      ]}
+                      onPress={stop.onToggle}
+                    >
+                      <Text style={styles.metroNodeCircleText}>
+                        {stop.done ? '✓' : isNext ? '⚡' : `${sIdx + 1}`}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Milestone Card */}
+                    <View style={[styles.metroCard, isNext && styles.metroCardCurrent]}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <Text style={styles.metroStopNumber}>STOP {sIdx + 1}</Text>
+                            {isNext && (
+                              <View style={styles.metroCurrentPill}>
+                                <Text style={styles.metroCurrentPillText}>YOU ARE HERE</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.metroCardTitle}>{stop.title}</Text>
+                          <Text style={styles.metroCardSub}>{stop.sub}</Text>
+                        </View>
+
+                        {/* Test Button */}
+                        <TouchableOpacity
+                          style={styles.metroCardTestBtn}
+                          onPress={() => handleStartRoadmapTopicTest(stop.topic)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.metroCardTestBtnText}>▶ TEST</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {/* Targeted Companies Badge */}
+                      <View style={styles.metroCompanyRow}>
+                        <Text style={styles.metroCompanyLabel}>Asked by:</Text>
+                        <Text style={styles.metroCompanyVal}>{stop.companies}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            /* VIEW 2: COLLAPSIBLE MODULE LIST */
+            <View style={{ gap: 10 }}>
+              {/* Module 1 */}
+              <View style={[styles.moduleCardActive, roadmapModules[0].done && styles.moduleCardCompleted]}>
+                <TouchableOpacity style={styles.moduleHeaderRow} onPress={() => toggleModule('mod-1')}>
+                  <Text style={{ color: roadmapModules[0].done ? '#34d399' : '#94a3b8', fontSize: 18, marginRight: 12 }}>
+                    {roadmapModules[0].done ? '✓' : '○'}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.moduleTitle}>{roadmapModules[0].title}</Text>
+                    <Text style={styles.moduleSubtitle}>{roadmapModules[0].subtitle}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.startSubtopicBtn}
+                    onPress={() => handleStartRoadmapTopicTest('Data Structures')}
+                  >
+                    <Text style={styles.startSubtopicBtnText}>TEST</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
               </View>
-              <View style={roadmapModules[2].done ? styles.pillGreen : styles.pillInactive}>
-                <Text style={roadmapModules[2].done ? styles.pillGreenText : styles.pillInactiveText}>
-                  {roadmapModules[2].done ? '100%' : '0%'}
-                </Text>
+
+              {/* Module 2: SQL Mastery */}
+              <View style={styles.moduleCardActive}>
+                <TouchableOpacity style={styles.moduleHeaderRow} onPress={() => setSqlModuleExpanded(!sqlModuleExpanded)}>
+                  <Text style={{ fontSize: 18, marginRight: 12 }}>🗄️</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.moduleTitle}>{roadmapModules[1].title}</Text>
+                    <Text style={styles.moduleSubtitle}>{roadmapModules[1].subtitle}</Text>
+                  </View>
+                  <Text style={{ color: '#60a5fa', fontWeight: 'bold' }}>{sqlModuleExpanded ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+
+                {sqlModuleExpanded && roadmapModules[1].subtopics && (
+                  <View style={styles.subtopicsList}>
+                    {roadmapModules[1].subtopics.map(sub => (
+                      <View key={sub.name} style={styles.subtopicItem}>
+                        <TouchableOpacity 
+                          onPress={() => toggleSubtopic('mod-2', sub.name)}
+                          style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                        >
+                          <Text style={{ color: sub.done ? '#34d399' : '#64748b', marginRight: 10, fontSize: 16 }}>
+                            {sub.done ? '☑' : '☐'}
+                          </Text>
+                          <Text style={[styles.subtopicName, sub.done && { textDecorationLine: 'line-through', color: '#64748b' }]}>
+                            {sub.name}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.startSubtopicBtn}
+                          onPress={() => handleStartRoadmapTopicTest('DBMS & SQL')}
+                        >
+                          <Text style={styles.startSubtopicBtnText}>TEST</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-            </TouchableOpacity>
-          </View>
+
+              {/* Module 3: Advanced Topics */}
+              <View style={[styles.moduleCardActive, roadmapModules[2].done && styles.moduleCardCompleted]}>
+                <TouchableOpacity style={styles.moduleHeaderRow} onPress={() => toggleModule('mod-3')}>
+                  <Text style={{ color: roadmapModules[2].done ? '#34d399' : '#94a3b8', fontSize: 18, marginRight: 12 }}>
+                    {roadmapModules[2].done ? '✓' : '○'}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.moduleTitle}>{roadmapModules[2].title}</Text>
+                    <Text style={styles.moduleSubtitle}>{roadmapModules[2].subtitle}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.startSubtopicBtn}
+                    onPress={() => handleStartRoadmapTopicTest('System Design')}
+                  >
+                    <Text style={styles.startSubtopicBtnText}>TEST</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </>
       )}
     </ScrollView>
@@ -4689,6 +4955,307 @@ const styles = StyleSheet.create({
   exitModalCancelBtnText: {
     color: '#cbd5e1',
     fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Enhanced Roadmap Domain Pills
+  domainMiniPill: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  domainMiniPillLabel: {
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  domainMiniPillVal: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+
+  // Next Step Focus Card
+  nextStepFocusCard: {
+    backgroundColor: '#0c1b33',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 12,
+    shadowColor: '#2563eb',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  nextStepBadge: {
+    backgroundColor: '#172554',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  nextStepBadgeText: {
+    color: '#60a5fa',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  nextStepXpText: {
+    color: '#fde047',
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: 'monospace',
+  },
+  nextStepTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  nextStepDesc: {
+    color: '#93c5fd',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  nextStepButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  nextStepStartBtn: {
+    flex: 2,
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextStepStartBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  nextStepCompleteBtn: {
+    flex: 1,
+    backgroundColor: '#064e3b',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#10b981',
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextStepCompleteBtnText: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  roadmapAllDoneCard: {
+    backgroundColor: '#062c22',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#10b981',
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+    textAlign: 'center',
+  },
+  roadmapAllDoneTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 4,
+  },
+  roadmapAllDoneSub: {
+    color: '#6ee7b7',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+
+  // Controls Row & Filters
+  roadmapControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    gap: 8,
+  },
+  roadmapViewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#070c1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 2,
+  },
+  roadmapToggleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  roadmapToggleBtnActive: {
+    backgroundColor: '#1d4ed8',
+  },
+  roadmapToggleText: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  roadmapToggleTextActive: {
+    color: '#ffffff',
+    fontWeight: '900',
+  },
+  roadmapCompanyChip: {
+    backgroundColor: '#070c1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  roadmapCompanyChipActive: {
+    backgroundColor: '#1e1b4b',
+    borderColor: '#6366f1',
+  },
+  roadmapCompanyChipText: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  roadmapCompanyChipTextActive: {
+    color: '#a5b4fc',
+    fontWeight: '900',
+  },
+
+  // Metro Subway Journey Styles
+  metroJourneyContainer: {
+    position: 'relative',
+    paddingLeft: 22,
+    marginBottom: 20,
+  },
+  metroStopRow: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  metroConnectorLine: {
+    position: 'absolute',
+    left: -13,
+    top: 24,
+    bottom: -20,
+    width: 2,
+    backgroundColor: '#1e3a8a',
+  },
+  metroNodeCircle: {
+    position: 'absolute',
+    left: -26,
+    top: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#070c1a',
+    borderWidth: 2,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  metroNodeCircleDone: {
+    backgroundColor: '#059669',
+    borderColor: '#34d399',
+  },
+  metroNodeCircleCurrent: {
+    backgroundColor: '#2563eb',
+    borderColor: '#38bdf8',
+  },
+  metroNodeCircleText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  metroCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
+  },
+  metroCardCurrent: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#0c1b33',
+  },
+  metroStopNumber: {
+    color: '#60a5fa',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  metroCurrentPill: {
+    backgroundColor: '#172554',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#2563eb',
+  },
+  metroCurrentPillText: {
+    color: '#38bdf8',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  metroCardTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  metroCardSub: {
+    color: '#94a3b8',
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  metroCardTestBtn: {
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  metroCardTestBtnText: {
+    color: '#38bdf8',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  metroCompanyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+    gap: 4,
+  },
+  metroCompanyLabel: {
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  metroCompanyVal: {
+    color: '#cbd5e1',
+    fontSize: 9,
     fontWeight: '700',
   },
 });
