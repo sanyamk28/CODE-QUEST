@@ -38,11 +38,15 @@ def generate_room_code() -> str:
     chars = string.ascii_uppercase + string.digits
     return ''.join(random.choices(chars, k=6))
 
-# WebSocket Connection Manager for Battle Rooms
+# WebSocket Connection Manager for Battle Rooms (Optimized for 100+ Concurrent Players)
+import time
+
 class BattleConnectionManager:
     def __init__(self):
         # room_code -> dict of user_id -> WebSocket
         self.active_rooms: Dict[str, Dict[str, WebSocket]] = {}
+        # In-memory event throttler: key -> timestamp
+        self.last_event_time: Dict[str, float] = {}
 
     async def connect(self, room_code: str, user_id: str, websocket: WebSocket):
         await websocket.accept()
@@ -56,18 +60,30 @@ class BattleConnectionManager:
             if not self.active_rooms[room_code]:
                 del self.active_rooms[room_code]
 
+    def get_player_count(self, room_code: str) -> int:
+        return len(self.active_rooms.get(room_code, {}))
+
     async def broadcast_to_room(self, room_code: str, event_type: str, data: dict, exclude_user_id: Optional[str] = None):
-        if room_code in self.active_rooms:
-            message = json.dumps({"event": event_type, "data": data})
-            dead_sockets = []
-            for uid, ws in list(self.active_rooms[room_code].items()):
-                if exclude_user_id and str(uid) == str(exclude_user_id):
-                    continue
-                try:
-                    await ws.send_text(message)
-                except Exception:
-                    dead_sockets.append(uid)
-            for uid in dead_sockets:
+        if room_code not in self.active_rooms:
+            return
+
+        message = json.dumps({"event": event_type, "data": data})
+        targets = []
+        target_uids = []
+
+        for uid, ws in list(self.active_rooms[room_code].items()):
+            if exclude_user_id and str(uid) == str(exclude_user_id):
+                continue
+            targets.append(ws.send_text(message))
+            target_uids.append(uid)
+
+        if not targets:
+            return
+
+        # High-concurrency broadcast: execute all socket sends simultaneously (O(1) async wall-clock time)
+        results = await asyncio.gather(*targets, return_exceptions=True)
+        for uid, res in zip(target_uids, results):
+            if isinstance(res, Exception):
                 self.active_rooms[room_code].pop(uid, None)
 
 battle_manager = BattleConnectionManager()
@@ -181,7 +197,7 @@ def create_battle_room(
         host_id=current_user.id,
         problem_id=problem.id if problem else None,
         status="waiting",
-        max_players=payload.max_players or 4
+        max_players=max(2, min(payload.max_players or 100, 1000))
     )
     db.add(room)
     db.commit()
@@ -575,6 +591,15 @@ async def battle_websocket_endpoint(websocket: WebSocket, room_code: str):
                 if action == "ping":
                     await websocket.send_text(json.dumps({"event": "pong"}))
                 elif action in ["code_progress", "test_update", "chat_message", "player_ready", "taunt", "surrender"]:
+                    # Rate-limiting for 100+ players: throttle progress broadcasts to at most once per second per user
+                    now = time.time()
+                    throttle_key = f"{room_code}:{user_id}:{action}"
+                    if action in ["code_progress", "test_update"]:
+                        last_time = battle_manager.last_event_time.get(throttle_key, 0.0)
+                        if now - last_time < 1.0:
+                            continue
+                        battle_manager.last_event_time[throttle_key] = now
+
                     event_data = payload.get("data", {})
                     event_data["user_id"] = user_id
                     event_data["user_name"] = user_name

@@ -478,7 +478,7 @@ class AnalyticsSummaryResponse(BaseModel):
 class BattleRoomCreate(BaseModel):
     problem_id: Optional[str] = None
     difficulty: Optional[str] = "Easy"
-    max_players: int = 4
+    max_players: int = 100
 
 class BattleRoomJoin(BaseModel):
     room_code: str
