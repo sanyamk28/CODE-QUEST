@@ -110,11 +110,11 @@ class Question(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     title = Column(String, nullable=False, index=True)
     description = Column(Text, nullable=False)
-    difficulty = Column(String, nullable=False) # Easy, Medium, Hard
-    topic_id = Column(UUID(as_uuid=True), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False)
-    subtopic_id = Column(UUID(as_uuid=True), ForeignKey("subtopics.id", ondelete="CASCADE"), nullable=False)
+    difficulty = Column(String, nullable=False, index=True) # Easy, Medium, Hard
+    topic_id = Column(UUID(as_uuid=True), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False, index=True)
+    subtopic_id = Column(UUID(as_uuid=True), ForeignKey("subtopics.id", ondelete="CASCADE"), nullable=False, index=True)
     xp_reward = Column(Integer, default=10)
-    type = Column(String, nullable=False) # coding, sql, mcq, aptitude, puzzle, scenario
+    type = Column(String, nullable=False, index=True) # coding, sql, mcq, aptitude, puzzle, scenario
     company_tags = Column(JSON, default=list) # List of company names
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -218,10 +218,10 @@ class Submission(Base):
     __tablename__ = "submissions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id", ondelete="CASCADE"), nullable=False, index=True)
     score = Column(Integer, default=0)
-    is_correct = Column(Boolean, default=False)
+    is_correct = Column(Boolean, default=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Specific detail tables (1-to-1)

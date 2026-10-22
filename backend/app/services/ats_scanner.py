@@ -96,6 +96,292 @@ ROLE_TAXONOMY: Dict[str, Dict[str, List[str]]] = {
     }
 }
 
+ROLE_RECOMMENDED_PROJECTS: Dict[str, List[Dict[str, Any]]] = {
+    "data engineer": [
+        {
+            "title": "Real-Time Distributed Lakehouse & Streaming Pipeline",
+            "difficulty": "Advanced",
+            "impact_rating": "Top 3% Recruiter Appeal",
+            "tech_stack": ["Apache Kafka", "Apache Spark", "Airflow", "PostgreSQL", "AWS S3", "Delta Lake"],
+            "architecture_highlight": "Debezium CDC streaming into Kafka, PySpark Structured Streaming for transformation, ACID transactions with Delta Lake on AWS S3.",
+            "resume_bullet": "Engineered real-time CDC streaming data lakehouse ingesting 1.5M events/min using Kafka, Spark Structured Streaming, and Delta Lake, slashing analytical latency from 4 hours to 45 seconds.",
+            "why_it_gets_you_hired": "Directly proves ability to handle modern decoupled streaming architectures and cloud object storage data lakes, the #1 hiring criteria for Data Engineering roles."
+        },
+        {
+            "title": "Automated dbt Data Modeling & Warehousing Engine",
+            "difficulty": "Intermediate",
+            "impact_rating": "High Hiring Impact",
+            "tech_stack": ["dbt", "Snowflake", "Python", "Airflow", "Docker", "Great Expectations"],
+            "architecture_highlight": "Star-schema dimensional modeling with automated data quality assertion gates and DAG orchestration.",
+            "resume_bullet": "Architected dimensional data warehouse in Snowflake orchestrated via dbt and Airflow, enforcing 60+ automated data validation assertions and decreasing BI query execution costs by 35%.",
+            "why_it_gets_you_hired": "dbt + modern cloud warehousing is in over 75% of modern data stack job descriptions."
+        }
+    ],
+    "software engineer": [
+        {
+            "title": "Distributed In-Memory Cache with Raft Consensus",
+            "difficulty": "Advanced",
+            "impact_rating": "Top 1% FAANG Recruiter Appeal",
+            "tech_stack": ["Go", "C++", "gRPC", "Docker", "Distributed Systems"],
+            "architecture_highlight": "Leader election, log replication, snapshotting, and linearizable read/writes implemented from scratch.",
+            "resume_bullet": "Built distributed, fault-tolerant key-value store using Raft consensus protocol in Go, sustaining 45k QPS with sub-10ms p99 latency during network partition failovers.",
+            "why_it_gets_you_hired": "System design and distributed consensus are the definitive differentiators in L4/L5 SWE interviews at Google, Meta, and Amazon."
+        },
+        {
+            "title": "High-Throughput Asynchronous Task Execution Queue",
+            "difficulty": "Intermediate",
+            "impact_rating": "High Hiring Impact",
+            "tech_stack": ["Python", "FastAPI", "Redis", "PostgreSQL", "Docker"],
+            "architecture_highlight": "Priority queues, dead-letter exchanges, exponential backoff retries, and worker heartbeat health checks.",
+            "resume_bullet": "Engineered asynchronous task processing pipeline in Python and Redis handling 500k+ delayed jobs daily, optimizing worker thread concurrency to achieve 99.98% execution reliability.",
+            "why_it_gets_you_hired": "Demonstrates mastery of concurrency, asynchronous event loops, and database race condition management."
+        }
+    ],
+    "backend developer": [
+        {
+            "title": "Event-Driven Microservices E-Commerce Core",
+            "difficulty": "Advanced",
+            "impact_rating": "Top 5% Recruiter Appeal",
+            "tech_stack": ["FastAPI", "Python", "PostgreSQL", "Apache Kafka", "Redis", "Docker", "Kubernetes"],
+            "architecture_highlight": "Saga distributed transaction pattern, event-sourcing with Kafka, JWT OAuth2 token rotation, and rate-limiting middleware.",
+            "resume_bullet": "Architected 6 event-driven microservices using FastAPI, Kafka, and PostgreSQL utilizing the Saga pattern to ensure transactional consistency across 200k+ monthly orders.",
+            "why_it_gets_you_hired": "Validates ability to design scalable microservices that don't crumble under distributed state inconsistency."
+        },
+        {
+            "title": "High-Concurrency Real-Time Financial Ledger",
+            "difficulty": "Advanced",
+            "impact_rating": "High FinTech Recruiter Appeal",
+            "tech_stack": ["Java", "Spring Boot", "PostgreSQL", "Redis", "Docker"],
+            "architecture_highlight": "Double-entry bookkeeping, strict ACID serializable transaction isolation, and pessimistic row-level locking.",
+            "resume_bullet": "Engineered double-entry ledger backend supporting 12k concurrent balance transfers, utilizing pessimistic locking and Redis caching to eliminate 100% of race conditions and double-spend exploits.",
+            "why_it_gets_you_hired": "Fintech and payments companies (Stripe, Coinbase, PayPal) prioritize immutable double-entry precision above all else."
+        }
+    ],
+    "frontend developer": [
+        {
+            "title": "High-Performance Interactive Collaborative Canvas",
+            "difficulty": "Advanced",
+            "impact_rating": "Top 3% Recruiter Appeal",
+            "tech_stack": ["TypeScript", "React", "Canvas API", "WebSockets", "Tailwind CSS", "Zustand"],
+            "architecture_highlight": "Hardware-accelerated HTML5 Canvas rendering, 60 FPS viewport virtualization, and real-time CRDT multi-user synchronization.",
+            "resume_bullet": "Engineered collaborative canvas web application in TypeScript and React with WebSockets, optimizing render cycles via Canvas API to sustain smooth 60 FPS under 10k simultaneous vector elements.",
+            "why_it_gets_you_hired": "Shows mastery of deep web performance, memory profiling, and rendering pipelines beyond trivial CRUD forms."
+        },
+        {
+            "title": "Enterprise Design System & Accessible Component Library",
+            "difficulty": "Intermediate",
+            "impact_rating": "High Hiring Impact",
+            "tech_stack": ["React", "TypeScript", "Tailwind CSS", "Storybook", "Jest"],
+            "architecture_highlight": "WCAG 2.1 AA accessibility compliance, keyboard navigation focus traps, and automated visual regression testing.",
+            "resume_bullet": "Architected modular UI design system with 35+ accessible components in React & Storybook, achieving 100% WCAG AA compliance and cutting feature delivery time by 40% across 4 dev teams.",
+            "why_it_gets_you_hired": "Enterprise front-end teams hire specifically for design system consistency and accessibility knowledge."
+        }
+    ],
+    "full stack developer": [
+        {
+            "title": "Real-Time AI-Powered Code Collaboration & Battle Arena",
+            "difficulty": "Advanced",
+            "impact_rating": "Top 2% Recruiter Appeal",
+            "tech_stack": ["Next.js", "React", "FastAPI", "PostgreSQL", "Docker Sandboxing", "Redis Pub/Sub"],
+            "architecture_highlight": "Multi-language code execution in ephemeral Docker containers, real-time WebSocket state sync, and LLM-powered feedback.",
+            "resume_bullet": "Developed full-stack competitive coding platform with Docker-sandboxed execution and WebSocket battles, supporting 50+ concurrent users with sub-200ms submission verdicts.",
+            "why_it_gets_you_hired": "Combines rich frontend interactivity, secure container sandboxing, and real-time backend state management in one standout portfolio centerpiece."
+        },
+        {
+            "title": "Enterprise Multi-Tenant SaaS with RBAC & Stripe Billing",
+            "difficulty": "Intermediate",
+            "impact_rating": "High Startup & Mid-Market Appeal",
+            "tech_stack": ["React", "Node.js", "PostgreSQL", "Stripe API", "Docker"],
+            "architecture_highlight": "Row-level tenant isolation, automated webhook reconciliation, dynamic permission guards, and audit logs.",
+            "resume_bullet": "Built multi-tenant SaaS application in React & Node.js featuring tenant data partitioning and Stripe subscriptions, handling automated webhook settlements with zero payment discrepancies.",
+            "why_it_gets_you_hired": "Startups look for engineers who can build revenue-generating SaaS features on day one."
+        }
+    ],
+    "data scientist": [
+        {
+            "title": "End-to-End MLOps Customer Churn Prediction Engine",
+            "difficulty": "Advanced",
+            "impact_rating": "Top 5% Recruiter Appeal",
+            "tech_stack": ["Python", "XGBoost", "MLflow", "FastAPI", "Docker", "Evidently AI"],
+            "architecture_highlight": "Automated data drift detection, feature store engineering, model versioning with MLflow, and real-time REST inference API.",
+            "resume_bullet": "Developed and deployed XGBoost churn prediction pipeline using MLflow and FastAPI, achieving 0.89 AUC-ROC and reducing model inference latency to 18ms with automated data drift monitoring.",
+            "why_it_gets_you_hired": "Companies struggle with putting models into production; having MLOps on your resume puts you ahead of 80% of candidates."
+        },
+        {
+            "title": "Retrieval-Augmented Generation (RAG) Domain Assistant",
+            "difficulty": "Intermediate",
+            "impact_rating": "Very High AI Market Appeal",
+            "tech_stack": ["Python", "LangChain", "Qdrant / ChromaDB", "OpenAI / Gemini", "FastAPI"],
+            "architecture_highlight": "Hybrid dense/sparse vector search, semantic re-ranking, and context window hallucination mitigation.",
+            "resume_bullet": "Engineered enterprise RAG search system across 50,000 PDF documents using vector search and semantic re-ranking, boosting answer retrieval relevance by 34% compared to vanilla BM25.",
+            "why_it_gets_you_hired": "RAG and vector databases are the most actively funded and recruited skill in data science today."
+        }
+    ],
+    "devops engineer": [
+        {
+            "title": "Zero-Downtime Multi-Cluster Kubernetes GitOps Engine",
+            "difficulty": "Advanced",
+            "impact_rating": "Top 3% Recruiter Appeal",
+            "tech_stack": ["Kubernetes", "Terraform", "ArgoCD", "AWS EKS", "Prometheus", "Grafana"],
+            "architecture_highlight": "Declarative GitOps deployments with ArgoCD, progressive canary rollouts with automated rollbacks, and Terraform modular IaC.",
+            "resume_bullet": "Orchestrated multi-environment Kubernetes infrastructure on AWS EKS using Terraform and ArgoCD, achieving 100% declarative GitOps workflows and zero-downtime canary deployments.",
+            "why_it_gets_you_hired": "GitOps and Kubernetes canary deployments are standard practice at top engineering organizations."
+        },
+        {
+            "title": "Automated DevSecOps Pipeline & Security Guardrails",
+            "difficulty": "Intermediate",
+            "impact_rating": "High Hiring Impact",
+            "tech_stack": ["GitHub Actions", "Trivy", "SonarQube", "Docker", "Vault"],
+            "architecture_highlight": "Container image vulnerability scanning, static code analysis (SAST), secrets rotation with HashiCorp Vault.",
+            "resume_bullet": "Implemented comprehensive DevSecOps pipeline with Trivy and SonarQube in GitHub Actions, blocking 100% of high/critical CVEs before staging deployment.",
+            "why_it_gets_you_hired": "Security-focused DevOps engineers command premium salaries across enterprise tech."
+        }
+    ]
+}
+
+ROLE_RECOMMENDED_CERTIFICATIONS: Dict[str, List[Dict[str, Any]]] = {
+    "data engineer": [
+        {
+            "name": "AWS Certified Data Engineer - Associate (DEA-C01)",
+            "issuer": "Amazon Web Services",
+            "level": "Associate",
+            "hire_boost": "+42% Recruiter Outreach",
+            "key_skills_validated": ["AWS Glue", "Amazon Redshift", "Amazon EMR", "Athena", "Kinesis"],
+            "preparation_time": "4-6 weeks",
+            "why_valuable": "The official industry benchmark for modern cloud data pipeline engineering."
+        },
+        {
+            "name": "Databricks Certified Data Engineer Associate",
+            "issuer": "Databricks",
+            "level": "Associate",
+            "hire_boost": "+38% Enterprise Interview Shortlist",
+            "key_skills_validated": ["Apache Spark", "Delta Lake", "Databricks SQL", "Production Lakehouses"],
+            "preparation_time": "3-5 weeks",
+            "why_valuable": "Over 60% of Fortune 500 data teams use Databricks; certified candidates bypass automated resume filters."
+        }
+    ],
+    "software engineer": [
+        {
+            "name": "AWS Certified Solutions Architect - Associate (SAA-C03)",
+            "issuer": "Amazon Web Services",
+            "level": "Associate",
+            "hire_boost": "+35% Interview Shortlist Rate",
+            "key_skills_validated": ["Cloud Architecture", "Distributed Systems", "VPC & Networking", "High Availability"],
+            "preparation_time": "6-8 weeks",
+            "why_valuable": "Validates ability to design robust distributed systems across compute, storage, and networking."
+        },
+        {
+            "name": "CKA: Certified Kubernetes Administrator",
+            "issuer": "Cloud Native Computing Foundation (CNCF)",
+            "level": "Intermediate",
+            "hire_boost": "+30% Senior Role Consideration",
+            "key_skills_validated": ["Container Orchestration", "Pod Networking", "Troubleshooting", "Cluster Security"],
+            "preparation_time": "4-8 weeks",
+            "why_valuable": "100% hands-on performance-based exam that definitively proves cloud-native engineering competency."
+        }
+    ],
+    "backend developer": [
+        {
+            "name": "AWS Certified Developer - Associate (DVA-C02)",
+            "issuer": "Amazon Web Services",
+            "level": "Associate",
+            "hire_boost": "+36% Recruiter Shortlist",
+            "key_skills_validated": ["Serverless", "DynamoDB", "Lambda", "API Gateway", "CI/CD Deployment"],
+            "preparation_time": "4-6 weeks",
+            "why_valuable": "Proves backend proficiency deploying scalable cloud microservices."
+        },
+        {
+            "name": "HashiCorp Certified: Terraform Associate",
+            "issuer": "HashiCorp",
+            "level": "Associate",
+            "hire_boost": "+25% Interview Callout Rate",
+            "key_skills_validated": ["Infrastructure as Code", "Terraform Cloud", "State Management", "Modular Architecture"],
+            "preparation_time": "2-3 weeks",
+            "why_valuable": "Bridges backend engineering with cloud infrastructure automation."
+        }
+    ],
+    "frontend developer": [
+        {
+            "name": "Meta Front-End Developer Professional Certificate",
+            "issuer": "Meta / Coursera",
+            "level": "Professional",
+            "hire_boost": "+28% Entry-to-Mid Shortlist Rate",
+            "key_skills_validated": ["React", "JavaScript ES6+", "UI/UX Principles", "Responsive Design", "Version Control"],
+            "preparation_time": "4-8 weeks",
+            "why_valuable": "Curated directly by Meta's frontend engineering team with verified project portfolio milestones."
+        },
+        {
+            "name": "AWS Certified Cloud Practitioner (CLF-C02)",
+            "issuer": "Amazon Web Services",
+            "level": "Foundational",
+            "hire_boost": "+20% Enterprise Shortlist",
+            "key_skills_validated": ["Cloud Concepts", "AWS Global Infrastructure", "Security & S3 Hosting"],
+            "preparation_time": "2-3 weeks",
+            "why_valuable": "Proves frontend developers understand full-stack cloud deployment and CDN asset delivery."
+        }
+    ],
+    "full stack developer": [
+        {
+            "name": "AWS Certified Solutions Architect - Associate",
+            "issuer": "Amazon Web Services",
+            "level": "Associate",
+            "hire_boost": "+40% Recruiter Callout",
+            "key_skills_validated": ["Full-Stack Architecture", "Relational & NoSQL DBs", "Container Services (ECS/EKS)"],
+            "preparation_time": "6-8 weeks",
+            "why_valuable": "The gold standard credential signaling complete end-to-end cloud competency."
+        },
+        {
+            "name": "Docker Certified Associate (DCA)",
+            "issuer": "Mirantis / Docker",
+            "level": "Associate",
+            "hire_boost": "+26% Shortlist Rate",
+            "key_skills_validated": ["Containerization", "Multi-stage Builds", "Docker Compose", "Orchestration"],
+            "preparation_time": "3-4 weeks",
+            "why_valuable": "Guarantees full-stack developers know how to package and ship predictable environments."
+        }
+    ],
+    "data scientist": [
+        {
+            "name": "Google Cloud Professional Data Engineer",
+            "issuer": "Google Cloud",
+            "level": "Professional",
+            "hire_boost": "+45% Enterprise Callout",
+            "key_skills_validated": ["BigQuery", "Vertex AI", "Data Pipelines", "ML Feature Stores"],
+            "preparation_time": "6-10 weeks",
+            "why_valuable": "Highest-paying data credential in North America and global tech markets."
+        },
+        {
+            "name": "Databricks Certified Associate Developer for Apache Spark",
+            "issuer": "Databricks",
+            "level": "Associate",
+            "hire_boost": "+34% Shortlist Rate",
+            "key_skills_validated": ["PySpark", "DataFrames API", "Distributed Computing", "Performance Tuning"],
+            "preparation_time": "4-6 weeks",
+            "why_valuable": "Proves you can scale data science algorithms beyond single-machine Pandas limitations."
+        }
+    ],
+    "devops engineer": [
+        {
+            "name": "CKA: Certified Kubernetes Administrator",
+            "issuer": "CNCF / Linux Foundation",
+            "level": "Professional",
+            "hire_boost": "+50% Recruiter Priority",
+            "key_skills_validated": ["Kubernetes Architecture", "Networking & Ingress", "Storage", "Cluster Troubleshooting"],
+            "preparation_time": "6-8 weeks",
+            "why_valuable": "The single most respected credential in modern infrastructure engineering."
+        },
+        {
+            "name": "HashiCorp Certified: Terraform Associate",
+            "issuer": "HashiCorp",
+            "level": "Associate",
+            "hire_boost": "+38% Hiring Speed",
+            "key_skills_validated": ["Infrastructure as Code", "Terraform Cloud", "Reusable Modules", "Drift Detection"],
+            "preparation_time": "3-4 weeks",
+            "why_valuable": "Standard prerequisite for multi-cloud platform and DevOps engineering roles."
+        }
+    ]
+}
+
 # Strong action verbs favored by ATS scanners and technical recruiters
 ACTION_VERBS: List[str] = [
     # Technical & Engineering
@@ -550,6 +836,54 @@ def calculate_ats_score(
 
     bullet_improvements = generate_bullet_improvements(impact_data["weak_bullets"], target_role)
 
+    # ----------------------------------------------------
+    # Generate Granular "What To Change" Fixes
+    # ----------------------------------------------------
+    what_to_change = generate_what_to_change(
+        clean_text=clean_text,
+        target_role=target_role,
+        impact_data=impact_data,
+        skill_data=skill_data,
+        missing_sections=missing_sections,
+        contact_info=contact_info,
+        word_count=word_count
+    )
+
+    # ----------------------------------------------------
+    # Calculate Realistic Hire Chances & Readiness Breakdown
+    # ----------------------------------------------------
+    hire_chances = calculate_hire_chances(
+        weighted_ats_score=weighted_ats_score,
+        skills_score=skills_score,
+        impact_score=impact_score,
+        completeness_score=completeness_score,
+        skill_data=skill_data,
+        contact_info=contact_info
+    )
+
+    # ----------------------------------------------------
+    # Retrieve Targeted Projects & Certifications
+    # ----------------------------------------------------
+    normalized_role = target_role.strip().lower()
+    rec_projects = ROLE_RECOMMENDED_PROJECTS.get(normalized_role)
+    if not rec_projects:
+        # Fallback search by substring
+        for r_key, p_list in ROLE_RECOMMENDED_PROJECTS.items():
+            if r_key in normalized_role or normalized_role in r_key:
+                rec_projects = p_list
+                break
+    if not rec_projects:
+        rec_projects = ROLE_RECOMMENDED_PROJECTS["software engineer"]
+
+    rec_certifications = ROLE_RECOMMENDED_CERTIFICATIONS.get(normalized_role)
+    if not rec_certifications:
+        for r_key, c_list in ROLE_RECOMMENDED_CERTIFICATIONS.items():
+            if r_key in normalized_role or normalized_role in r_key:
+                rec_certifications = c_list
+                break
+    if not rec_certifications:
+        rec_certifications = ROLE_RECOMMENDED_CERTIFICATIONS["software engineer"]
+
     return {
         "ats_score": weighted_ats_score,
         "target_role": target_role,
@@ -574,5 +908,160 @@ def calculate_ats_score(
         "role_alignment": role_alignment,
         "formatting_feedback": formatting_feedback,
         "suggestions": suggestions,
-        "bullet_improvements": bullet_improvements
+        "bullet_improvements": bullet_improvements,
+        "hire_chances": hire_chances,
+        "what_to_change": what_to_change,
+        "recommended_projects": rec_projects,
+        "recommended_certifications": rec_certifications
     }
+
+
+def generate_what_to_change(
+    clean_text: str,
+    target_role: str,
+    impact_data: Dict[str, Any],
+    skill_data: Dict[str, Any],
+    missing_sections: List[str],
+    contact_info: Dict[str, Any],
+    word_count: int
+) -> List[Dict[str, Any]]:
+    items = []
+    
+    # 1. Weak Action Verbs vs Strong Replacements
+    weak_verb_patterns = [
+        (r"\bworked on\b", "Worked on", "Architected / Engineered", "Replace passive 'worked on' with high-conviction engineering verbs like 'Architected', 'Engineered', or 'Deployed'."),
+        (r"\bresponsible for\b", "Responsible for", "Orchestrated / Spearheaded", "Replace passive duty language with active ownership verbs like 'Spearheaded' or 'Orchestrated'."),
+        (r"\bhelped\b|\bassisted\b", "Helped / Assisted", "Collaborated to deliver / Accelerated", "Avoid sounding like a bystander; emphasize your specific technical ownership."),
+        (r"\bhandled\b", "Handled", "Streamlined / Optimized", "Use outcome-driven verbs like 'Optimized' or 'Overhauled'."),
+        (r"\bmade\b|\bdid\b", "Made / Did", "Constructed / Formulated", "Use precise technical action verbs describing the system built.")
+    ]
+    
+    found_weak = []
+    for pattern, label, replacement, desc in weak_verb_patterns:
+        if re.search(pattern, clean_text, re.IGNORECASE):
+            found_weak.append({
+                "category": "Weak Action Verbs",
+                "severity": "Critical",
+                "title": f"Passive phrasing detected: '{label}'",
+                "description": desc,
+                "action_item": f"Switch '{label}' to '{replacement}' to signal technical autonomy to recruiters.",
+                "example": f"Change '{label} database tasks' -> 'Engineered and indexed PostgreSQL schema, reducing p95 query latency by 35%'."
+            })
+    if found_weak:
+        items.extend(found_weak[:2])
+    else:
+        items.append({
+            "category": "Weak Action Verbs",
+            "severity": "Medium",
+            "title": "Strong Action Verb Hygiene",
+            "description": "Ensure every project bullet begins with a distinguished past-tense verb (e.g. Architected, Optimized, Spearheaded).",
+            "action_item": "Review your first word on every bullet point to guarantee no bullet starts with a noun or weak verb.",
+            "example": "Optimized, Refactored, Accelerated, Scaled, Deployed."
+        })
+
+    # 2. Missing Quantifiable Metrics
+    metrics_count = impact_data.get("metrics_count", 0)
+    if metrics_count < 3:
+        items.append({
+            "category": "Missing Metrics",
+            "severity": "Critical",
+            "title": "Insufficient Quantifiable Impact",
+            "description": f"Only {metrics_count} quantified metric(s) found across your resume. Tier-1 tech recruiters discard bullets without business or performance metrics.",
+            "action_item": "Rewrite bullets using Google's X-Y-Z formula: 'Accomplished [X] measured by [Y] by doing [Z]'. Add numbers (%, ms, QPS, $, hours saved).",
+            "example": "Before: 'Improved API performance.' -> After: 'Optimized Redis caching layer, decreasing p99 API response time by 45% (from 240ms to 132ms) across 150k daily active users.'"
+        })
+    else:
+        items.append({
+            "category": "Missing Metrics",
+            "severity": "Medium",
+            "title": "Metric Scope & Scale Enhancement",
+            "description": f"Found {metrics_count} metrics. Expand from percentage improvements to include throughput volume, concurrent user scale, or engineering hours saved.",
+            "action_item": "Ensure numbers represent real technical scale (e.g., QPS, GB/TB volume, latency percentiles).",
+            "example": "Scaled database read-replicas to handle 25,000 QPS with 99.99% uptime."
+        })
+
+    # 3. Missing Core Technical Skills
+    missing_skills = skill_data.get("missing_skills", [])
+    if missing_skills:
+        top_missing = missing_skills[:4]
+        items.append({
+            "category": "Key Skill Gaps",
+            "severity": "High",
+            "title": f"Missing Core Competencies for {target_role}",
+            "description": f"Target job descriptions for {target_role} heavily filter for: {', '.join(top_missing)}.",
+            "action_item": f"Explicitly incorporate {', '.join(top_missing[:2])} into project architecture bullets or technical skills section.",
+            "example": f"Add hands-on bullet: 'Integrated {top_missing[0]} pipeline with Docker containers to automate distributed batch ingestion.'"
+        })
+
+    # 4. Professional Contact & Sections
+    if not contact_info.get("github") and not contact_info.get("linkedin"):
+        items.append({
+            "category": "Formatting & Structure",
+            "severity": "Critical",
+            "title": "Missing Codebase / Portfolio Verification Links",
+            "description": "Tech screeners heavily favor resumes with live clickable GitHub and LinkedIn links to verify engineering consistency.",
+            "action_item": "Place your GitHub profile and LinkedIn URL in the header right beneath your name.",
+            "example": "GitHub: github.com/your-handle | LinkedIn: linkedin.com/in/your-profile"
+        })
+
+    if "Projects" in missing_sections or "Experience" in missing_sections:
+        items.append({
+            "category": "Formatting & Structure",
+            "severity": "High",
+            "title": "Non-Standard Section Headings",
+            "description": "ATS parsing engines look for exact standard headings: 'Experience', 'Projects', 'Technical Skills', 'Education'.",
+            "action_item": "Rename creative section titles (like 'What I Did' or 'Stuff I Built') to standard ATS headings.",
+            "example": "'Technical Projects' or 'Work Experience'."
+        })
+
+    if word_count < 250:
+        items.append({
+            "category": "Formatting & Structure",
+            "severity": "High",
+            "title": "Low Resume Word Count",
+            "description": f"Resume text is {word_count} words. Standard single-page tech resumes are 450 - 750 words.",
+            "action_item": "Expand projects with architecture details, specific libraries used, and quantifiable outcomes.",
+            "example": "Aim for 3-4 bullet points per project/work experience role."
+        })
+
+    return items
+
+
+def calculate_hire_chances(
+    weighted_ats_score: int,
+    skills_score: int,
+    impact_score: int,
+    completeness_score: int,
+    skill_data: Dict[str, Any],
+    contact_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    raw_hire_chance = int(round(
+        (0.40 * weighted_ats_score) +
+        (0.35 * skills_score) +
+        (0.25 * impact_score)
+    ))
+    hire_chance_percentage = min(96, max(30, raw_hire_chance))
+
+    if hire_chance_percentage >= 80:
+        tier = "Tier 1: High Interview Callout (FAANG, Top Tier & Unicorns)"
+    elif hire_chance_percentage >= 65:
+        tier = "Tier 2: Competitive Profile (Mid-to-Large Tech Companies)"
+    else:
+        tier = "Tier 3: Developing Profile (Needs Targeted Projects & Metric Polish)"
+
+    ats_pass_rate = min(98, max(25, int(round(weighted_ats_score * 0.95 + 4))))
+    tech_recruiter_pass_rate = min(95, max(20, int(round(skills_score * 0.5 + impact_score * 0.35 + 15))))
+    hiring_manager_pass_rate = min(95, max(20, int(round(impact_score * 0.55 + skills_score * 0.35 + 10))))
+
+    return {
+        "hire_chance_percentage": hire_chance_percentage,
+        "hire_chance_tier": tier,
+        "ats_pass_rate": ats_pass_rate,
+        "tech_recruiter_pass_rate": tech_recruiter_pass_rate,
+        "hiring_manager_pass_rate": hiring_manager_pass_rate,
+        "skills_coverage": skills_score,
+        "project_depth": min(95, max(30, int(round(impact_score * 0.55 + (15 if len(skill_data.get("matched_skills", [])) >= 5 else 0) + 25)))),
+        "quantified_impact": impact_score,
+        "industry_credentials": min(95, max(30, int(round(skills_score * 0.4 + completeness_score * 0.4 + 20))))
+    }
+

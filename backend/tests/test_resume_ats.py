@@ -136,4 +136,11 @@ def test_resume_upload_endpoint(client, db_session):
     assert "matched_skills" in res_data
     assert "missing_skills" in res_data
     assert "bullet_improvements" in res_data
+    assert "hire_chances" in res_data
+    assert "what_to_change" in res_data
+    assert "recommended_projects" in res_data
+    assert "recommended_certifications" in res_data
     assert res_data["target_role"] == "Software Engineer"
+    assert res_data["hire_chances"]["hire_chance_percentage"] > 0
+    assert len(res_data["recommended_projects"]) >= 1
+    assert len(res_data["recommended_certifications"]) >= 1

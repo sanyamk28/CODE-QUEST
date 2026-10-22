@@ -17,66 +17,83 @@ import { firebaseAuthSignIn } from './firebase';
 
 const { width } = Dimensions.get('window');
 
-// --- DATA DEFINITIONS ---
-const CONTEST_QUESTIONS = [
-  { 
-    title: "Two Sum", 
-    type: "coding", 
-    difficulty: "Easy", 
-    companies: ["AMAZON", "GOOGLE"],
-    desc: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.", 
-    template: `// Write your code here:
-function twoSum(nums, target) {
-  // TODO: Return [index1, index2]
-  
-}`, 
-    hint: "Try using a Hash Map or Object to store numbers you've seen along with their indices. As you iterate, check if (target - currentNum) exists in your map!",
-    input: "nums = [2,7,11,15], target = 9", 
-    output: "[0,1]", 
-    testCases: [
-      { nums: [2, 7, 11, 15], target: 9, expected: [0, 1] },
-      { nums: [3, 2, 4], target: 6, expected: [1, 2] },
-      { nums: [3, 3], target: 6, expected: [0, 1] }
-    ],
-    solved: false 
-  },
-  { 
-    title: "Contains Duplicate", 
-    type: "coding", 
-    difficulty: "Easy", 
-    companies: ["APPLE", "MICROSOFT"],
-    desc: "Given an integer array nums, return true if any value appears at least twice in the array, and false if every element is distinct.", 
-    template: `// Write your code here:
-function containsDuplicate(nums) {
-  // TODO: Return true if any value appears at least twice, false otherwise
-  
-}`, 
-    hint: "Consider using a Set or sorting the numbers. In JavaScript, new Set(nums).size will give you the count of unique elements.",
-    input: "nums = [1,2,3,1]", 
-    output: "true", 
-    testCases: [
-      { nums: [1, 2, 3, 1], expected: true },
-      { nums: [1, 2, 3, 4], expected: false },
-      { nums: [1, 1, 1, 3, 3, 4, 3, 2, 4, 2], expected: true }
-    ],
-    solved: false 
-  },
-  { 
-    title: "Department Top Three Salaries", 
-    type: "sql", 
-    difficulty: "Medium", 
-    companies: ["GOOGLE", "META"],
-    desc: "Find the employees who are high earners in each of the departments. A high earner earns a salary in the top three unique salaries in that department.", 
-    template: `-- Write your SQL query here:
-SELECT
-  -- TODO: Select Department, Employee, Salary
-FROM Employee e;`, 
-    hint: "Use a correlated subquery or DENSE_RANK() OVER (PARTITION BY departmentId ORDER BY salary DESC) to identify salaries in the top 3.",
-    input: "Run on PostgreSQL engine", 
-    output: "Rows matching top salaries per department", 
-    solved: false 
+// --- BATTLE ROOM & MCQ GENERATOR DEFINITIONS ---
+export interface BattleRoom {
+  code: string;
+  title: string;
+  topics: string[];
+  questionCount: number;
+  durationPerQuestion: number;
+  isMultiSelect: boolean;
+  questions: BattleMCQ[];
+  createdAt: string;
+  hostName: string;
+  sourceType: 'topics' | 'pdf_text';
+}
+
+// Generates high-yield MCQs directly from pasted text or uploaded PDF study notes
+export function generateMCQsFromTextOrPDF(
+  text: string,
+  count: number,
+  isMultiSelect: boolean,
+  duration: number
+): BattleMCQ[] {
+  const cleaned = text.trim();
+  const sentences = cleaned
+    .split(/[.!?\n]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 25);
+
+  const conceptMatches = cleaned.match(/\b([A-Z][a-zA-Z0-9_\-]+|\b(cache|thread|index|mutex|latency|buffer|process|database|algorithm|memory|network|cluster|server|client|api|deadlock|concurrency|pipeline|schema)\b)/gi) || [];
+  const uniqueConcepts = Array.from(new Set(conceptMatches.map(c => c.trim()))).filter(c => c.length > 3);
+
+  const generated: BattleMCQ[] = [];
+  const targetCount = Math.max(1, Math.min(count, 20));
+
+  for (let i = 0; i < targetCount; i++) {
+    const concept = uniqueConcepts[i % Math.max(1, uniqueConcepts.length)] || 'System Architecture';
+    const sentence = sentences[i % Math.max(1, sentences.length)] || `Core principle governing ${concept} in production systems.`;
+    const snippet = sentence.length > 70 ? sentence.slice(0, 67) + '...' : sentence;
+
+    if (isMultiSelect) {
+      generated.push({
+        id: `pdf-mcq-${i + 1}-${Date.now()}`,
+        topic: `Notes: ${concept}`,
+        question: `Based on the provided PDF / study material, which statements regarding "${concept}" are accurate? [Select All That Apply]\n\nContext: "${snippet}"`,
+        options: [
+          `Directly satisfies the core requirement: "${snippet.slice(0, 45)}..."`,
+          `Mitigates bottleneck overhead and enhances throughput under high load`,
+          `Eliminates all runtime CPU and memory overhead unconditionally`,
+          `Maintains data consistency and isolation during parallel executions`
+        ],
+        correctAnswers: ['A', 'B', 'D'],
+        isMultiSelect: true,
+        difficulty: i % 2 === 0 ? 'Medium' : 'Hard',
+        explanation: `Options A, B, and D directly reflect the principles described in your document for ${concept}. Option C is false as all computational workflows incur resource trade-offs.`,
+        hasPhoto: true
+      });
+    } else {
+      generated.push({
+        id: `pdf-mcq-${i + 1}-${Date.now()}`,
+        topic: `Notes: ${concept}`,
+        question: `According to your document, what is the primary role or property of "${concept}"?\n\nContext: "${snippet}"`,
+        options: [
+          `To enforce the rule: "${snippet.slice(0, 50)}..."`,
+          `To block all parallel execution and serialize threads`,
+          `To randomize memory addresses on every instruction`,
+          `To bypass data integrity checks entirely`
+        ],
+        correctAnswers: ['A'],
+        isMultiSelect: false,
+        difficulty: i % 2 === 0 ? 'Easy' : 'Medium',
+        explanation: `Option A correctly summarizes the document context regarding ${concept}. The other options describe anti-patterns.`,
+        hasPhoto: false
+      });
+    }
   }
-];
+
+  return generated;
+}
 
 // --- MCQ BATTLE DEFINITIONS & AUTO-GENERATOR ENGINE ---
 export interface BattleMCQ {
@@ -325,11 +342,11 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // Quests State - Starts uncompleted
+  // Quests State - Aligned with MCQ Battle Arena
   const [quests, setQuests] = useState([
-    { id: 1, title: "Solve 1 SQL Challenge", xp: 20, completed: false },
-    { id: 2, title: "Complete React Hooks", xp: 50, completed: false },
-    { id: 3, title: "Review DSA Concepts", xp: 30, completed: false }
+    { id: 1, title: "Win 1 MCQ Battle", xp: 25, completed: false },
+    { id: 2, title: "Score 80%+ in Room Test", xp: 50, completed: false },
+    { id: 3, title: "Generate a Custom MCQ Room", xp: 30, completed: false }
   ]);
 
   // Roadmap Modules - Starts with 0% progress and no pre-checked items
@@ -359,17 +376,16 @@ export default function App() {
     }
   ]);
 
-  // Arena State - Starts with code template (stub, not answer) and clean result
-  const [arenaMode, setArenaMode] = useState<'coding' | 'sql' | 'mcq'>('coding');
-  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(0);
-  const [userCode, setUserCode] = useState(CONTEST_QUESTIONS[0].template);
-  const [codeExecutionResult, setCodeExecutionResult] = useState('');
-  const [executionHint, setExecutionHint] = useState('');
-  const [isRunningCode, setIsRunningCode] = useState(false);
+  // MCQ Battle & Room Test State
+  const [mcqSubTab, setMcqSubTab] = useState<'battle' | 'join_room' | 'create_room' | 'results'>('battle');
+  const [battleRoomCode, setBattleRoomCode] = useState<string>('CQ-MCQ-8492');
+  const [roomJoinCodeInput, setRoomJoinCodeInput] = useState<string>('');
+  const [roomJoinError, setRoomJoinError] = useState<string>('');
+  const [battleTimerDuration, setBattleTimerDuration] = useState<number>(45); // default 45s per question
 
-  // MCQ Battle & Teacher Studio State
-  const [mcqSubTab, setMcqSubTab] = useState<'battle' | 'teacher_studio' | 'results'>('battle');
-  const [battleRoomCode, setBattleRoomCode] = useState<string>('CQ-ROOM-8492');
+  // Room Creation Configuration
+  const [sourceType, setSourceType] = useState<'topics' | 'pdf_text'>('topics');
+  const [pdfOrTextInput, setPdfOrTextInput] = useState<string>('');
   const [teacherQuestionType, setTeacherQuestionType] = useState<'multi' | 'single'>('multi');
   const [teacherAvailableTopics, setTeacherAvailableTopics] = useState<string[]>([
     'Data Structures',
@@ -392,10 +408,56 @@ export default function App() {
   const [teacherAttachPhoto, setTeacherAttachPhoto] = useState<boolean>(true);
   const [isGeneratingBattle, setIsGeneratingBattle] = useState<boolean>(false);
 
-  // Active Battle Run State
+  // Active Battle Questions
   const [battleQuestions, setBattleQuestions] = useState<BattleMCQ[]>(() =>
     generateBattleMCQs(['Data Structures', 'System Design'], true, 5, 'Mixed', '', true)
   );
+
+  // Active Joinable Public Rooms
+  const [activeRooms, setActiveRooms] = useState<BattleRoom[]>([
+    {
+      code: 'CQ-MCQ-8492',
+      title: 'High-Concurrency & Distributed Systems Test',
+      topics: ['System Design', 'DBMS & SQL'],
+      questionCount: 5,
+      durationPerQuestion: 45,
+      isMultiSelect: true,
+      questions: generateBattleMCQs(['System Design', 'DBMS & SQL'], true, 5, 'Medium', '', true),
+      createdAt: 'Just now',
+      hostName: 'Prof. Ramesh Rao',
+      sourceType: 'topics'
+    },
+    {
+      code: 'CQ-MCQ-3104',
+      title: 'Operating Systems & Concurrency Notes (from PDF)',
+      topics: ['Operating Systems', 'Concurrency'],
+      questionCount: 5,
+      durationPerQuestion: 30,
+      isMultiSelect: false,
+      questions: generateMCQsFromTextOrPDF(
+        'Operating systems manage CPU scheduling, virtual memory, and process synchronization. Mutexes and semaphores prevent race conditions and critical section deadlocks.',
+        5,
+        false,
+        30
+      ),
+      createdAt: '5 min ago',
+      hostName: 'Dr. Anita Mehta',
+      sourceType: 'pdf_text'
+    },
+    {
+      code: 'CQ-MCQ-5912',
+      title: 'DSA Trees, Heaps & Graphs Blitz',
+      topics: ['Data Structures', 'Algorithms'],
+      questionCount: 5,
+      durationPerQuestion: 60,
+      isMultiSelect: true,
+      questions: generateBattleMCQs(['Data Structures', 'Algorithms'], true, 5, 'Hard', '', true),
+      createdAt: '12 min ago',
+      hostName: 'Alex Chen',
+      sourceType: 'topics'
+    }
+  ]);
+
   const [battleCurrentQIndex, setBattleCurrentQIndex] = useState<number>(0);
   const [battleSelectedAnswers, setBattleSelectedAnswers] = useState<string[]>([]);
   const [battleAnswerSubmitted, setBattleAnswerSubmitted] = useState<boolean>(false);
@@ -407,10 +469,12 @@ export default function App() {
   // Battle countdown timer per question
   useEffect(() => {
     let interval: any = null;
-    if (activeTab === 'Arena' && arenaMode === 'mcq' && mcqSubTab === 'battle' && !battleAnswerSubmitted) {
+    if (activeTab === 'Arena' && mcqSubTab === 'battle' && !battleAnswerSubmitted) {
       interval = setInterval(() => {
         setBattleTimer(prev => {
           if (prev <= 1) {
+            // Auto submit answer when timer runs out
+            setBattleAnswerSubmitted(true);
             return 0;
           }
           return prev - 1;
@@ -420,29 +484,80 @@ export default function App() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeTab, arenaMode, mcqSubTab, battleAnswerSubmitted, battleCurrentQIndex]);
+  }, [activeTab, mcqSubTab, battleAnswerSubmitted, battleCurrentQIndex]);
 
-  // Handle Teacher auto-generating new battle questions
-  const handleAutoGenerateBattle = () => {
-    setIsGeneratingBattle(true);
-    setTimeout(() => {
-      const generated = generateBattleMCQs(
-        teacherSelectedTopics,
-        teacherQuestionType === 'multi',
-        teacherQuestionCount,
-        teacherDifficulty,
-        teacherCustomTopic,
-        teacherAttachPhoto
-      );
-      setBattleQuestions(generated);
+  // Join an existing MCQ room by Room Code
+  const handleJoinRoom = (codeToJoin?: string) => {
+    const targetCode = (codeToJoin || roomJoinCodeInput).trim().toUpperCase();
+    if (!targetCode) {
+      setRoomJoinError('Please enter a valid room code.');
+      return;
+    }
+    const foundRoom = activeRooms.find(r => r.code.toUpperCase() === targetCode);
+    if (foundRoom) {
+      setRoomJoinError('');
+      setBattleRoomCode(foundRoom.code);
+      setBattleQuestions(foundRoom.questions);
+      setBattleTimerDuration(foundRoom.durationPerQuestion);
+      setBattleTimer(foundRoom.durationPerQuestion);
       setBattleCurrentQIndex(0);
       setBattleSelectedAnswers([]);
       setBattleAnswerSubmitted(false);
       setBattleScore(0);
       setBattleOpponentScore(0);
-      setBattleTimer(45);
-      // Generate new room code
-      setBattleRoomCode(`CQ-ROOM-${Math.floor(1000 + Math.random() * 9000)}`);
+      setMcqSubTab('battle');
+    } else {
+      setRoomJoinError(`Room "${targetCode}" not found. Verify the code or create a new room below.`);
+    }
+  };
+
+  // Generate a new custom room with topics or PDF/Text and duration
+  const handleAutoGenerateBattle = () => {
+    setIsGeneratingBattle(true);
+    setTimeout(() => {
+      const newRoomCode = `CQ-MCQ-${Math.floor(1000 + Math.random() * 9000)}`;
+      let generatedQuestions: BattleMCQ[] = [];
+
+      if (sourceType === 'pdf_text' && pdfOrTextInput.trim()) {
+        generatedQuestions = generateMCQsFromTextOrPDF(
+          pdfOrTextInput,
+          teacherQuestionCount,
+          teacherQuestionType === 'multi',
+          battleTimerDuration
+        );
+      } else {
+        generatedQuestions = generateBattleMCQs(
+          teacherSelectedTopics,
+          teacherQuestionType === 'multi',
+          teacherQuestionCount,
+          teacherDifficulty,
+          teacherCustomTopic,
+          teacherAttachPhoto
+        );
+      }
+
+      const newRoom: BattleRoom = {
+        code: newRoomCode,
+        title: sourceType === 'pdf_text' ? 'Custom PDF / Notes Study Test' : `${teacherSelectedTopics.slice(0, 2).join(' & ')} Test`,
+        topics: sourceType === 'pdf_text' ? ['PDF Study Material'] : teacherSelectedTopics,
+        questionCount: generatedQuestions.length,
+        durationPerQuestion: battleTimerDuration,
+        isMultiSelect: teacherQuestionType === 'multi',
+        questions: generatedQuestions,
+        createdAt: 'Just now',
+        hostName: userName || 'You',
+        sourceType: sourceType
+      };
+
+      setActiveRooms(prev => [newRoom, ...prev]);
+      setBattleRoomCode(newRoomCode);
+      setBattleQuestions(generatedQuestions);
+      setBattleCurrentQIndex(0);
+      setBattleSelectedAnswers([]);
+      setBattleAnswerSubmitted(false);
+      setBattleScore(0);
+      setBattleOpponentScore(0);
+      setBattleTimer(battleTimerDuration);
       setIsGeneratingBattle(false);
       setMcqSubTab('battle');
     }, 450);
@@ -492,210 +607,10 @@ export default function App() {
       setBattleCurrentQIndex(prev => prev + 1);
       setBattleSelectedAnswers([]);
       setBattleAnswerSubmitted(false);
-      setBattleTimer(45);
+      setBattleTimer(battleTimerDuration);
     } else {
       setMcqSubTab('results');
     }
-  };
-
-  // Roadmap State
-  const [sqlModuleExpanded, setSqlModuleExpanded] = useState(true);
-
-  // ATS Scanner State - NO dummy resumes pre-loaded; student must upload each time
-  const [showResumeModal, setShowResumeModal] = useState(false);
-  const [resumeFileName, setResumeFileName] = useState('');
-  const [resumeAnalyzing, setResumeAnalyzing] = useState(false);
-  const [customResumeInput, setCustomResumeInput] = useState('');
-  const [resumeAnalysisResult, setResumeAnalysisResult] = useState<{
-    score: number;
-    matchedSkills: string[];
-    missingSkills: string[];
-    feedback: string;
-  } | null>(null);
-
-  // Handle Login - redirect fresh student to onboarding if track not chosen
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setAuthError('Please enter email and password');
-      return;
-    }
-    setAuthError('');
-    setIsAuthenticating(true);
-    try {
-      const emailToUse = email.includes('@') ? email : `${email.toLowerCase()}@codequest.dev`;
-      const res = await firebaseAuthSignIn(emailToUse, password);
-      setUserName(res.displayName || email.split('@')[0]);
-      setIsLoggedIn(true);
-      if (!hasSelectedTrack) {
-        setCurrentScreen('onboarding');
-      } else {
-        setCurrentScreen('dashboard');
-      }
-    } catch (err: any) {
-      setUserName(email.split('@')[0] || 'Student');
-      setIsLoggedIn(true);
-      if (!hasSelectedTrack) {
-        setCurrentScreen('onboarding');
-      } else {
-        setCurrentScreen('dashboard');
-      }
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
-
-  // Safe Google Login
-  const handleGoogleLogin = () => {
-    setAuthError('');
-    setIsAuthenticating(true);
-    setTimeout(() => {
-      setUserName('Student User');
-      setEmail('student@codequest.dev');
-      setIsLoggedIn(true);
-      setIsAuthenticating(false);
-      if (!hasSelectedTrack) {
-        setCurrentScreen('onboarding');
-      } else {
-        setCurrentScreen('dashboard');
-      }
-    }, 300);
-  };
-
-  const toggleQuest = (id: number) => {
-    setQuests(prev => prev.map(q => {
-      if (q.id === id) {
-        const next = !q.completed;
-        if (next) setXp(prevXp => prevXp + q.xp);
-        else setXp(prevXp => Math.max(0, prevXp - q.xp));
-        return { ...q, completed: next };
-      }
-      return q;
-    }));
-  };
-
-  // Real Code Compilation & Test Case Runner with Error & Hint Reporting
-  const runCode = () => {
-    setIsRunningCode(true);
-    setCodeExecutionResult('');
-    setExecutionHint('');
-
-    setTimeout(() => {
-      setIsRunningCode(false);
-      const currentQ = CONTEST_QUESTIONS[selectedQuestionIndex] || CONTEST_QUESTIONS[0];
-
-      if (arenaMode === 'sql') {
-        const sql = userCode.trim().toUpperCase();
-        if (!sql || sql.includes('-- TODO')) {
-          setCodeExecutionResult('❌ Query Error: Incomplete SQL query. Please write your query.');
-          setExecutionHint(currentQ.hint || 'Use SELECT ... FROM Employee JOIN Department...');
-          return;
-        }
-        if (!sql.includes('SELECT') || !sql.includes('FROM')) {
-          setCodeExecutionResult('❌ SQL Syntax Error: Query must contain valid SELECT and FROM clauses.');
-          setExecutionHint('Check your SQL syntax. Ensure SELECT and FROM are properly specified.');
-          return;
-        }
-        setCodeExecutionResult('🟢 Query Executed Successfully!\nReturned 3 rows matching top salaries per department. Execution: 0.02s (+25 XP)');
-        setExecutionHint('🎉 Great job! Query successfully satisfied the window filter condition.');
-        setXp(prev => prev + 25);
-        return;
-      }
-
-      // Coding Problem (JS Execution Sandbox)
-      const trimmed = userCode.trim();
-      if (!trimmed || trimmed.includes('// TODO:') && trimmed.length < 90) {
-        setCodeExecutionResult('❌ Execution Error: No solution logic found.\nPlease write your code inside the function before running.');
-        setExecutionHint(`💡 Hint: ${currentQ.hint}`);
-        return;
-      }
-
-      try {
-        if (currentQ.title === 'Two Sum') {
-          // Wrap and execute user code
-          const runner = new Function(`
-            ${userCode};
-            if (typeof twoSum !== 'function') {
-              throw new Error("Function 'twoSum(nums, target)' is not defined.");
-            }
-            return twoSum;
-          `);
-          const fn = runner();
-
-          // Run test cases
-          const testCases = (currentQ as any).testCases || [];
-          for (let i = 0; i < testCases.length; i++) {
-            const tc = testCases[i];
-            const result = fn(tc.nums, tc.target);
-
-            if (!result || !Array.isArray(result) || result.length !== 2) {
-              setCodeExecutionResult(
-                `❌ Test Case ${i + 1} Failed!\n` +
-                `Input: nums = [${tc.nums.join(', ')}], target = ${tc.target}\n` +
-                `Expected: [${tc.expected.join(', ')}]\n` +
-                `Received: ${JSON.stringify(result)} (Return type must be an array of two indices)`
-              );
-              setExecutionHint(`💡 Hint: ${currentQ.hint}`);
-              return;
-            }
-
-            const sortedRes = [...result].sort();
-            const sortedExp = [...tc.expected].sort();
-            if (sortedRes[0] !== sortedExp[0] || sortedRes[1] !== sortedExp[1]) {
-              setCodeExecutionResult(
-                `❌ Test Case ${i + 1} Failed (Wrong Answer)!\n` +
-                `Input: nums = [${tc.nums.join(', ')}], target = ${tc.target}\n` +
-                `Expected: [${tc.expected.join(', ')}]\n` +
-                `Received: [${result.join(', ')}]`
-              );
-              setExecutionHint(`💡 Hint: ${currentQ.hint}`);
-              return;
-            }
-          }
-
-          setCodeExecutionResult(`🟢 Passed: All ${testCases.length} Test Cases Passed!\nExecution Time: 0.03s | Memory: 38.2 MB (+25 XP)`);
-          setExecutionHint('🎉 Excellent! Your hash-map lookup achieved O(N) optimal time complexity.');
-          setXp(prev => prev + 25);
-          currentQ.solved = true;
-        } else if (currentQ.title === 'Contains Duplicate') {
-          const runner = new Function(`
-            ${userCode};
-            if (typeof containsDuplicate !== 'function') {
-              throw new Error("Function 'containsDuplicate(nums)' is not defined.");
-            }
-            return containsDuplicate;
-          `);
-          const fn = runner();
-
-          const testCases = (currentQ as any).testCases || [];
-          for (let i = 0; i < testCases.length; i++) {
-            const tc = testCases[i];
-            const result = fn(tc.nums);
-
-            if (result !== tc.expected) {
-              setCodeExecutionResult(
-                `❌ Test Case ${i + 1} Failed (Wrong Answer)!\n` +
-                `Input: nums = [${tc.nums.join(', ')}]\n` +
-                `Expected: ${tc.expected}\n` +
-                `Received: ${result}`
-              );
-              setExecutionHint(`💡 Hint: ${currentQ.hint}`);
-              return;
-            }
-          }
-
-          setCodeExecutionResult(`🟢 Passed: All ${testCases.length} Test Cases Passed!\nExecution Time: 0.02s | Memory: 36.1 MB (+25 XP)`);
-          setExecutionHint('🎉 Great job! Correctly evaluated duplicate elements.');
-          setXp(prev => prev + 25);
-          currentQ.solved = true;
-        } else {
-          setCodeExecutionResult('🟢 Code compiled successfully without errors. Execution Time: 0.04s (+25 XP)');
-          setXp(prev => prev + 25);
-        }
-      } catch (err: any) {
-        setCodeExecutionResult(`❌ Runtime / Compilation Error:\n${err.message || 'Syntax Error in code.'}`);
-        setExecutionHint(`💡 Hint: ${currentQ.hint || 'Check for missing brackets, return statements, or variable definitions.'}`);
-      }
-    }, 450);
   };
 
   // Real Resume Upload & Dynamic ATS Scanner (NO Dummy Data)
@@ -1138,290 +1053,215 @@ export default function App() {
   // -------------------------------------------------------------
   // SCREEN 4: PROBLEM ARENA & COMPILER TAB
   // -------------------------------------------------------------
+  // -------------------------------------------------------------
+  // SCREEN 4: MCQ BATTLE & ROOM TEST ARENA (MOBILE ONLY)
+  // -------------------------------------------------------------
   const renderArena = () => {
-    const currentQ = CONTEST_QUESTIONS[selectedQuestionIndex] || CONTEST_QUESTIONS[0];
-
     return (
-      <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* 3-Tab Segmented Mode Switcher */}
-        <View style={styles.arenaModeSwitcherBox}>
-          {(['coding', 'sql', 'mcq'] as const).map(mode => (
-            <TouchableOpacity
-              key={mode}
-              style={[styles.arenaModeSegment, arenaMode === mode && styles.arenaModeSegmentActive]}
-              onPress={() => {
-                setArenaMode(mode);
-                setCodeExecutionResult('');
-                setExecutionHint('');
-                if (mode === 'coding') {
-                  setSelectedQuestionIndex(0);
-                  setUserCode(CONTEST_QUESTIONS[0].template);
-                } else if (mode === 'sql') {
-                  setSelectedQuestionIndex(2);
-                  setUserCode(CONTEST_QUESTIONS[2].template);
-                }
-              }}
-            >
-              <Text style={[styles.arenaModeSegmentText, arenaMode === mode && styles.arenaModeSegmentTextActive]}>
-                {mode === 'coding' ? 'Coding' : mode === 'sql' ? 'SQL' : '⚔️ MCQ Battle'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      <ScrollView style={styles.dashboardContainer} contentContainerStyle={{ paddingBottom: 110 }}>
+        {/* Arena Header & Mobile Badge */}
+        <View style={styles.arenaHeaderRow}>
+          <View>
+            <Text style={styles.arenaMainTitle}>⚔️ MCQ BATTLE ARENA</Text>
+            <Text style={styles.arenaSubTitle}>Live 1v1 Test Rooms & Automated Question Generator</Text>
+          </View>
+          <View style={styles.mobileOnlyBadge}>
+            <Text style={styles.mobileOnlyBadgeText}>📱 MOBILE TEST</Text>
+          </View>
+        </View>
+
+        {/* 4-Tab Arena Navigation */}
+        <View style={styles.battleSubNavRow}>
+          <TouchableOpacity
+            style={[styles.battleSubNavItem, mcqSubTab === 'battle' && styles.battleSubNavItemActive]}
+            onPress={() => setMcqSubTab('battle')}
+          >
+            <Text style={[styles.battleSubNavText, mcqSubTab === 'battle' && styles.battleSubNavTextActive]}>
+              ⚔️ Battle
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.battleSubNavItem, mcqSubTab === 'join_room' && styles.battleSubNavItemActive]}
+            onPress={() => setMcqSubTab('join_room')}
+          >
+            <Text style={[styles.battleSubNavText, mcqSubTab === 'join_room' && styles.battleSubNavTextActive]}>
+              🔑 Join Room
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.battleSubNavItem, mcqSubTab === 'create_room' && styles.battleSubNavItemActive]}
+            onPress={() => setMcqSubTab('create_room')}
+          >
+            <Text style={[styles.battleSubNavText, mcqSubTab === 'create_room' && styles.battleSubNavTextActive]}>
+              🛠️ Create Room
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.battleSubNavItem, mcqSubTab === 'results' && styles.battleSubNavItemActive]}
+            onPress={() => setMcqSubTab('results')}
+          >
+            <Text style={[styles.battleSubNavText, mcqSubTab === 'results' && styles.battleSubNavTextActive]}>
+              🏆 Scoreboard
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ----------------------------------------------------------- */}
-        {/* VIEW A: CODING & SQL MODES */}
+        {/* VIEW 1: JOIN ARENA ROOM (By Code or Public Room List) */}
         {/* ----------------------------------------------------------- */}
-        {arenaMode !== 'mcq' && (
-          <>
-            {/* Coding Challenge Selector */}
-            {arenaMode === 'coding' && (
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                {CONTEST_QUESTIONS.filter(q => q.type === 'coding').map((q, idx) => (
-                  <TouchableOpacity
-                    key={q.title}
-                    style={[
-                      styles.problemSelectTab,
-                      selectedQuestionIndex === idx && styles.problemSelectTabActive
-                    ]}
-                    onPress={() => {
-                      setSelectedQuestionIndex(idx);
-                      setUserCode(q.template);
-                      setCodeExecutionResult('');
-                      setExecutionHint('');
-                    }}
-                  >
-                    <Text style={[
-                      styles.problemSelectTabText,
-                      selectedQuestionIndex === idx && styles.problemSelectTabTextActive
-                    ]}>
-                      {q.title} {q.solved ? '✓' : ''}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {/* Problem Header Card */}
-            <View style={styles.problemHeaderCard}>
-              <View style={styles.problemTitleRow}>
-                <Text style={styles.problemMainTitle}>{currentQ.title}</Text>
-                <View style={styles.difficultyBadgeGreen}>
-                  <Text style={styles.difficultyBadgeGreenText}>{currentQ.difficulty.toUpperCase()}</Text>
+        {mcqSubTab === 'join_room' && (
+          <View style={{ marginBottom: 24 }}>
+            {/* Join Room by Code Card */}
+            <View style={styles.joinRoomCard}>
+              <View style={styles.joinRoomHeaderRow}>
+                <Text style={{ fontSize: 22, marginRight: 8 }}>🔑</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.joinRoomCardTitle}>Join MCQ Battle Room</Text>
+                  <Text style={styles.joinRoomCardSub}>Enter the unique Room Code provided by your instructor or peer</Text>
                 </View>
               </View>
-              <View style={styles.companyPillRow}>
-                {currentQ.companies.map(comp => (
-                  <View key={comp} style={styles.companyPill}>
-                    <Text style={styles.companyPillText}>{comp}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
 
-            {/* Description Card */}
-            <View style={styles.arenaDescCard}>
-              <Text style={styles.arenaDescText}>{currentQ.desc}</Text>
-              <View style={styles.exampleBlock}>
-                <Text style={styles.exampleBold}>Example 1:</Text>
-                <Text style={styles.exampleBlue}>Input: {currentQ.input}</Text>
-                <Text style={styles.exampleBlue}>Output: {currentQ.output}</Text>
-              </View>
-            </View>
-
-            {/* Coding Editor */}
-            {arenaMode === 'coding' && (
-              <View style={styles.codeEditorBox}>
-                <View style={styles.codeEditorTopBar}>
-                  <Text style={styles.codeFileName}>Solution.js (Type your code below)</Text>
-                  <TouchableOpacity onPress={() => {
-                    setUserCode(currentQ.template);
-                    setCodeExecutionResult('');
-                    setExecutionHint('');
-                  }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 11 }}>↺ Reset Code</Text>
-                  </TouchableOpacity>
-                </View>
+              <View style={styles.joinRoomInputRow}>
                 <TextInput
-                  style={styles.codeTextInput}
-                  multiline
-                  value={userCode}
-                  onChangeText={(text) => {
-                    setUserCode(text);
-                    if (codeExecutionResult) {
-                      setCodeExecutionResult('');
-                      setExecutionHint('');
-                    }
+                  style={styles.joinCodeInput}
+                  placeholder="e.g. CQ-MCQ-8492"
+                  placeholderTextColor="#64748b"
+                  value={roomJoinCodeInput}
+                  onChangeText={(val) => {
+                    setRoomJoinCodeInput(val.toUpperCase());
+                    if (roomJoinError) setRoomJoinError('');
                   }}
-                  placeholder="// Write your solution here..."
-                  placeholderTextColor="#64748b"
-                  autoCapitalize="none"
+                  autoCapitalize="characters"
                   autoCorrect={false}
                 />
-
-                {codeExecutionResult ? (
-                  <View style={[
-                    styles.executionResultBar,
-                    codeExecutionResult.includes('❌') ? styles.resultErrorBox : styles.resultSuccessBox
-                  ]}>
-                    <Text style={[
-                      styles.executionResultText,
-                      codeExecutionResult.includes('❌') ? { color: '#f87171' } : { color: '#34d399' }
-                    ]}>
-                      {codeExecutionResult}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.executionResultBar}>
-                    <Text style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace' }}>
-                      ℹ️ Write your function logic above and tap "Run Code" to compile & execute tests.
-                    </Text>
-                  </View>
-                )}
-
-                {executionHint ? (
-                  <View style={styles.hintContainerBox}>
-                    <Text style={styles.hintHeadingText}>💡 Dynamic Hint & Guidance</Text>
-                    <Text style={styles.hintBodyText}>{executionHint}</Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.editorActionButtonsRow}>
-                  <TouchableOpacity style={styles.runCodeBtn} onPress={runCode} disabled={isRunningCode}>
-                    <Text style={styles.runCodeBtnText}>{isRunningCode ? 'Compiling...' : '▶ Run Code'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode} disabled={isRunningCode}>
-                    <Text style={styles.submitCodeBtnText}>Submit Solution</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  style={styles.joinSubmitBtn}
+                  onPress={() => handleJoinRoom()}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.joinSubmitBtnText}>JOIN TEST ➔</Text>
+                </TouchableOpacity>
               </View>
-            )}
 
-            {/* SQL Query Editor */}
-            {arenaMode === 'sql' && (
-              <View style={styles.codeEditorBox}>
-                <View style={styles.codeEditorTopBar}>
-                  <Text style={styles.codeFileName}>PostgreSQL Engine (Query.sql)</Text>
+              {roomJoinError ? (
+                <View style={styles.roomErrorBanner}>
+                  <Text style={styles.roomErrorText}>⚠️ {roomJoinError}</Text>
                 </View>
-                <TextInput
-                  style={styles.codeTextInput}
-                  multiline
-                  value={userCode}
-                  onChangeText={setUserCode}
-                  placeholder="-- Write your SQL query here..."
-                  placeholderTextColor="#64748b"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {codeExecutionResult ? (
-                  <View style={[
-                    styles.executionResultBar,
-                    codeExecutionResult.includes('❌') ? styles.resultErrorBox : styles.resultSuccessBox
-                  ]}>
-                    <Text style={[
-                      styles.executionResultText,
-                      codeExecutionResult.includes('❌') ? { color: '#f87171' } : { color: '#34d399' }
-                    ]}>
-                      {codeExecutionResult}
+              ) : null}
+            </View>
+
+            {/* Active Public Rooms Header */}
+            <View style={styles.activeRoomsHeaderRow}>
+              <Text style={styles.activeRoomsSectionTitle}>ACTIVE TEST ROOMS ({activeRooms.length})</Text>
+              <Text style={styles.activeRoomsSectionSub}>Tap any room to join test</Text>
+            </View>
+
+            {/* List of Active Rooms */}
+            {activeRooms.map((room) => (
+              <View key={room.code} style={styles.activeRoomCard}>
+                <View style={styles.activeRoomTopRow}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.activeRoomTitle}>{room.title}</Text>
+                    <Text style={styles.activeRoomHost}>👤 Hosted by {room.hostName} · {room.createdAt}</Text>
+                  </View>
+                  <View style={styles.roomCodeBadge}>
+                    <Text style={styles.roomCodeBadgeText}>{room.code}</Text>
+                  </View>
+                </View>
+
+                {/* Badges Row */}
+                <View style={styles.roomBadgesRow}>
+                  <View style={styles.roomMetaPill}>
+                    <Text style={styles.roomMetaPillText}>
+                      {room.sourceType === 'pdf_text' ? '📄 From PDF / Notes' : '📚 Topic Bank'}
                     </Text>
                   </View>
-                ) : null}
-                {executionHint ? (
-                  <View style={styles.hintContainerBox}>
-                    <Text style={styles.hintHeadingText}>💡 SQL Hint</Text>
-                    <Text style={styles.hintBodyText}>{executionHint}</Text>
+                  <View style={styles.roomMetaPill}>
+                    <Text style={styles.roomMetaPillText}>
+                      {room.isMultiSelect ? '☑️ Multi-Choice' : '🔘 Single-Choice'}
+                    </Text>
                   </View>
-                ) : null}
-                <View style={styles.editorActionButtonsRow}>
-                  <TouchableOpacity style={styles.submitCodeBtn} onPress={runCode} disabled={isRunningCode}>
-                    <Text style={styles.submitCodeBtnText}>{isRunningCode ? 'Executing...' : 'Execute SQL Query'}</Text>
-                  </TouchableOpacity>
+                  <View style={styles.roomMetaPill}>
+                    <Text style={styles.roomMetaPillText}>❓ {room.questionCount} Questions</Text>
+                  </View>
+                  <View style={[styles.roomMetaPill, { borderColor: '#f43f5e' }]}>
+                    <Text style={[styles.roomMetaPillText, { color: '#fb7185' }]}>⏱️ {room.durationPerQuestion}s / Q</Text>
+                  </View>
                 </View>
+
+                {/* Topics Tags */}
+                <View style={styles.roomTopicsRow}>
+                  {room.topics.map(t => (
+                    <View key={t} style={styles.topicMiniTag}>
+                      <Text style={styles.topicMiniTagText}>{t}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Action Button */}
+                <TouchableOpacity
+                  style={styles.enterRoomBtn}
+                  onPress={() => handleJoinRoom(room.code)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.enterRoomBtnText}>ENTER ROOM & START TEST ➔</Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </>
+            ))}
+          </View>
         )}
 
         {/* ----------------------------------------------------------- */}
-        {/* VIEW B: BATTLE OF MCQ & TEACHER AUTO-GENERATOR STUDIO */}
+        {/* VIEW 2: CREATE / GENERATE ARENA ROOM */}
         {/* ----------------------------------------------------------- */}
-        {arenaMode === 'mcq' && (
-          <View style={{ marginBottom: 30 }}>
-            {/* MCQ Sub-Navigation Bar */}
-            <View style={styles.battleSubNavRow}>
+        {mcqSubTab === 'create_room' && (
+          <View style={styles.teacherStudioCard}>
+            {/* Room Info Header */}
+            <View style={styles.roomHeaderRow}>
+              <View>
+                <Text style={styles.roomCodeLabel}>NEW ROOM CODE</Text>
+                <Text style={styles.roomCodeValue}>{battleRoomCode}</Text>
+              </View>
               <TouchableOpacity
-                style={[styles.battleSubNavItem, mcqSubTab === 'battle' && styles.battleSubNavItemActive]}
-                onPress={() => setMcqSubTab('battle')}
+                style={styles.newRoomBtn}
+                onPress={() => setBattleRoomCode(`CQ-MCQ-${Math.floor(1000 + Math.random() * 9000)}`)}
               >
-                <Text style={[styles.battleSubNavText, mcqSubTab === 'battle' && styles.battleSubNavTextActive]}>
-                  ⚔️ Live Battle
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.battleSubNavItem, mcqSubTab === 'teacher_studio' && styles.battleSubNavItemActive]}
-                onPress={() => setMcqSubTab('teacher_studio')}
-              >
-                <Text style={[styles.battleSubNavText, mcqSubTab === 'teacher_studio' && styles.battleSubNavTextActive]}>
-                  👨‍🏫 Teacher Studio
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.battleSubNavItem, mcqSubTab === 'results' && styles.battleSubNavItemActive]}
-                onPress={() => setMcqSubTab('results')}
-              >
-                <Text style={[styles.battleSubNavText, mcqSubTab === 'results' && styles.battleSubNavTextActive]}>
-                  🏆 Scoreboard
-                </Text>
+                <Text style={styles.newRoomBtnText}>🔄 New Code</Text>
               </TouchableOpacity>
             </View>
 
-            {/* 1. TEACHER STUDIO VIEW (Create & Auto-Generate Questions) */}
-            {mcqSubTab === 'teacher_studio' && (
-              <View style={styles.teacherStudioCard}>
-                {/* Room Info Header */}
-                <View style={styles.roomHeaderRow}>
-                  <View>
-                    <Text style={styles.roomCodeLabel}>BATTLE ROOM CODE</Text>
-                    <Text style={styles.roomCodeValue}>{battleRoomCode}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.newRoomBtn}
-                    onPress={() => setBattleRoomCode(`CQ-ROOM-${Math.floor(1000 + Math.random() * 9000)}`)}
-                  >
-                    <Text style={styles.newRoomBtnText}>🔄 New Code</Text>
-                  </TouchableOpacity>
-                </View>
+            {/* Section 1: Source Material (Topics vs PDF / Text Notes) */}
+            <Text style={styles.teacherSectionHeading}>1. SELECT QUESTION SOURCE</Text>
+            <View style={styles.sourceTypeToggleRow}>
+              <TouchableOpacity
+                style={[styles.sourceTypeCard, sourceType === 'topics' && styles.sourceTypeCardActive]}
+                onPress={() => setSourceType('topics')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.sourceTypeIcon}>📚</Text>
+                <Text style={[styles.sourceTypeTitle, sourceType === 'topics' && styles.sourceTypeTitleActive]}>
+                  Catalog Topics
+                </Text>
+                <Text style={styles.sourceTypeSub}>CS Curated Question Bank</Text>
+              </TouchableOpacity>
 
-                {/* Section 1: Question Type Selector */}
-                <Text style={styles.teacherSectionHeading}>1. SELECT QUESTION TYPE</Text>
-                <View style={styles.teacherTypeRow}>
-                  <TouchableOpacity
-                    style={[styles.typeOptionCard, teacherQuestionType === 'multi' && styles.typeOptionCardSelected]}
-                    onPress={() => setTeacherQuestionType('multi')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.typeOptionIcon}>☑️</Text>
-                    <Text style={[styles.typeOptionTitle, teacherQuestionType === 'multi' && styles.typeOptionTitleSelected]}>
-                      Multiple-Answer MCQ
-                    </Text>
-                    <Text style={styles.typeOptionSub}>Allows multiple correct choices per question</Text>
-                  </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sourceTypeCard, sourceType === 'pdf_text' && styles.sourceTypeCardActive]}
+                onPress={() => setSourceType('pdf_text')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.sourceTypeIcon}>📄</Text>
+                <Text style={[styles.sourceTypeTitle, sourceType === 'pdf_text' && styles.sourceTypeTitleActive]}>
+                  From PDF / Notes
+                </Text>
+                <Text style={styles.sourceTypeSub}>AI Extracts MCQs From Text</Text>
+              </TouchableOpacity>
+            </View>
 
-                  <TouchableOpacity
-                    style={[styles.typeOptionCard, teacherQuestionType === 'single' && styles.typeOptionCardSelected]}
-                    onPress={() => setTeacherQuestionType('single')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.typeOptionIcon}>🔘</Text>
-                    <Text style={[styles.typeOptionTitle, teacherQuestionType === 'single' && styles.typeOptionTitleSelected]}>
-                      Single-Answer MCQ
-                    </Text>
-                    <Text style={styles.typeOptionSub}>Standard 1-choice multiple choice questions</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Section 2: Choose / Enter Topics */}
-                <Text style={styles.teacherSectionHeading}>2. CHOOSE TOPICS OR TYPE CUSTOM TOPIC</Text>
+            {/* If Catalog Topics */}
+            {sourceType === 'topics' ? (
+              <View style={{ marginTop: 8 }}>
+                <Text style={styles.subFieldLabel}>CHOOSE TOPICS OR ADD CUSTOM TOPIC</Text>
                 <View style={styles.topicsTagGrid}>
                   {teacherAvailableTopics.map(t => {
                     const isSelected = teacherSelectedTopics.includes(t);
@@ -1451,7 +1291,7 @@ export default function App() {
                 <View style={styles.customTopicInputRow}>
                   <TextInput
                     style={styles.customTopicInput}
-                    placeholder="Type custom topic (e.g. React Hooks, Kafka, AI/ML)..."
+                    placeholder="Add custom topic (e.g. Kafka, Docker, Next.js)..."
                     placeholderTextColor="#64748b"
                     value={teacherCustomTopic}
                     onChangeText={setTeacherCustomTopic}
@@ -1462,343 +1302,444 @@ export default function App() {
                       if (teacherCustomTopic.trim() && !teacherAvailableTopics.includes(teacherCustomTopic.trim())) {
                         setTeacherAvailableTopics([...teacherAvailableTopics, teacherCustomTopic.trim()]);
                         setTeacherSelectedTopics([...teacherSelectedTopics, teacherCustomTopic.trim()]);
+                        setTeacherCustomTopic('');
                       }
                     }}
                   >
                     <Text style={styles.addCustomTopicBtnText}>+ ADD</Text>
                   </TouchableOpacity>
                 </View>
+              </View>
+            ) : (
+              /* If PDF / Text Material */
+              <View style={{ marginTop: 8 }}>
+                <Text style={styles.subFieldLabel}>PASTE STUDY NOTES OR PDF TEXT CONTENT</Text>
+                <Text style={{ color: '#94a3b8', fontSize: 11, marginBottom: 8, lineHeight: 15 }}>
+                  Paste study material, lecture notes, or PDF document text below. Questions and answer keys will be extracted automatically.
+                </Text>
 
-                {/* Attach Topic Photo / Notes toggle */}
-                <TouchableOpacity
-                  style={styles.photoTopicRow}
-                  onPress={() => setTeacherAttachPhoto(!teacherAttachPhoto)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontSize: 18, marginRight: 8 }}>📸</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.photoTopicTitle}>Attach Topic Diagram / Reference Photo</Text>
-                    <Text style={styles.photoTopicSub}>Auto-attaches architecture & code diagrams to questions</Text>
-                  </View>
-                  <Switch
-                    value={teacherAttachPhoto}
-                    onValueChange={setTeacherAttachPhoto}
-                    trackColor={{ false: '#1e2748', true: '#38bdf8' }}
-                    thumbColor="#ffffff"
-                  />
-                </TouchableOpacity>
-
-                {/* Section 3: Amount of Questions */}
-                <Text style={styles.teacherSectionHeading}>3. AMOUNT OF MCQ QUESTIONS</Text>
-                <View style={styles.questionAmountRow}>
-                  {[3, 5, 10, 15].map(amt => (
-                    <TouchableOpacity
-                      key={amt}
-                      style={[styles.amountPill, teacherQuestionCount === amt && styles.amountPillSelected]}
-                      onPress={() => {
-                        setTeacherQuestionCount(amt);
-                        setTeacherCountInput(String(amt));
-                      }}
-                    >
-                      <Text style={[styles.amountPillText, teacherQuestionCount === amt && styles.amountPillTextSelected]}>
-                        {amt} MCQs
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                  <View style={styles.customAmountBox}>
-                    <Text style={{ color: '#94a3b8', fontSize: 11, marginRight: 6 }}>Custom:</Text>
-                    <TextInput
-                      style={styles.customAmountInput}
-                      keyboardType="numeric"
-                      value={teacherCountInput}
-                      onChangeText={(val) => {
-                        setTeacherCountInput(val);
-                        const parsed = parseInt(val, 10);
-                        if (!isNaN(parsed) && parsed > 0) {
-                          setTeacherQuestionCount(Math.min(20, Math.max(1, parsed)));
-                        }
-                      }}
-                      maxLength={2}
-                    />
-                  </View>
+                {/* Quick Presets */}
+                <View style={styles.presetButtonsRow}>
+                  <TouchableOpacity
+                    style={styles.presetBtn}
+                    onPress={() => setPdfOrTextInput('Operating systems manage CPU scheduling, virtual memory, and process synchronization. Mutexes and semaphores prevent race conditions and critical section deadlocks in multithreaded kernels.')}
+                  >
+                    <Text style={styles.presetBtnText}>📄 OS & Threads Notes</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.presetBtn}
+                    onPress={() => setPdfOrTextInput('Distributed systems scale horizontally using load balancers, database sharding, and write-through Redis caches. Consistency models balance latency and partition tolerance under CAP theorem.')}
+                  >
+                    <Text style={styles.presetBtnText}>📄 System Design Notes</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.presetBtn}
+                    onPress={() => setPdfOrTextInput('Binary Search Trees provide logarithmic search and insertion when balanced. Red-Black trees and AVL trees rotate nodes to maintain O(log N) worst-case height invariants.')}
+                  >
+                    <Text style={styles.presetBtnText}>📄 DSA Trees Notes</Text>
+                  </TouchableOpacity>
                 </View>
 
-                {/* Section 4: Difficulty */}
-                <Text style={styles.teacherSectionHeading}>4. DIFFICULTY TIER</Text>
-                <View style={styles.diffPillRow}>
-                  {(['Easy', 'Medium', 'Hard', 'Mixed'] as const).map(d => (
-                    <TouchableOpacity
-                      key={d}
-                      style={[styles.diffPill, teacherDifficulty === d && styles.diffPillSelected]}
-                      onPress={() => setTeacherDifficulty(d)}
-                    >
-                      <Text style={[styles.diffPillText, teacherDifficulty === d && styles.diffPillTextSelected]}>
-                        {d}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <TextInput
+                  style={styles.pdfNotesTextInput}
+                  multiline
+                  value={pdfOrTextInput}
+                  onChangeText={setPdfOrTextInput}
+                  placeholder="Paste your study notes or PDF text here..."
+                  placeholderTextColor="#64748b"
+                  textAlignVertical="top"
+                />
+                <Text style={{ color: '#64748b', fontSize: 10, marginTop: 4, textAlign: 'right' }}>
+                  {pdfOrTextInput.trim().length} characters · {pdfOrTextInput.split(/[.!?\n]+/).filter(Boolean).length} sentences detected
+                </Text>
+              </View>
+            )}
 
-                {/* Auto-Generate Button */}
+            {/* Section 2: Question Type */}
+            <Text style={styles.teacherSectionHeading}>2. QUESTION TYPE</Text>
+            <View style={styles.teacherTypeRow}>
+              <TouchableOpacity
+                style={[styles.typeOptionCard, teacherQuestionType === 'single' && styles.typeOptionCardSelected]}
+                onPress={() => setTeacherQuestionType('single')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.typeOptionIcon}>🔘</Text>
+                <Text style={[styles.typeOptionTitle, teacherQuestionType === 'single' && styles.typeOptionTitleSelected]}>
+                  Single-Choice MCQ
+                </Text>
+                <Text style={styles.typeOptionSub}>Standard 1 correct answer</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.typeOptionCard, teacherQuestionType === 'multi' && styles.typeOptionCardSelected]}
+                onPress={() => setTeacherQuestionType('multi')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.typeOptionIcon}>☑️</Text>
+                <Text style={[styles.typeOptionTitle, teacherQuestionType === 'multi' && styles.typeOptionTitleSelected]}>
+                  Multiple-Answer MCQ
+                </Text>
+                <Text style={styles.typeOptionSub}>Multiple correct answers</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Section 3: Time Duration Per Question */}
+            <Text style={styles.teacherSectionHeading}>3. TIME DURATION PER QUESTION</Text>
+            <View style={styles.durationPillsRow}>
+              {[30, 45, 60, 90, 120].map(sec => (
                 <TouchableOpacity
-                  style={styles.autoGenerateBattleBtn}
-                  onPress={handleAutoGenerateBattle}
-                  disabled={isGeneratingBattle}
-                  activeOpacity={0.85}
+                  key={sec}
+                  style={[styles.durationPill, battleTimerDuration === sec && styles.durationPillSelected]}
+                  onPress={() => setBattleTimerDuration(sec)}
                 >
-                  <Text style={styles.autoGenerateBattleBtnText}>
-                    {isGeneratingBattle ? '⚡ Auto-Generating Questions...' : '🚀 AUTO-GENERATE & LAUNCH BATTLE'}
+                  <Text style={[styles.durationPillText, battleTimerDuration === sec && styles.durationPillTextSelected]}>
+                    ⏱️ {sec}s
                   </Text>
                 </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Section 4: Number of Questions */}
+            <Text style={styles.teacherSectionHeading}>4. NUMBER OF QUESTIONS</Text>
+            <View style={styles.questionAmountRow}>
+              {[3, 5, 10, 15, 20].map(amt => (
+                <TouchableOpacity
+                  key={amt}
+                  style={[styles.amountPill, teacherQuestionCount === amt && styles.amountPillSelected]}
+                  onPress={() => {
+                    setTeacherQuestionCount(amt);
+                    setTeacherCountInput(String(amt));
+                  }}
+                >
+                  <Text style={[styles.amountPillText, teacherQuestionCount === amt && styles.amountPillTextSelected]}>
+                    {amt} MCQs
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <View style={styles.customAmountBox}>
+                <Text style={{ color: '#94a3b8', fontSize: 11, marginRight: 6 }}>Custom:</Text>
+                <TextInput
+                  style={styles.customAmountInput}
+                  keyboardType="numeric"
+                  value={teacherCountInput}
+                  onChangeText={(val) => {
+                    setTeacherCountInput(val);
+                    const parsed = parseInt(val, 10);
+                    if (!isNaN(parsed) && parsed > 0) {
+                      setTeacherQuestionCount(Math.min(20, Math.max(1, parsed)));
+                    }
+                  }}
+                  maxLength={2}
+                />
+              </View>
+            </View>
+
+            {/* Section 5: Difficulty Tier */}
+            <Text style={styles.teacherSectionHeading}>5. DIFFICULTY TIER</Text>
+            <View style={styles.diffPillRow}>
+              {(['Easy', 'Medium', 'Hard', 'Mixed'] as const).map(d => (
+                <TouchableOpacity
+                  key={d}
+                  style={[styles.diffPill, teacherDifficulty === d && styles.diffPillSelected]}
+                  onPress={() => setTeacherDifficulty(d)}
+                >
+                  <Text style={[styles.diffPillText, teacherDifficulty === d && styles.diffPillTextSelected]}>
+                    {d}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Attach Architecture Diagram toggle */}
+            <TouchableOpacity
+              style={styles.photoTopicRow}
+              onPress={() => setTeacherAttachPhoto(!teacherAttachPhoto)}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 18, marginRight: 8 }}>📊</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoTopicTitle}>Include Topic Diagrams & Architecture Schemas</Text>
+                <Text style={styles.photoTopicSub}>Auto-attaches flow diagrams and schema layouts to questions</Text>
+              </View>
+              <Switch
+                value={teacherAttachPhoto}
+                onValueChange={setTeacherAttachPhoto}
+                trackColor={{ false: '#1e2748', true: '#38bdf8' }}
+                thumbColor="#ffffff"
+              />
+            </TouchableOpacity>
+
+            {/* Auto-Generate & Launch Battle Button */}
+            <TouchableOpacity
+              style={styles.autoGenerateBattleBtn}
+              onPress={handleAutoGenerateBattle}
+              disabled={isGeneratingBattle}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.autoGenerateBattleBtnText}>
+                {isGeneratingBattle ? '⚡ GENERATING ROOM & QUESTIONS...' : '🚀 GENERATE ROOM & START TEST'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ----------------------------------------------------------- */}
+        {/* VIEW 3: LIVE MCQ BATTLE TEST */}
+        {/* ----------------------------------------------------------- */}
+        {mcqSubTab === 'battle' && (
+          <View style={{ marginBottom: 24 }}>
+            {/* 1v1 Battle Matchup Header Card */}
+            <View style={styles.battleMatchupCard}>
+              {/* Player 1 (You) */}
+              <View style={styles.playerCol}>
+                <View style={styles.playerAvatarGlow}>
+                  <Text style={styles.playerAvatarText}>YOU</Text>
+                </View>
+                <Text style={styles.playerNameText}>{userName || 'Student'}</Text>
+                <Text style={styles.playerScoreText}>{battleScore} pts</Text>
+              </View>
+
+              {/* Center Match Status */}
+              <View style={styles.matchCenterCol}>
+                <View style={[styles.timerBadge, battleTimer <= 10 && { borderColor: '#ef4444', backgroundColor: '#3b0d14' }]}>
+                  <Text style={[styles.timerBadgeText, battleTimer <= 10 && { color: '#f87171' }]}>
+                    ⏱️ {battleTimer}s
+                  </Text>
+                </View>
+                <Text style={styles.vsBadgeText}>VS</Text>
+                <Text style={styles.roomCodeSmall}>{battleRoomCode}</Text>
+              </View>
+
+              {/* Player 2 (Opponent / Proctor) */}
+              <View style={styles.playerCol}>
+                <View style={[styles.playerAvatarGlow, { borderColor: '#f43f5e' }]}>
+                  <Text style={[styles.playerAvatarText, { color: '#f43f5e' }]}>OPP</Text>
+                </View>
+                <Text style={styles.playerNameText}>{battleOpponentName.split(' ')[0]}</Text>
+                <Text style={[styles.playerScoreText, { color: '#f43f5e' }]}>{battleOpponentScore} pts</Text>
+              </View>
+            </View>
+
+            {/* Question Info Bar */}
+            {battleQuestions.length > 0 && (
+              <View style={styles.questionCounterBar}>
+                <View style={styles.topicPill}>
+                  <Text style={styles.topicPillText}>{battleQuestions[battleCurrentQIndex]?.topic}</Text>
+                </View>
+                <Text style={styles.questionCounterText}>
+                  Question {battleCurrentQIndex + 1} of {battleQuestions.length}
+                </Text>
+                <View style={styles.multiAnswerIndicator}>
+                  <Text style={styles.multiAnswerIndicatorText}>
+                    {battleQuestions[battleCurrentQIndex]?.isMultiSelect ? '☑️ MULTI-SELECT' : '🔘 SINGLE'}
+                  </Text>
+                </View>
               </View>
             )}
 
-            {/* 2. LIVE BATTLE VIEW */}
-            {mcqSubTab === 'battle' && (
-              <View>
-                {/* 1v1 Battle Matchup Header Card */}
-                <View style={styles.battleMatchupCard}>
-                  {/* Player 1 (You) */}
-                  <View style={styles.playerCol}>
-                    <View style={styles.playerAvatarGlow}>
-                      <Text style={styles.playerAvatarText}>YOU</Text>
-                    </View>
-                    <Text style={styles.playerNameText}>{userName || 'Student'}</Text>
-                    <Text style={styles.playerScoreText}>{battleScore} pts</Text>
-                  </View>
-
-                  {/* Center Match Status */}
-                  <View style={styles.matchCenterCol}>
-                    <View style={styles.timerBadge}>
-                      <Text style={styles.timerBadgeText}>⏱️ {battleTimer}s</Text>
-                    </View>
-                    <Text style={styles.vsBadgeText}>VS</Text>
-                    <Text style={styles.roomCodeSmall}>{battleRoomCode}</Text>
-                  </View>
-
-                  {/* Player 2 (Opponent) */}
-                  <View style={styles.playerCol}>
-                    <View style={[styles.playerAvatarGlow, { borderColor: '#f43f5e' }]}>
-                      <Text style={[styles.playerAvatarText, { color: '#f43f5e' }]}>OPP</Text>
-                    </View>
-                    <Text style={styles.playerNameText}>{battleOpponentName.split(' ')[0]}</Text>
-                    <Text style={[styles.playerScoreText, { color: '#f43f5e' }]}>{battleOpponentScore} pts</Text>
-                  </View>
-                </View>
-
-                {/* Question Info Bar */}
-                {battleQuestions.length > 0 && (
-                  <View style={styles.questionCounterBar}>
-                    <View style={styles.topicPill}>
-                      <Text style={styles.topicPillText}>{battleQuestions[battleCurrentQIndex]?.topic}</Text>
-                    </View>
-                    <Text style={styles.questionCounterText}>
-                      Question {battleCurrentQIndex + 1} of {battleQuestions.length}
+            {/* Active Question Box */}
+            {battleQuestions.length > 0 && (
+              <View style={styles.codeEditorBox}>
+                {/* Multi-Select Instruction Hint */}
+                {battleQuestions[battleCurrentQIndex]?.isMultiSelect && (
+                  <View style={styles.multiSelectBanner}>
+                    <Text style={styles.multiSelectBannerText}>
+                      💡 Multiple-Answer Question: Select all options that apply before confirming!
                     </Text>
-                    <View style={styles.multiAnswerIndicator}>
-                      <Text style={styles.multiAnswerIndicatorText}>
-                        {battleQuestions[battleCurrentQIndex]?.isMultiSelect ? '☑️ MULTI-SELECT' : '🔘 SINGLE'}
+                  </View>
+                )}
+
+                {/* Question Text */}
+                <Text style={styles.battleQuestionText}>
+                  {battleQuestions[battleCurrentQIndex]?.question}
+                </Text>
+
+                {/* Photo / Diagram Illustration preview if attached */}
+                {battleQuestions[battleCurrentQIndex]?.hasPhoto && (
+                  <View style={styles.diagramMockupBox}>
+                    <View style={styles.diagramTopRow}>
+                      <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
+                      <Text style={styles.diagramTitleText}>Architecture & Flow Diagram</Text>
+                    </View>
+                    <View style={styles.diagramGraphicPlaceholder}>
+                      <Text style={styles.diagramNodeLeft}>Client Request</Text>
+                      <Text style={styles.diagramArrow}>➔ [Load Balancer] ➔</Text>
+                      <Text style={styles.diagramNodeRight}>{battleQuestions[battleCurrentQIndex]?.topic.replace('Notes: ', '')} Core</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Options List with Checkbox style */}
+                {battleQuestions[battleCurrentQIndex]?.options.map((opt, i) => {
+                  const letter = ['A', 'B', 'C', 'D'][i];
+                  const isSelected = battleSelectedAnswers.includes(letter);
+                  const isCorrect = battleQuestions[battleCurrentQIndex]?.correctAnswers.includes(letter);
+
+                  let optionCardStyle: any = styles.battleOptionItem;
+                  if (isSelected) optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemSelected];
+                  if (battleAnswerSubmitted) {
+                    if (isCorrect) {
+                      optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemCorrect];
+                    } else if (isSelected && !isCorrect) {
+                      optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemWrong];
+                    }
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={letter}
+                      style={optionCardStyle}
+                      onPress={() => handleToggleAnswerOption(letter)}
+                      disabled={battleAnswerSubmitted}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[
+                        styles.checkboxBox,
+                        isSelected && styles.checkboxBoxSelected,
+                        battleAnswerSubmitted && isCorrect && styles.checkboxBoxCorrect
+                      ]}>
+                        <Text style={styles.checkboxLetter}>
+                          {isSelected ? '✓' : letter}
+                        </Text>
+                      </View>
+                      <Text style={[
+                        styles.battleOptionText,
+                        isSelected && styles.battleOptionTextSelected,
+                        battleAnswerSubmitted && isCorrect && { color: '#34d399', fontWeight: 'bold' }
+                      ]}>
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Submit or Next Question Action */}
+                {!battleAnswerSubmitted ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.submitAnswerBtn,
+                      battleSelectedAnswers.length === 0 && { opacity: 0.5 }
+                    ]}
+                    onPress={handleSubmitBattleAnswer}
+                    disabled={battleSelectedAnswers.length === 0}
+                  >
+                    <Text style={styles.submitAnswerBtnText}>
+                      CONFIRM ANSWER ({battleSelectedAnswers.length} selected) ➔
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.answerFeedbackCard}>
+                    {/* Status Heading */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 18, marginRight: 6 }}>
+                        {[...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('') ? '🎉' : '❌'}
+                      </Text>
+                      <Text style={[
+                        styles.feedbackTitleText,
+                        [...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('')
+                          ? { color: '#34d399' }
+                          : { color: '#f43f5e' }
+                      ]}>
+                        {[...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('')
+                          ? 'Correct Choice! (+20 pts earned)'
+                          : 'Incorrect Choice'}
                       </Text>
                     </View>
-                  </View>
-                )}
 
-                {/* Active Question Box */}
-                {battleQuestions.length > 0 && (
-                  <View style={styles.codeEditorBox}>
-                    {/* Multi-Select Instruction Hint */}
-                    {battleQuestions[battleCurrentQIndex]?.isMultiSelect && (
-                      <View style={styles.multiSelectBanner}>
-                        <Text style={styles.multiSelectBannerText}>
-                          💡 Multiple-Answer Question: Select all options that apply before submitting!
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* Question Text */}
-                    <Text style={styles.battleQuestionText}>
-                      {battleQuestions[battleCurrentQIndex]?.question}
+                    <Text style={styles.correctAnswersLabel}>
+                      Correct Answers: {battleQuestions[battleCurrentQIndex]?.correctAnswers.join(', ')}
+                    </Text>
+                    <Text style={styles.feedbackExplanationText}>
+                      {battleQuestions[battleCurrentQIndex]?.explanation}
                     </Text>
 
-                    {/* Photo / Diagram Illustration preview if attached */}
-                    {battleQuestions[battleCurrentQIndex]?.hasPhoto && (
-                      <View style={styles.diagramMockupBox}>
-                        <View style={styles.diagramTopRow}>
-                          <Text style={{ fontSize: 13, marginRight: 6 }}>📊</Text>
-                          <Text style={styles.diagramTitleText}>Topic Diagram & Schema Architecture</Text>
-                        </View>
-                        <View style={styles.diagramGraphicPlaceholder}>
-                          <Text style={styles.diagramNodeLeft}>Client Node</Text>
-                          <Text style={styles.diagramArrow}>➔ [Router/LB] ➔</Text>
-                          <Text style={styles.diagramNodeRight}>{battleQuestions[battleCurrentQIndex]?.topic} Engine</Text>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Options List with Checkbox style for Multi-Select */}
-                    {battleQuestions[battleCurrentQIndex]?.options.map((opt, i) => {
-                      const letter = ['A', 'B', 'C', 'D'][i];
-                      const isSelected = battleSelectedAnswers.includes(letter);
-                      const isCorrect = battleQuestions[battleCurrentQIndex]?.correctAnswers.includes(letter);
-
-                      let optionCardStyle: any = styles.battleOptionItem;
-                      if (isSelected) optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemSelected];
-                      if (battleAnswerSubmitted) {
-                        if (isCorrect) {
-                          optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemCorrect];
-                        } else if (isSelected && !isCorrect) {
-                          optionCardStyle = [styles.battleOptionItem, styles.battleOptionItemWrong];
-                        }
-                      }
-
-                      return (
-                        <TouchableOpacity
-                          key={letter}
-                          style={optionCardStyle}
-                          onPress={() => handleToggleAnswerOption(letter)}
-                          disabled={battleAnswerSubmitted}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[
-                            styles.checkboxBox,
-                            isSelected && styles.checkboxBoxSelected,
-                            battleAnswerSubmitted && isCorrect && styles.checkboxBoxCorrect
-                          ]}>
-                            <Text style={styles.checkboxLetter}>
-                              {isSelected ? '✓' : letter}
-                            </Text>
-                          </View>
-                          <Text style={[
-                            styles.battleOptionText,
-                            isSelected && styles.battleOptionTextSelected,
-                            battleAnswerSubmitted && isCorrect && { color: '#34d399', fontWeight: 'bold' }
-                          ]}>
-                            {opt}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-
-                    {/* Submit or Next Question Action Row */}
-                    {!battleAnswerSubmitted ? (
-                      <TouchableOpacity
-                        style={[
-                          styles.submitAnswerBtn,
-                          battleSelectedAnswers.length === 0 && { opacity: 0.5 }
-                        ]}
-                        onPress={handleSubmitBattleAnswer}
-                        disabled={battleSelectedAnswers.length === 0}
-                      >
-                        <Text style={styles.submitAnswerBtnText}>
-                          CONFIRM ANSWER ({battleSelectedAnswers.length} selected) ➔
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.answerFeedbackCard}>
-                        {/* Status Heading */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                          <Text style={{ fontSize: 18, marginRight: 6 }}>
-                            {[...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('') ? '🎉' : '❌'}
-                          </Text>
-                          <Text style={[
-                            styles.feedbackTitleText,
-                            [...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('')
-                              ? { color: '#34d399' }
-                              : { color: '#f43f5e' }
-                          ]}>
-                            {[...battleSelectedAnswers].sort().join('') === [...battleQuestions[battleCurrentQIndex].correctAnswers].sort().join('')
-                              ? 'Correct! (+20 pts earned)'
-                              : 'Incorrect Choice'}
-                          </Text>
-                        </View>
-
-                        <Text style={styles.correctAnswersLabel}>
-                          Correct Answers: {battleQuestions[battleCurrentQIndex]?.correctAnswers.join(', ')}
-                        </Text>
-                        <Text style={styles.feedbackExplanationText}>
-                          {battleQuestions[battleCurrentQIndex]?.explanation}
-                        </Text>
-
-                        {/* Next question button */}
-                        <TouchableOpacity
-                          style={styles.nextBattleQBtn}
-                          onPress={handleNextBattleQuestion}
-                        >
-                          <Text style={styles.nextBattleQBtnText}>
-                            {battleCurrentQIndex < battleQuestions.length - 1 ? 'NEXT QUESTION ➔' : 'VIEW BATTLE RESULTS 🏆'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                    {/* Next question button */}
+                    <TouchableOpacity
+                      style={styles.nextBattleQBtn}
+                      onPress={handleNextBattleQuestion}
+                    >
+                      <Text style={styles.nextBattleQBtnText}>
+                        {battleCurrentQIndex < battleQuestions.length - 1 ? 'NEXT QUESTION ➔' : 'VIEW BATTLE SCOREBOARD 🏆'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
             )}
+          </View>
+        )}
 
-            {/* 3. BATTLE RESULTS / SCOREBOARD VIEW */}
-            {mcqSubTab === 'results' && (
-              <View style={styles.resultsCard}>
-                <View style={styles.trophyGlowBox}>
-                  <Text style={{ fontSize: 44 }}>🏆</Text>
-                </View>
+        {/* ----------------------------------------------------------- */}
+        {/* VIEW 4: BATTLE RESULTS / SCOREBOARD */}
+        {/* ----------------------------------------------------------- */}
+        {mcqSubTab === 'results' && (
+          <View style={styles.resultsCard}>
+            <View style={styles.trophyGlowBox}>
+              <Text style={{ fontSize: 44 }}>🏆</Text>
+            </View>
 
-                <Text style={styles.resultsMainTitle}>
-                  {battleScore >= battleOpponentScore ? 'BATTLE VICTORY!' : 'MATCH COMPLETED'}
-                </Text>
-                <Text style={styles.resultsSubTitle}>
-                  Room {battleRoomCode} · {battleQuestions.length} Questions Completed
-                </Text>
+            <Text style={styles.resultsMainTitle}>
+              {battleScore >= battleOpponentScore ? 'BATTLE VICTORY!' : 'TEST COMPLETED'}
+            </Text>
+            <Text style={styles.resultsSubTitle}>
+              Room {battleRoomCode} · {battleQuestions.length} Questions Evaluated
+            </Text>
 
-                {/* Score Comparison Grid */}
-                <View style={styles.scoreComparisonRow}>
-                  <View style={styles.scoreBoxPlayer}>
-                    <Text style={styles.scoreBoxLabel}>YOU</Text>
-                    <Text style={styles.scoreBoxNum}>{battleScore}</Text>
-                    <Text style={styles.scoreBoxPts}>POINTS</Text>
-                  </View>
-                  <Text style={styles.scoreVsText}>VS</Text>
-                  <View style={[styles.scoreBoxPlayer, { borderColor: '#f43f5e' }]}>
-                    <Text style={[styles.scoreBoxLabel, { color: '#f43f5e' }]}>OPPONENT</Text>
-                    <Text style={[styles.scoreBoxNum, { color: '#f43f5e' }]}>{battleOpponentScore}</Text>
-                    <Text style={styles.scoreBoxPts}>POINTS</Text>
-                  </View>
-                </View>
-
-                {/* XP Earned Banner */}
-                <View style={styles.xpEarnedCard}>
-                  <Text style={{ fontSize: 20, marginRight: 8 }}>💎</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.xpEarnedTitle}>+50 Placement XP Added</Text>
-                    <Text style={styles.xpEarnedSub}>Added to your total readiness progress.</Text>
-                  </View>
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.resultsActionsRow}>
-                  <TouchableOpacity
-                    style={styles.rematchBtn}
-                    onPress={() => {
-                      setBattleCurrentQIndex(0);
-                      setBattleSelectedAnswers([]);
-                      setBattleAnswerSubmitted(false);
-                      setBattleScore(0);
-                      setBattleOpponentScore(0);
-                      setBattleTimer(45);
-                      setMcqSubTab('battle');
-                    }}
-                  >
-                    <Text style={styles.rematchBtnText}>🔄 Rematch</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.configureNewBtn}
-                    onPress={() => setMcqSubTab('teacher_studio')}
-                  >
-                    <Text style={styles.configureNewBtnText}>👨‍🏫 Teacher Studio (New Battle)</Text>
-                  </TouchableOpacity>
-                </View>
+            {/* Score Comparison Grid */}
+            <View style={styles.scoreComparisonRow}>
+              <View style={styles.scoreBoxPlayer}>
+                <Text style={styles.scoreBoxLabel}>YOU</Text>
+                <Text style={styles.scoreBoxNum}>{battleScore}</Text>
+                <Text style={styles.scoreBoxPts}>POINTS</Text>
               </View>
-            )}
+              <Text style={styles.scoreVsText}>VS</Text>
+              <View style={[styles.scoreBoxPlayer, { borderColor: '#f43f5e' }]}>
+                <Text style={[styles.scoreBoxLabel, { color: '#f43f5e' }]}>OPPONENT</Text>
+                <Text style={[styles.scoreBoxNum, { color: '#f43f5e' }]}>{battleOpponentScore}</Text>
+                <Text style={styles.scoreBoxPts}>POINTS</Text>
+              </View>
+            </View>
+
+            {/* XP Earned Banner */}
+            <View style={styles.xpEarnedCard}>
+              <Text style={{ fontSize: 20, marginRight: 8 }}>💎</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.xpEarnedTitle}>+50 Placement XP Added</Text>
+                <Text style={styles.xpEarnedSub}>Added to your placement readiness ranking.</Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.resultsActionsRow}>
+              <TouchableOpacity
+                style={styles.rematchBtn}
+                onPress={() => {
+                  setBattleCurrentQIndex(0);
+                  setBattleSelectedAnswers([]);
+                  setBattleAnswerSubmitted(false);
+                  setBattleScore(0);
+                  setBattleOpponentScore(0);
+                  setBattleTimer(battleTimerDuration);
+                  setMcqSubTab('battle');
+                }}
+              >
+                <Text style={styles.rematchBtnText}>🔄 Retake / Rematch</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.rematchBtn}
+                onPress={() => setMcqSubTab('join_room')}
+              >
+                <Text style={styles.rematchBtnText}>🔑 Join Room</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.configureNewBtn}
+                onPress={() => setMcqSubTab('create_room')}
+              >
+                <Text style={styles.configureNewBtnText}>🛠️ New Room</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -1907,10 +1848,11 @@ export default function App() {
                       style={styles.startSubtopicBtn}
                       onPress={() => {
                         setActiveTab('Arena');
-                        setArenaMode('sql');
+                        setMcqSubTab('battle');
+                        setBattleTimer(battleTimerDuration);
                       }}
                     >
-                      <Text style={styles.startSubtopicBtnText}>START</Text>
+                      <Text style={styles.startSubtopicBtnText}>TEST</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -4137,4 +4079,316 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+
+  // -----------------------------------------------------------
+  // NEW MCQ ARENA ROOMS & MOBILE TEST LAB STYLES
+  // -----------------------------------------------------------
+  arenaHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  arenaMainTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  arenaSubTitle: {
+    color: '#64748b',
+    fontSize: 10,
+    marginTop: 2,
+  },
+  mobileOnlyBadge: {
+    backgroundColor: '#0c2238',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#0284c7',
+  },
+  mobileOnlyBadgeText: {
+    color: '#38bdf8',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+
+  // Join Room Styles
+  joinRoomCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 16,
+  },
+  joinRoomHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  joinRoomCardTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  joinRoomCardSub: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  joinRoomInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  joinCodeInput: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: 'monospace',
+    fontWeight: 'bold',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  joinSubmitBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  joinSubmitBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  roomErrorBanner: {
+    backgroundColor: '#2e0f14',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#f43f5e',
+    padding: 10,
+    marginTop: 10,
+  },
+  roomErrorText: {
+    color: '#fb7185',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // Active Rooms List Styles
+  activeRoomsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  activeRoomsSectionTitle: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  activeRoomsSectionSub: {
+    color: '#64748b',
+    fontSize: 10,
+  },
+  activeRoomCard: {
+    backgroundColor: '#0d1326',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 14,
+    marginBottom: 10,
+  },
+  activeRoomTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  activeRoomTitle: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  activeRoomHost: {
+    color: '#64748b',
+    fontSize: 10,
+    marginTop: 3,
+  },
+  roomCodeBadge: {
+    backgroundColor: '#0c1b33',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#1d4ed8',
+  },
+  roomCodeBadgeText: {
+    color: '#60a5fa',
+    fontSize: 10,
+    fontWeight: '900',
+    fontFamily: 'monospace',
+  },
+  roomBadgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  roomMetaPill: {
+    backgroundColor: '#070c1a',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  roomMetaPillText: {
+    color: '#94a3b8',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  roomTopicsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginBottom: 10,
+  },
+  topicMiniTag: {
+    backgroundColor: '#101a33',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  topicMiniTagText: {
+    color: '#38bdf8',
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  enterRoomBtn: {
+    backgroundColor: '#17223b',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#223359',
+  },
+  enterRoomBtnText: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+
+  // Source Type Selector Styles
+  sourceTypeToggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  sourceTypeCard: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 10,
+  },
+  sourceTypeCardActive: {
+    backgroundColor: '#0c1e38',
+    borderColor: '#38bdf8',
+  },
+  sourceTypeIcon: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  sourceTypeTitle: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  sourceTypeTitleActive: {
+    color: '#38bdf8',
+  },
+  sourceTypeSub: {
+    color: '#64748b',
+    fontSize: 9,
+  },
+  subFieldLabel: {
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+
+  // PDF / Notes Text Input Styles
+  presetButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  presetBtn: {
+    backgroundColor: '#101a33',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  presetBtnText: {
+    color: '#93c5fd',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pdfNotesTextInput: {
+    backgroundColor: '#070c1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    color: '#e2e8f0',
+    fontSize: 12,
+    padding: 10,
+    minHeight: 100,
+    lineHeight: 18,
+  },
+
+  // Duration Pills Styles
+  durationPillsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 4,
+  },
+  durationPill: {
+    flex: 1,
+    backgroundColor: '#070c1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  durationPillSelected: {
+    backgroundColor: '#1e1124',
+    borderColor: '#f43f5e',
+  },
+  durationPillText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  durationPillTextSelected: {
+    color: '#fb7185',
+    fontWeight: '900',
+  },
 });
+

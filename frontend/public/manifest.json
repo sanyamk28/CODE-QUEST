@@ -1,0 +1,26 @@
+{
+  "name": "CODE QUEST — AI Coding Arena & Placement Prep",
+  "short_name": "CodeQuest",
+  "description": "Gamified coding arena, SQL lab, company assessments, live 1v1 code battles, and AI technical interview prep.",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#070a13",
+  "theme_color": "#0b101e",
+  "orientation": "any",
+  "categories": ["education", "developer", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

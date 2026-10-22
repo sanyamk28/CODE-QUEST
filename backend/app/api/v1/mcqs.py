@@ -1,24 +1,28 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from uuid import UUID
 
 from app.core.database import get_db
-from app.api.v1.deps import get_current_user
+from app.api.v1.deps import get_current_user, get_current_user_optional
 from app.models import models
 from app.schemas import schemas
 
 router = APIRouter()
 
+@router.get("", response_model=List[schemas.QuestionListResponse])
 @router.get("/", response_model=List[schemas.QuestionListResponse])
 def get_mcq_questions(
     type: Optional[str] = "mcq", # mcq, aptitude, puzzle, scenario
     difficulty: Optional[str] = None,
     subtopic_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: Optional[models.User] = Depends(get_current_user_optional)
 ):
-    query = db.query(models.Question).filter(models.Question.type == type)
+    query = db.query(models.Question).options(
+        joinedload(models.Question.topic),
+        joinedload(models.Question.subtopic)
+    ).filter(models.Question.type == type)
     if difficulty:
         query = query.filter(models.Question.difficulty == difficulty)
     if subtopic_id:
@@ -46,14 +50,18 @@ import uuid
 def get_mcq_detail(
     id: str,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: Optional[models.User] = Depends(get_current_user_optional)
 ):
     try:
         qid = uuid.UUID(id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid question ID")
 
-    q = db.query(models.Question).filter(models.Question.id == qid).first()
+    q = db.query(models.Question).options(
+        joinedload(models.Question.mcq_detail),
+        joinedload(models.Question.topic),
+        joinedload(models.Question.subtopic)
+    ).filter(models.Question.id == qid).first()
     if not q:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

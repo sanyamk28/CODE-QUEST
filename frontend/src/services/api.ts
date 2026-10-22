@@ -23,7 +23,13 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Optional: Handle token refresh or redirect to login
+      const url = error.config?.url || '';
+      const method = (error.config?.method || 'get').toLowerCase();
+      // Don't auto-logout for read-only problem browsing so fallback problems can display smoothly
+      const isPublicBrowse = method === 'get' && url.includes('/problems');
+      if (!isPublicBrowse && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('cq_auth_expired'));
+      }
     }
     return Promise.reject(error);
   }
@@ -59,5 +65,31 @@ export const getRandomScenario = async (difficulty?: string): Promise<RandomPuzz
 
 export const getRandomPuzzle = async (difficulty?: string): Promise<RandomPuzzleScenario> => {
   return getRandomPuzzleOrScenario({ type: 'puzzle', difficulty });
+};
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatbotRequestPayload {
+  message: string;
+  history?: { role: string; content: string }[];
+  screen?: string;
+  target_role?: string;
+  user_name?: string;
+}
+
+export interface ChatbotResponsePayload {
+  reply: string;
+  suggestions?: string[];
+  screen_context?: string;
+}
+
+export const sendChatMessage = async (payload: ChatbotRequestPayload): Promise<ChatbotResponsePayload> => {
+  const response = await apiClient.post<ChatbotResponsePayload>('/ai/chat', payload);
+  return response.data;
 };
 

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b101e" />
+      <stop offset="100%" stop-color="#070a13" />
+    </linearGradient>
+    <linearGradient id="accentGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad512)" />
+  <rect x="8" y="8" width="496" height="496" rx="102" fill="none" stroke="url(#accentGrad512)" stroke-width="8" opacity="0.8" />
+  
+  <!-- Code Quest Emblem with Glow -->
+  <g transform="translate(126, 126)" filter="url(#glow)">
+    <!-- Terminal Brackets -->
+    <path d="M 60 65 L 20 130 L 60 195" fill="none" stroke="url(#accentGrad512)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 200 65 L 240 130 L 200 195" fill="none" stroke="url(#accentGrad512)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Center Sword / Lightning Bolt -->
+    <path d="M 130 35 L 148 110 L 180 110 L 115 225 L 125 145 L 95 145 Z" fill="url(#accentGrad512)" />
+  </g>
+</svg>

@@ -5,7 +5,7 @@
     "slug": "placementforge-mobile",
     "owner": "sanyamk",
     "scheme": "placementforge",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.sanyamk.placementforgemobile",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#060913"

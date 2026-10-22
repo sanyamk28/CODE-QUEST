@@ -20,27 +20,10 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     # Check if user already exists (case-insensitive)
     user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if user:
-        # If user exists, check if password matches for seamless login
-        if verify_password(user_in.password, user.hashed_password):
-            access_token = create_access_token(data={"sub": str(user.id)})
-            refresh_token = create_refresh_token(data={"sub": str(user.id)})
-            has_role = bool(user.profile and user.profile.target_role and user.profile.target_role.strip())
-            return TokenResponse(
-                access_token=access_token,
-                refresh_token=refresh_token,
-                is_admin=user.is_admin,
-                is_new_user=False,
-                needs_onboarding=not has_role,
-                user_id=str(user.id),
-                email=user.email,
-                name=user.profile.name if user.profile else clean_email.split("@")[0].title(),
-                target_role=user.profile.target_role if user.profile else ""
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email is already registered. Please sign in with your correct password."
-            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered. Please sign in with your password."
+        )
     
     # Create new user and store credentials securely
     new_user = User(
@@ -116,7 +99,14 @@ def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
     needs_onboard = False
 
     if not user:
-        # If user does not exist yet, automatically create their account and save their password!
+        # Enforce strong minimum password requirements
+        if len(user_in.password.strip()) < 6:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 6 characters long."
+            )
+
+        # If user does not exist yet, create their account securely
         user = User(
             email=clean_email,
             hashed_password=get_password_hash(user_in.password),
@@ -155,7 +145,7 @@ def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This account has been deactivated."
+                detail="Inactive user. This account has been deactivated."
             )
             
         has_role = bool(user.profile and user.profile.target_role and user.profile.target_role.strip())
@@ -188,28 +178,26 @@ def google_login(payload: GoogleLoginRequest, request: Request, db: Session = De
     email = payload.email.strip().lower() if payload.email else None
     name = payload.name.strip() if payload.name else None
     
+    from app.core.config import settings
+    is_dev = (settings.ENV_MODE == "development")
+
     # 1. Parse token / mock format / live Google OAuth token
-    if id_token.startswith("mock-google-token-"):
-        token_email = id_token[len("mock-google-token-"):].strip().lower()
-        if not email:
-            email = token_email
-        if not name:
-            email_prefix = email.split("@")[0]
-            name = " ".join([word.capitalize() for word in email_prefix.split(".")])
-    elif id_token.startswith("google-user-"):
-        token_email = id_token[len("google-user-"):].strip().lower()
-        if not email:
-            email = token_email
-        if not name:
-            email_prefix = email.split("@")[0]
-            name = " ".join([word.capitalize() for word in email_prefix.split(".")])
-    elif id_token.startswith("google-token-"):
-        token_email = id_token[len("google-token-"):].strip().lower()
-        if not email:
-            email = token_email
-        if not name:
-            email_prefix = email.split("@")[0]
-            name = " ".join([word.capitalize() for word in email_prefix.split(".")])
+    is_mock = any(id_token.startswith(pfx) for pfx in ["mock-google-token-", "google-user-", "google-token-"])
+    if is_mock:
+        if not is_dev:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Mock Google tokens are rejected in production mode for security."
+            )
+        for pfx in ["mock-google-token-", "google-user-", "google-token-"]:
+            if id_token.startswith(pfx):
+                token_email = id_token[len(pfx):].strip().lower()
+                if not email:
+                    email = token_email
+                if not name:
+                    email_prefix = email.split("@")[0]
+                    name = " ".join([word.capitalize() for word in email_prefix.split(".")])
+                break
     elif id_token and not email:
         # Check if id_token is a full JWT (header.payload.signature) from Google Identity Services
         if "." in id_token and len(id_token.split(".")) == 3:

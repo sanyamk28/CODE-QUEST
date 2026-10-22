@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Flame, Bell, User, Sparkles, LogIn, Smartphone, Monitor } from 'lucide-react';
 import { ActiveTabType } from '../types';
+import { InstallPwaButton } from './InstallPwaButton';
 
 interface HeaderProps {
   activeTab: ActiveTabType;
@@ -90,6 +91,9 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right side items */}
       <div className="flex items-center gap-2.5">
+        {/* Install PWA to Laptop / Desktop */}
+        <InstallPwaButton />
+
         {/* Web / Mobile App Mode Toggle for Desktop */}
         {onTogglePhonePreview && (
           <button

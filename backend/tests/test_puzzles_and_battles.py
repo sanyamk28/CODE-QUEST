@@ -51,6 +51,8 @@ def test_puzzles_workflow(client, db_session):
     assert res.status_code == 200
     puzzles = res.json()
     assert len(puzzles) >= 1
+    assert "company_tags" in puzzles[0]
+    assert puzzles[0]["company_tags"] == ["Google"]
 
     # 2. Get puzzle detail
     det_res = client.get(f"/api/v1/puzzles/{q.id}", headers=headers)
@@ -58,6 +60,7 @@ def test_puzzles_workflow(client, db_session):
     p_det = det_res.json()
     assert p_det["title"] == "3 Light Bulbs"
     assert len(p_det["hints"]) >= 1
+    assert p_det["company_tags"] == ["Google"]
 
     # 3. Check solution
     chk_res = client.post(

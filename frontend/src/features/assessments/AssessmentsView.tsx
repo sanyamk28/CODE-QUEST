@@ -14,6 +14,8 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
+import { recordActivity } from '../../services/activityTracker';
+import { showToast } from '../../components/Toast';
 
 interface TestItem {
   id: string;
@@ -277,11 +279,12 @@ export const AssessmentsView: React.FC = () => {
 
                 <button
                   onClick={() => {
-                    alert('Assessment completed! Score: 88/100 recorded.');
+                    recordActivity('assessment', { xp: 50 });
+                    showToast('Assessment submitted successfully! Score: 88/100 (+50 XP)', 'success');
                     setActiveTestModal(null);
                     setIsTestRunning(false);
                   }}
-                  className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md"
+                  className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs shadow-md transition hover:bg-blue-500 active:scale-95"
                 >
                   Submit Assessment
                 </button>

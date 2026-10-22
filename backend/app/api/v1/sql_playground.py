@@ -1,26 +1,47 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.api.v1.deps import get_current_user
+from app.api.v1.deps import get_current_user, get_current_user_optional
 from app.models import models
 from app.schemas import schemas
 
 router = APIRouter()
 
-# Forbidden keywords in SQL Practice sandbox
-FORBIDDEN_KEYWORDS = ["drop", "truncate", "alter", "grant", "revoke", "create", "insert", "update", "delete", "vacuum"]
+import re
+import sqlite3
 
+# Comprehensive forbidden keywords in SQL Practice sandbox
+FORBIDDEN_KEYWORDS = [
+    "drop", "truncate", "alter", "grant", "revoke", "create",
+    "insert", "update", "delete", "vacuum", "attach", "detach",
+    "pragma", "reindex", "load_extension", "transaction", "commit", "rollback"
+]
+
+def readonly_authorizer(action, arg1, arg2, dbname, source):
+    """
+    Native C-level SQLite engine authorizer. Rejects any attempt to modify tables,
+    attach databases, call system pragmas, or execute DDL/DML.
+    """
+    # 21 = SQLITE_SELECT, 20 = SQLITE_READ, 31 = SQLITE_FUNCTION
+    if action in (21, 20, 31):
+        return sqlite3.SQLITE_OK
+    return sqlite3.SQLITE_DENY
+
+@router.get("", response_model=List[schemas.QuestionListResponse])
 @router.get("/", response_model=List[schemas.QuestionListResponse])
 def get_sql_problems(
     difficulty: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: Optional[models.User] = Depends(get_current_user_optional)
 ):
-    query = db.query(models.Question).filter(models.Question.type == "sql")
+    query = db.query(models.Question).options(
+        joinedload(models.Question.topic),
+        joinedload(models.Question.subtopic)
+    ).filter(models.Question.type == "sql")
     if difficulty:
         query = query.filter(models.Question.difficulty == difficulty)
         
@@ -46,14 +67,18 @@ import uuid
 def get_sql_problem_detail(
     id: str,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: Optional[models.User] = Depends(get_current_user_optional)
 ):
     try:
         qid = uuid.UUID(id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid problem ID")
 
-    q = db.query(models.Question).filter(models.Question.id == qid, models.Question.type == "sql").first()
+    q = db.query(models.Question).options(
+        joinedload(models.Question.sql_detail),
+        joinedload(models.Question.topic),
+        joinedload(models.Question.subtopic)
+    ).filter(models.Question.id == qid, models.Question.type == "sql").first()
     if not q:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -128,24 +153,36 @@ def execute_sql_query(
             detail="SQL challenge not found"
         )
         
-    query_text = payload.query.strip().lower()
-    
-    # 1. Security validation: block modification commands
-    for kw in FORBIDDEN_KEYWORDS:
-        if kw in query_text:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Forbidden keyword '{kw}' detected. Only read-only SELECT queries are allowed."
-            )
-            
-    # Check that query starts with SELECT or WITH
-    if not (query_text.startswith("select") or query_text.startswith("with")):
+    raw_query = payload.query.strip()
+
+    # 1. Strip SQL comments (-- and /* */) to prevent comment-based filter bypasses
+    no_comments = re.sub(r'/\*.*?\*/', '', raw_query, flags=re.DOTALL)
+    no_comments = re.sub(r'--.*$', '', no_comments, flags=re.MULTILINE).strip()
+
+    # 2. Prevent multi-statement attacks (e.g. SELECT 1; DROP TABLE ...)
+    if ";" in no_comments.rstrip(";"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Multi-statement SQL queries are not permitted. Submit a single query."
+        )
+
+    # 3. Check that query starts with SELECT or WITH
+    lower_query = no_comments.lower()
+    if not (lower_query.startswith("select") or lower_query.startswith("with")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Queries must start with SELECT or WITH statements."
         )
 
-    # 2. Execute strictly inside an isolated in-memory SQLite sandbox
+    # 4. Strict word-boundary regex check for forbidden keywords
+    for kw in FORBIDDEN_KEYWORDS:
+        if re.search(r'\b' + re.escape(kw) + r'\b', lower_query):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Forbidden keyword '{kw}' detected. Only read-only SELECT queries are allowed."
+            )
+
+    # 5. Execute strictly inside an isolated in-memory SQLite sandbox with native engine authorizer
     sql_error = None
     rows_output = []
     columns_output = []
@@ -155,9 +192,11 @@ def execute_sql_query(
         q.sql_detail.schema_description or "",
         q.sql_detail.dataset_tables
     )
+    # Enforce C-level SQLite authorizer: zero writes or pragmas permitted
+    sandbox_conn.set_authorizer(readonly_authorizer)
     try:
         cur = sandbox_conn.cursor()
-        cur.execute(payload.query)
+        cur.execute(no_comments)
         if cur.description:
             columns_output = [col[0] for col in cur.description]
             fetched = cur.fetchmany(50)

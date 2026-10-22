@@ -9,7 +9,7 @@ from io import BytesIO
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.api.v1.deps import get_current_user
+from app.api.v1.deps import get_current_user, get_current_user_optional
 from app.models import models
 from app.schemas import schemas
 from app.services.ats_scanner import calculate_ats_score
@@ -206,10 +206,24 @@ async def upload_resume(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only PDF resume uploads are supported."
         )
-        
+
+    # 1. Enforce file size limit (10MB max to prevent memory exhaustion DoS)
+    MAX_RESUME_SIZE = 10 * 1024 * 1024  # 10MB
     contents = await file.read()
-    
-    # 1. Parse text from PDF
+    if len(contents) > MAX_RESUME_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File size exceeds the 10MB limit."
+        )
+
+    # 2. Verify PDF magic bytes header to prevent malicious disguised files
+    if not contents.startswith(b"%PDF-"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file signature: Content is not a valid PDF document."
+        )
+        
+    # 3. Parse text from PDF
     resume_text = ""
     try:
         reader = PdfReader(BytesIO(contents))
@@ -221,19 +235,19 @@ async def upload_resume(
             detail=f"Failed to parse PDF text: {str(e)}"
         )
         
-    # 2. Determine target role
+    # 4. Determine target role
     effective_role = target_role.strip() if target_role and target_role.strip() else (
         current_user.profile.target_role if (current_user.profile and current_user.profile.target_role) else "Software Engineer"
     )
 
-    # 3. Calculate genuine ATS score and full breakdown
+    # 5. Calculate genuine ATS score and full breakdown
     ats_result = calculate_ats_score(
         resume_text=resume_text,
         target_role=effective_role,
         job_description=job_description
     )
 
-    # 4. Optional Gemini enrichment if API key configured
+    # 6. Optional Gemini enrichment if API key configured
     if settings.GEMINI_API_KEY:
         prompt = f"""
         You are an elite technical recruiter and ATS auditor.
@@ -260,11 +274,16 @@ async def upload_resume(
             if parsed_llm.get("suggestions") and isinstance(parsed_llm["suggestions"], list) and len(parsed_llm["suggestions"]) >= 2:
                 ats_result["suggestions"] = parsed_llm["suggestions"]
 
-    # 5. Save Resume metadata
+    # 7. Sanitize filename to eliminate path traversal attacks
+    import re
+    safe_base = os.path.basename(file.filename)
+    sanitized_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', safe_base)
+
+    # 8. Save Resume metadata
     resume_rec = models.Resume(
         user_id=current_user.id,
-        file_name=file.filename,
-        file_path=f"uploads/{file.filename}"
+        file_name=sanitized_filename,
+        file_path=f"uploads/{sanitized_filename}"
     )
     db.add(resume_rec)
     db.commit()
@@ -310,7 +329,11 @@ async def upload_resume(
         bullet_improvements=[
             schemas.ATSBulletImprovement(**b) for b in ats_result.get("bullet_improvements", [])
         ],
-        jd_match_score=ats_result.get("jd_match_score")
+        jd_match_score=ats_result.get("jd_match_score"),
+        hire_chances=schemas.HireChancesBreakdown(**ats_result["hire_chances"]) if "hire_chances" in ats_result else None,
+        what_to_change=[schemas.WhatToChangeItem(**w) for w in ats_result.get("what_to_change", [])],
+        recommended_projects=[schemas.RecommendedProject(**p) for p in ats_result.get("recommended_projects", [])],
+        recommended_certifications=[schemas.RecommendedCertification(**c) for c in ats_result.get("recommended_certifications", [])]
     )
 
 @router.post("/resume/rewrite-bullet", response_model=schemas.ResumeBulletRewriteResponse)
@@ -360,4 +383,149 @@ def rewrite_resume_bullet(
         action_verb=parsed.get("action_verb", "Architected"),
         key_metrics_added=parsed.get("key_metrics_added", ["38% query latency reduction", "100K+ users"])
     )
+
+
+def generate_smart_chat_fallback(query: str, target_role: str, screen: str, user_name: str) -> dict:
+    q = query.lower().strip()
+    
+    # 1. DSA / Algorithms
+    if any(k in q for k in ["two pointer", "sliding window", "binary search", "bfs", "dfs", "dynamic programming", "dsa", "complexity", "big o", "linked list", "tree", "graph", "sorting", "algorithm"]):
+        reply = (
+            "### 💡 Master DSA Tip for Interviews\n\n"
+            "When approaching coding interview problems, follow this 4-step framework:\n\n"
+            "1. **Understand Constraints & Edge Cases**: Ask about input bounds ($N \\le 10^5$ usually means $O(N \\log N)$ or $O(N)$).\n"
+            "2. **Identify the Pattern**:\n"
+            "   - Sorted arrays / subarrays -> **Two Pointers** or **Sliding Window**\n"
+            "   - Shortest path / layer traversal -> **BFS with Queue**\n"
+            "   - Subsets / Permutations / Decisions -> **Backtracking or DP**\n"
+            "   - Top/K elements -> **Min/Max Heap**\n"
+            "3. **Write Clean Code**: Use descriptive variable names and handle null/empty checks.\n"
+            "4. **Analyze Complexity**: State Time $O(...)$ and Space $O(...)$ before the interviewer asks."
+        )
+        suggestions = ["Explain Two Pointers with an example", "What are the top 10 DP patterns?", "How to master Graph algorithms?"]
+    # 2. SQL / Databases
+    elif any(k in q for k in ["sql", "database", "postgres", "index", "join", "query", "acid", "shard", "normalization"]):
+        reply = (
+            "### 🗄️ SQL & Database Optimization Strategy\n\n"
+            "In technical assessments and system design, relational queries frequently test these core concepts:\n\n"
+            "- **Window Functions**: `ROW_NUMBER()`, `RANK()`, and `DENSE_RANK() OVER (PARTITION BY ... ORDER BY ...)` are crucial for leaderboard and grouping queries.\n"
+            "- **Indexing Mechanics**: B-Tree indexes speed up equality and range lookups. Composite indexes must follow the *Leftmost Prefix Rule*.\n"
+            "- **JOIN Performance**: Replace subqueries in `WHERE col IN (...)` with `EXISTS` or `INNER JOIN` on indexed foreign keys to avoid full table scans.\n"
+            "- **Aggregation**: Always filter with `WHERE` before grouping (`HAVING`)."
+        )
+        suggestions = ["Show an example of ROW_NUMBER() in SQL", "How do B-Tree indexes work?", "Difference between INNER and LEFT JOIN"]
+    # 3. Resume / ATS
+    elif any(k in q for k in ["resume", "ats", "bullet", "cv", "project", "experience"]):
+        reply = (
+            f"### 📄 High-Impact Resume Advice for {target_role or 'Software Engineers'}\n\n"
+            "To pass modern Applicant Tracking Systems (ATS) and impress tech recruiters:\n\n"
+            "1. **Google X-Y-Z Formula**: Frame your achievements as:\n"
+            "   > *\"Accomplished [X], as measured by [Y], by doing [Z].\"*\n"
+            "   *Example:* *\"Accelerated API response time by 42% (from 480ms to 278ms) by implementing Redis caching and indexing slow Postgres queries.\"*\n"
+            "2. **Quantify Everything**: Mention numbers (users, latency drops, revenue saved, throughput).\n"
+            "3. **Use the CodeQuest Resume ATS**: Head over to the **Resume ATS** tab in the sidebar to upload your PDF and receive instant automated scoring with actionable keyword recommendations."
+        )
+        suggestions = ["Rewrite a resume bullet for me", "What skills should a Backend Developer list?", "How does ATS keyword matching work?"]
+    # 4. System Design
+    elif any(k in q for k in ["system design", "microservice", "kafka", "redis", "caching", "load balancer", "cap theorem", "scalability"]):
+        reply = (
+            "### 🏗️ System Design Interview Blueprint\n\n"
+            "When designing large-scale distributed systems, structure your discussion as follows:\n\n"
+            "1. **Requirement Clarification** (5 min): Functional (features) & Non-functional (latency < 100ms, 99.99% availability, consistency).\n"
+            "2. **Capacity Estimation** (5 min): Calculate QPS (Queries Per Second) and daily storage requirements.\n"
+            "3. **High-Level Architecture**: Client -> DNS/CDN -> API Gateway / Load Balancer -> Stateless App Servers -> Cache (Redis) -> Primary/Replica DB.\n"
+            "4. **Deep Dive Bottlenecks**: Data partitioning (sharding keys), cache eviction policies (LRU), asynchronous queues (Kafka/RabbitMQ) for write spikes."
+        )
+        suggestions = ["Explain CAP theorem simply", "How does Redis caching prevent DB overload?", "Designing a URL Shortener"]
+    # 5. Roadmap & Preparation
+    elif any(k in q for k in ["roadmap", "prepare", "study", "plan", "placement", "interview", "schedule", "routine", "battle"]):
+        reply = (
+            f"### 🎯 Step-by-Step Placement Roadmap for {target_role or 'Tech Roles'}\n\n"
+            f"Hi {user_name}! Here is the optimal preparation strategy on CodeQuest:\n\n"
+            "- **Phase 1**: Core CS Fundamentals (OS, DBMS, Computer Networks, OOP).\n"
+            "- **Phase 2**: High-Frequency DSA patterns (Arrays, Hashing, Two Pointers, Trees, Graphs).\n"
+            "- **Phase 3**: Practical Projects & SQL. Build and optimize end-to-end applications.\n"
+            "- **Phase 4**: Timed assessments, Mock Interviews with our AI Interviewer, and Code Battles.\n\n"
+            "👉 Visit the **Roadmaps** section in the navigation menu for tailored role milestones!"
+        )
+        suggestions = ["How many DSA questions should I solve daily?", "How to practice with the AI Interviewer?", "Tips for mock technical rounds"]
+    # 6. General / Friendly
+    else:
+        reply = (
+            f"Hello {user_name}! 👋 I am **QuestAI**, your dedicated technical interview and engineering mentor on CodeQuest.\n\n"
+            f"I can help you with:\n"
+            f"- 🧠 **DSA & Algorithms**: Problem-solving intuition, time/space complexity, and code explanations.\n"
+            f"- 🗄️ **SQL & System Design**: Query optimization, database schemas, and architectural patterns.\n"
+            f"- 📄 **Resume & Career**: ATS scoring tips, project suggestions, and recruiter expectations for **{target_role or 'Software Engineers'}**.\n"
+            f"- 🎯 **Platform Guidance**: Navigating roadmaps, battle mode, assessments, and interview simulations.\n\n"
+            f"What would you like to explore or solve together right now?"
+        )
+        suggestions = ["Explain Binary Search in simple terms", "How can I improve my SQL skills?", "What should I focus on for FAANG interviews?"]
+        
+    return {
+        "reply": reply,
+        "suggestions": suggestions
+    }
+
+
+@router.post("/chat", response_model=schemas.ChatbotResponse)
+def chat_with_ai(
+    payload: schemas.ChatbotRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(get_current_user_optional)
+):
+    user_name = payload.user_name or (current_user.profile.name if current_user and current_user.profile and current_user.profile.name else "Student")
+    target_role = payload.target_role or (current_user.profile.target_role if current_user and current_user.profile and current_user.profile.target_role else "Software Engineer")
+    screen = payload.screen or "dashboard"
+
+    fallback = generate_smart_chat_fallback(payload.message, target_role, screen, user_name)
+
+    if not settings.GEMINI_API_KEY:
+        return schemas.ChatbotResponse(
+            reply=fallback["reply"],
+            suggestions=fallback["suggestions"],
+            screen_context=screen
+        )
+
+    history_context = ""
+    if payload.history:
+        recent = payload.history[-4:]
+        history_context = "\n".join([f"{m.role.upper()}: {m.content}" for m in recent])
+
+    prompt = f"""
+    You are QuestAI, the elite, friendly, and deeply knowledgeable 24/7 AI Engineering Mentor on the CodeQuest platform.
+    The student is '{user_name}', preparing for the target role: '{target_role}'.
+    They are currently looking at the '{screen}' screen on CodeQuest.
+
+    Recent Conversation History:
+    {history_context}
+
+    Student Message: "{payload.message}"
+
+    Guidelines:
+    1. Give an insightful, practical, and highly clear answer.
+    2. Format using GitHub Markdown (bullet points, bold text, and fenced code blocks ```language for any code snippets).
+    3. Keep explanations structured and easy to digest.
+    4. Provide actionable advice or code examples where appropriate.
+    """
+
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        text_resp = response.text.strip()
+        if text_resp:
+            return schemas.ChatbotResponse(
+                reply=text_resp,
+                suggestions=fallback.get("suggestions", ["Explain this in detail", "Give a code snippet", "How is this asked in interviews?"]),
+                screen_context=screen
+            )
+    except Exception as e:
+        print(f"Gemini Chat execution error: {e}. Falling back to default assistant.")
+
+    return schemas.ChatbotResponse(
+        reply=fallback["reply"],
+        suggestions=fallback["suggestions"],
+        screen_context=screen
+    )
+
 

@@ -8,8 +8,11 @@ import {
   Camera,
   CheckCircle2,
   Sparkles,
-  Briefcase
+  Briefcase,
+  Laptop
 } from 'lucide-react';
+import { showToast } from '../../components/Toast';
+import { InstallPwaButton } from '../../components/InstallPwaButton';
 
 interface SettingsViewProps {
   userName: string;
@@ -41,6 +44,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     e.preventDefault();
     onUpdateProfile(fullName, role);
     setSavedFeedback(true);
+    showToast('Profile and settings updated successfully!', 'success');
     setTimeout(() => setSavedFeedback(false), 2500);
   };
 
@@ -87,6 +91,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </button>
           );
         })}
+
+        {/* PWA Laptop Installation Card */}
+        <div className="pt-3 border-t border-slate-800/80">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-950/40 via-[#0e1424] to-[#0b101e] border border-indigo-500/30 space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+              <Laptop className="h-3.5 w-3.5 text-sky-400" />
+              <span>Install to Laptop</span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-snug">
+              Launch Code Quest from your desktop anytime in its own distraction-free window.
+            </p>
+            <InstallPwaButton className="w-full justify-center text-center" />
+          </div>
+        </div>
       </div>
 
       {/* Right Content Area (~9 cols) matching Photo 12 */}
@@ -113,8 +131,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div>
               <button
                 type="button"
-                onClick={() => alert('Photo updated successfully!')}
-                className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-2"
+                onClick={() => showToast('Avatar updated successfully!', 'success')}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-2 active:scale-95"
               >
                 <Camera className="h-3.5 w-3.5 text-sky-400" />
                 <span>Change Photo</span>

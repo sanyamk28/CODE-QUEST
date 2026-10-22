@@ -296,6 +296,43 @@ class ATSBulletImprovement(BaseModel):
     improved: str
     reason: str
 
+class WhatToChangeItem(BaseModel):
+    category: str  # "Weak Action Verbs", "Missing Metrics", "Key Skill Gaps", "Formatting & Structure"
+    severity: str  # "Critical", "High", "Medium"
+    title: str
+    description: str
+    action_item: str
+    example: Optional[str] = None
+
+class RecommendedProject(BaseModel):
+    title: str
+    difficulty: str
+    impact_rating: str
+    tech_stack: List[str]
+    architecture_highlight: str
+    resume_bullet: str
+    why_it_gets_you_hired: str
+
+class RecommendedCertification(BaseModel):
+    name: str
+    issuer: str
+    level: str
+    hire_boost: str
+    key_skills_validated: List[str]
+    preparation_time: str
+    why_valuable: str
+
+class HireChancesBreakdown(BaseModel):
+    hire_chance_percentage: int
+    hire_chance_tier: str
+    ats_pass_rate: int
+    tech_recruiter_pass_rate: int
+    hiring_manager_pass_rate: int
+    skills_coverage: int
+    project_depth: int
+    quantified_impact: int
+    industry_credentials: int
+
 class ResumeAnalysisResponse(BaseModel):
     ats_score: int
     target_role: Optional[str] = "Software Engineer"
@@ -308,6 +345,10 @@ class ResumeAnalysisResponse(BaseModel):
     metrics: Optional[ATSMetrics] = None
     bullet_improvements: Optional[List[ATSBulletImprovement]] = None
     jd_match_score: Optional[int] = None
+    hire_chances: Optional[HireChancesBreakdown] = None
+    what_to_change: Optional[List[WhatToChangeItem]] = None
+    recommended_projects: Optional[List[RecommendedProject]] = None
+    recommended_certifications: Optional[List[RecommendedCertification]] = None
 
 # --- ROADMAP & PROJECT SCHEMAS ---
 
@@ -499,6 +540,7 @@ class PuzzleListResponse(BaseModel):
     difficulty: str
     category: str
     xp_reward: int
+    company_tags: List[str] = []
 
 class PuzzleDetailResponse(BaseModel):
     id: UUID
@@ -545,6 +587,26 @@ class RandomPuzzleScenarioResponse(BaseModel):
     company_tags: List[str] = []
     options: Optional[List[str]] = None
     sample_approach: Optional[str] = None
+
+# --- CHATBOT ASSISTANT SCHEMAS ---
+
+class ChatMessageItem(BaseModel):
+    role: str  # 'user' | 'assistant' | 'system'
+    content: str
+    timestamp: Optional[str] = None
+
+class ChatbotRequest(BaseModel):
+    message: str
+    history: Optional[List[ChatMessageItem]] = []
+    screen: Optional[str] = "dashboard"
+    target_role: Optional[str] = None
+    user_name: Optional[str] = None
+
+class ChatbotResponse(BaseModel):
+    reply: str
+    suggestions: Optional[List[str]] = None
+    screen_context: Optional[str] = None
+
 
 
 

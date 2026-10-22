@@ -40,13 +40,35 @@ if os.name != "nt":
         SANDBOX_GID = os.getgid() if hasattr(os, "getgid") else 0
 
 def demote_process():
-    """Sets the uid/gid of the subprocess to the sandbox user for security."""
+    """Sets the uid/gid of the subprocess to the sandbox user and imposes hard resource limits."""
+    # 1. Enforce Linux POSIX resource limits (cgroups / rlimit)
+    if os.name != "nt":
+        try:
+            import resource
+            # Virtual memory limit: 256MB to stop OOM memory exhaust attacks
+            MEM_LIMIT_BYTES = 256 * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (MEM_LIMIT_BYTES, MEM_LIMIT_BYTES))
+            
+            # Max subprocesses / threads: 32 to kill fork-bomb attacks (:(){ :|:& };:)
+            resource.setrlimit(resource.RLIMIT_NPROC, (32, 32))
+            
+            # Max file output size: 5MB to stop disk fill attacks
+            FILE_LIMIT_BYTES = 5 * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_FSIZE, (FILE_LIMIT_BYTES, FILE_LIMIT_BYTES))
+            
+            # Max CPU execution seconds: 12s
+            resource.setrlimit(resource.RLIMIT_CPU, (12, 12))
+        except Exception:
+            pass
+
+    # 2. Demote user ID and group ID to unprivileged sandbox_user
     if hasattr(os, "setgid") and hasattr(os, "setuid"):
         try:
             os.setgid(SANDBOX_GID)
             os.setuid(SANDBOX_UID)
         except PermissionError:
-            pass # Fail silently if not running as root (e.g. dev local)
+            pass  # Fail silently if not running as root (e.g. dev local)
+
 
 def verify_token(authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -74,13 +96,24 @@ def execute_code(request: CodeExecutionRequest):
     exit_code = 0
     start_time = time.time()
     
+    # Isolated minimal environment stripped of any system secret tokens
+    safe_env = {
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "HOME": temp_dir,
+        "TMPDIR": temp_dir,
+        "TEMP": temp_dir,
+        "USER": "sandbox_user"
+    }
+    
     try:
         if lang == "python":
             source_file = os.path.join(temp_dir, "solution.py")
             with open(source_file, "w", encoding="utf-8") as f:
                 f.write(request.code)
             
-            run_cmd = ["python3", "solution.py"]
+            run_cmd = ["python3", "-I", "-s", "solution.py"]
             
         elif lang in ["cpp", "c++"]:
             source_file = os.path.join(temp_dir, "solution.cpp")
@@ -94,7 +127,8 @@ def execute_code(request: CodeExecutionRequest):
                 cwd=temp_dir,
                 capture_output=True,
                 text=True,
-                timeout=10.0
+                timeout=10.0,
+                env=safe_env
             )
             
             if compile_proc.returncode != 0:
@@ -121,7 +155,8 @@ def execute_code(request: CodeExecutionRequest):
                 cwd=temp_dir,
                 capture_output=True,
                 text=True,
-                timeout=10.0
+                timeout=10.0,
+                env=safe_env
             )
             
             if compile_proc.returncode != 0:
@@ -154,6 +189,7 @@ def execute_code(request: CodeExecutionRequest):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            env=safe_env,
             preexec_fn=demote_process
         )
         

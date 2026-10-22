@@ -12,6 +12,10 @@ export interface CodingProblem {
   output: string;
   template: string;
   hint?: string;
+  hints?: string[];
+  timeComplexity?: string;
+  spaceComplexity?: string;
+  beatsPercentile?: number;
   solution?: string;
   solutionExplanation?: string;
 }

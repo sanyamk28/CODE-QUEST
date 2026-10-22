@@ -1,31 +1,41 @@
 import httpx
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.api.v1.deps import get_current_user, get_current_admin
+from app.api.v1.deps import get_current_user, get_current_admin, get_current_user_optional
 from app.models import models
 from app.schemas import schemas
 
 router = APIRouter()
 
+@router.get("", response_model=List[schemas.QuestionListResponse])
 @router.get("/", response_model=List[schemas.QuestionListResponse])
 def get_coding_problems(
     difficulty: Optional[str] = None,
     tag: Optional[str] = None,
+    topic: Optional[str] = None,
+    company: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: Optional[models.User] = Depends(get_current_user_optional)
 ):
-    query = db.query(models.Question).filter(models.Question.type == "coding")
+    # Eagerly load topic & subtopic in a single JOIN to avoid N+1 queries
+    query = db.query(models.Question).options(
+        joinedload(models.Question.topic),
+        joinedload(models.Question.subtopic)
+    ).filter(models.Question.type == "coding")
     
-    if difficulty:
+    if difficulty and difficulty != "All":
         query = query.filter(models.Question.difficulty == difficulty)
     if tag:
-        # Search JSON tags array
         query = query.filter(models.Question.company_tags.contains([tag]))
+    if company and company != "All":
+        query = query.filter(models.Question.company_tags.contains([company]))
+    if topic and topic != "All":
+        query = query.filter(models.Question.topic.has(models.Topic.name == topic))
         
     questions = query.all()
     
@@ -50,14 +60,18 @@ import uuid
 def get_coding_problem_detail(
     id: str,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: Optional[models.User] = Depends(get_current_user_optional)
 ):
     try:
         qid = uuid.UUID(id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid problem ID")
 
-    q = db.query(models.Question).filter(models.Question.id == qid, models.Question.type == "coding").first()
+    q = db.query(models.Question).options(
+        joinedload(models.Question.coding_detail),
+        joinedload(models.Question.topic),
+        joinedload(models.Question.subtopic)
+    ).filter(models.Question.id == qid, models.Question.type == "coding").first()
     if not q:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -72,9 +86,9 @@ import ast
 FORBIDDEN_PYTHON_MODULES = {
     "os", "subprocess", "shutil", "socket", "http", "urllib", "requests",
     "pty", "commands", "ctypes", "winreg", "signal", "multiprocessing", "threading",
-    "posix", "nt", "importlib", "pickle", "shelve", "webbrowser"
+    "posix", "nt", "importlib", "pickle", "shelve", "webbrowser", "sys"
 }
-FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open"}
+FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "getattr", "setattr", "delattr"}
 
 def validate_code_security(code: str, language: str) -> Optional[str]:
     """
@@ -98,32 +112,37 @@ def validate_code_security(code: str, language: str) -> Optional[str]:
                         base_mod = node.module.split('.')[0]
                         if base_mod in FORBIDDEN_PYTHON_MODULES:
                             return f"Security Policy Violation: Import from module '{base_mod}' is strictly prohibited."
-                # Check dangerous function calls: open(), eval(), exec()
+                # Check dangerous function calls: open(), eval(), exec(), getattr()
                 elif isinstance(node, ast.Call):
                     if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_CALLS:
                         return f"Security Policy Violation: Invocation of '{node.func.id}()' is strictly prohibited."
-                # Check reflection access: __subclasses__, __globals__
+                # Check reflection access: __subclasses__, __globals__, __builtins__
                 elif isinstance(node, ast.Attribute):
-                    if node.attr in ["__subclasses__", "__globals__", "__builtins__"]:
+                    if node.attr in ["__subclasses__", "__globals__", "__builtins__", "__code__", "__dict__"]:
                         return f"Security Policy Violation: Reflection property '{node.attr}' is prohibited."
+                # Check string literal bypasses for forbidden modules
+                elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                    lower_val = node.value.lower().strip()
+                    if lower_val in {"os.system", "subprocess.popen", "/bin/sh", "/bin/bash", "cmd.exe"}:
+                        return f"Security Policy Violation: Suspicious payload '{node.value}' detected."
         except SyntaxError:
             # Let normal compiler/interpreter report exact syntax error
             pass
     elif lang in ["javascript", "js"]:
         lower = code.lower()
-        if any(bad in lower for bad in ["child_process", "fs.read", "fs.write", "fs.unlink", "process.env", "process.exit"]):
+        if any(bad in lower for bad in ["child_process", "fs.read", "fs.write", "fs.unlink", "process.env", "process.exit", "require('fs')", "require('child_process')"]):
             return "Security Policy Violation: Filesystem or process operations are prohibited."
     elif lang in ["cpp", "c++"]:
         lower = code.lower()
-        if any(bad in lower for bad in ["system(", "popen(", "execve(", "fork()", "remove(", "unlink("]):
-            return "Security Policy Violation: Native system/process execution is prohibited."
+        if any(bad in lower for bad in ["system(", "popen(", "execve(", "fork()", "remove(", "unlink(", "fopen(", "ofstream", "ifstream"]):
+            return "Security Policy Violation: Native system/process/file operations are prohibited."
 
     return None
 
 def run_single_testcase(code: str, language: str, input_data: str, expected_output: str, timeout: float = 5.0):
     """
     Executes a single test case using the sandbox container if available,
-    or falls back safely to a local subprocess runner.
+    or falls back safely to a local subprocess runner with an isolated environment.
     """
     lang = language.lower()
     
@@ -161,18 +180,30 @@ def run_single_testcase(code: str, language: str, input_data: str, expected_outp
     except Exception:
         pass  # Fall through to local runner
         
-    # 2. Local Fallback Execution Runner
+    # 2. Local Fallback Execution Runner (Isolated minimal environment)
     import subprocess, sys, time, tempfile, os, shutil
     start_time = time.time()
     temp_dir = tempfile.mkdtemp(prefix="cq_run_")
+
+    # Sanitize execution environment so internal backend secrets are NEVER exposed
+    safe_env = {
+        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+        "LANG": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8",
+        "TEMP": temp_dir,
+        "TMP": temp_dir,
+    }
+
     try:
         if lang == "python":
             proc = subprocess.run(
-                [sys.executable, "-c", code],
+                [sys.executable, "-I", "-s", "-c", code],  # -I (isolated mode), -s (no user site dir)
                 input=input_data,
                 text=True,
                 capture_output=True,
-                timeout=timeout
+                timeout=timeout,
+                env=safe_env,
+                cwd=temp_dir
             )
             exec_time = time.time() - start_time
             if proc.returncode != 0:
@@ -191,7 +222,9 @@ def run_single_testcase(code: str, language: str, input_data: str, expected_outp
                 input=input_data,
                 text=True,
                 capture_output=True,
-                timeout=timeout
+                timeout=timeout,
+                env=safe_env,
+                cwd=temp_dir
             )
             exec_time = time.time() - start_time
             if proc.returncode != 0:
@@ -206,10 +239,25 @@ def run_single_testcase(code: str, language: str, input_data: str, expected_outp
             out_file = os.path.join(temp_dir, "solution.exe" if os.name == "nt" else "solution.out")
             with open(cpp_file, "w", encoding="utf-8") as f:
                 f.write(code)
-            comp = subprocess.run(["g++", "-O2", cpp_file, "-o", out_file], capture_output=True, text=True, timeout=8.0)
+            comp = subprocess.run(
+                ["g++", "-O2", cpp_file, "-o", out_file],
+                capture_output=True,
+                text=True,
+                timeout=8.0,
+                env=safe_env,
+                cwd=temp_dir
+            )
             if comp.returncode != 0:
                 return False, "COMPILE_ERROR", comp.stderr, time.time() - start_time
-            proc = subprocess.run([out_file], input=input_data, text=True, capture_output=True, timeout=timeout)
+            proc = subprocess.run(
+                [out_file],
+                input=input_data,
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+                env=safe_env,
+                cwd=temp_dir
+            )
             exec_time = time.time() - start_time
             if proc.returncode != 0:
                 return False, "RUNTIME_ERROR", proc.stderr, exec_time
@@ -220,6 +268,7 @@ def run_single_testcase(code: str, language: str, input_data: str, expected_outp
 
         else:
             return False, "SYSTEM_ERROR", f"Unsupported language '{language}' in local environment", 0.0
+
 
     except subprocess.TimeoutExpired:
         return False, "TIMEOUT", f"Execution timed out after {timeout} seconds", timeout

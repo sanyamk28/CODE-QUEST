@@ -29,7 +29,12 @@ ENV/
 *.sqlite3
 *.log
 *.db-journal
+*.db-wal
+*.db-shm
 local_db.db
+scratch_*.json
+*.timestamp-*.mjs
+test.pdf
 
 # Binaries & Executables
 *.exe

@@ -19,6 +19,7 @@ import {
   Check
 } from 'lucide-react';
 import { recordActivity } from '../../services/activityTracker';
+import { showToast } from '../../components/Toast';
 
 const INTERVIEW_QUESTIONS = [
   {
@@ -104,8 +105,11 @@ export const AiInterviewView: React.FC = () => {
               <h2 className="text-lg font-black text-white">Interview Results</h2>
             </div>
             <button
-              onClick={() => alert('Interview Results link copied to clipboard!')}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+              onClick={() => {
+                navigator.clipboard?.writeText(window.location.href);
+                showToast('Interview Results link copied to clipboard!', 'info');
+              }}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition active:scale-95"
             >
               <Share2 className="h-4 w-4" />
             </button>

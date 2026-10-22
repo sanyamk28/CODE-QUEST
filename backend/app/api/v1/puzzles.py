@@ -211,7 +211,8 @@ def get_puzzles(
             description=q.description[:140] + "..." if len(q.description) > 140 else q.description,
             difficulty=q.difficulty,
             category=cat,
-            xp_reward=q.xp_reward or 15
+            xp_reward=q.xp_reward or 15,
+            company_tags=q.company_tags or []
         ))
     return results
 

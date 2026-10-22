@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Flame, Bell, Settings, Share2, Bookmark, Search, User } from 'lucide-react';
 import { ActiveTabType } from '../types';
+import { showToast } from './Toast';
 
 interface MobileHeaderProps {
   activeTab: ActiveTabType;
@@ -126,14 +127,17 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         {activeTab === 'arena' && (
           <>
             <button
-              onClick={() => alert('Bookmarked problem!')}
-              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white"
+              onClick={() => showToast('Problem saved to bookmarks!', 'success')}
+              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white transition active:scale-95"
             >
               <Bookmark className="h-4 w-4" />
             </button>
             <button
-              onClick={() => alert('Link copied to clipboard!')}
-              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white"
+              onClick={() => {
+                navigator.clipboard?.writeText(window.location.href);
+                showToast('Link copied to clipboard!', 'info');
+              }}
+              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white transition active:scale-95"
             >
               <Share2 className="h-4 w-4" />
             </button>

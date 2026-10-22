@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b101e" />
+      <stop offset="100%" stop-color="#070a13" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="url(#bgGrad)" />
+  <rect x="3" y="3" width="186" height="186" rx="39" fill="none" stroke="url(#accentGrad)" stroke-width="3" opacity="0.8" />
+  
+  <!-- Code Quest Brand Emblem -->
+  <g transform="translate(46, 46)">
+    <!-- Terminal Brackets -->
+    <path d="M 22 25 L 8 50 L 22 75" fill="none" stroke="url(#accentGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 78 25 L 92 50 L 78 75" fill="none" stroke="url(#accentGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Center Sword / Lightning Bolt -->
+    <path d="M 50 15 L 56 42 L 68 42 L 44 85 L 48 55 L 36 55 Z" fill="url(#accentGrad)" />
+  </g>
+</svg>

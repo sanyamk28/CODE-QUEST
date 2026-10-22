@@ -5,25 +5,37 @@ import { Header } from './components/Header';
 import { MobileNavBar } from './components/MobileNavBar';
 import { MobileHeader } from './components/MobileHeader';
 
-// Feature Views
+// Core Views
 import { AuthView } from './features/auth/AuthView';
 import { OnboardingView } from './features/auth/OnboardingView';
-import { DashboardView } from './features/dashboard/DashboardView';
-import { PracticeHubView } from './features/practice/PracticeHubView';
-import { ArenaView } from './features/arena/ArenaView';
-import { SqlLabView } from './features/sql/SqlLabView';
-import { BattleArenaView } from './features/battles/BattleArenaView';
-import { AiInterviewView } from './features/interview/AiInterviewView';
-import { ResumeAtsView } from './features/resume/ResumeAtsView';
-import { RoadmapsView } from './features/roadmaps/RoadmapsView';
-import { AssessmentsView } from './features/assessments/AssessmentsView';
-import { LeaderboardView } from './features/leaderboard/LeaderboardView';
-import { ProfileView } from './features/profile/ProfileView';
-import { SettingsView } from './features/settings/SettingsView';
-import { CsFundamentalsView } from './features/mcqs/CsFundamentalsView';
-import { BrainteasersView } from './features/puzzles/BrainteasersView';
-import { CompanyScraperAgentView } from './features/company/CompanyScraperAgentView';
+
+// On-Demand Lazy Loaded Views (Massively reduces initial bundle size and memory footprint)
+const DashboardView = React.lazy(() => import('./features/dashboard/DashboardView').then(m => ({ default: m.DashboardView })));
+const PracticeHubView = React.lazy(() => import('./features/practice/PracticeHubView').then(m => ({ default: m.PracticeHubView })));
+const ArenaView = React.lazy(() => import('./features/arena/ArenaView').then(m => ({ default: m.ArenaView })));
+const SqlLabView = React.lazy(() => import('./features/sql/SqlLabView').then(m => ({ default: m.SqlLabView })));
+const BattleArenaView = React.lazy(() => import('./features/battles/BattleArenaView').then(m => ({ default: m.BattleArenaView })));
+const AiInterviewView = React.lazy(() => import('./features/interview/AiInterviewView').then(m => ({ default: m.AiInterviewView })));
+const ResumeAtsView = React.lazy(() => import('./features/resume/ResumeAtsView').then(m => ({ default: m.ResumeAtsView })));
+const RoadmapsView = React.lazy(() => import('./features/roadmaps/RoadmapsView').then(m => ({ default: m.RoadmapsView })));
+const AssessmentsView = React.lazy(() => import('./features/assessments/AssessmentsView').then(m => ({ default: m.AssessmentsView })));
+const LeaderboardView = React.lazy(() => import('./features/leaderboard/LeaderboardView').then(m => ({ default: m.LeaderboardView })));
+const ProfileView = React.lazy(() => import('./features/profile/ProfileView').then(m => ({ default: m.ProfileView })));
+const SettingsView = React.lazy(() => import('./features/settings/SettingsView').then(m => ({ default: m.SettingsView })));
+const CsFundamentalsView = React.lazy(() => import('./features/mcqs/CsFundamentalsView').then(m => ({ default: m.CsFundamentalsView })));
+const BrainteasersView = React.lazy(() => import('./features/puzzles/BrainteasersView').then(m => ({ default: m.BrainteasersView })));
+const CompanyScraperAgentView = React.lazy(() => import('./features/company/CompanyScraperAgentView').then(m => ({ default: m.CompanyScraperAgentView })));
+
+const ViewLoadingFallback: React.FC = () => (
+  <div className="flex flex-col items-center justify-center min-h-[360px] w-full text-slate-400 space-y-3">
+    <div className="h-7 w-7 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+    <span className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">Loading Module...</span>
+  </div>
+);
+
 import { Smartphone, Monitor, Sparkles } from 'lucide-react';
+import { ToastContainer } from './components/Toast';
+import { QuestChatbot } from './components/QuestChatbot';
 
 export const App: React.FC = () => {
   // Global user state initialized from localStorage
@@ -88,9 +100,24 @@ export const App: React.FC = () => {
     setActiveTab('splash');
   };
 
+  // Handle auth expiry
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      handleLogout();
+    };
+    window.addEventListener('cq_auth_expired', handleAuthExpired);
+    return () => window.removeEventListener('cq_auth_expired', handleAuthExpired);
+  }, []);
+
   const handleUpdateProfile = (name: string, role: string) => {
-    setUserName(name);
-    setTargetRole(role);
+    if (name) {
+      setUserName(name);
+      localStorage.setItem('cq_user_name', name);
+    }
+    if (role) {
+      setTargetRole(role);
+      localStorage.setItem('cq_target_role', role);
+    }
   };
 
   // 1. If not logged in, force AuthView (Login / Signup)
@@ -119,72 +146,78 @@ export const App: React.FC = () => {
     );
   }
 
-  // Render the core view content
+  // Render the core view content with on-demand Suspense boundary
   const renderCurrentView = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return (
-          <DashboardView
-            userName={userName}
-            targetRole={targetRole}
-            onNavigate={setActiveTab}
-          />
-        );
-      case 'practice':
-        return <PracticeHubView onNavigate={setActiveTab} />;
-      case 'arena':
-        return <ArenaView />;
-      case 'sql':
-        return <SqlLabView />;
-      case 'battle':
-        return <BattleArenaView />;
-      case 'interview':
-        return <AiInterviewView />;
-      case 'resume':
-        return <ResumeAtsView targetRole={targetRole} />;
-      case 'roadmaps':
-        return <RoadmapsView userRole={targetRole} userName={userName} onNavigate={setActiveTab} />;
-      case 'assessments':
-        return <AssessmentsView />;
-      case 'leaderboard':
-        return <LeaderboardView />;
-      case 'profile':
-        return (
-          <ProfileView
-            userName={userName}
-            targetRole={targetRole}
-            streak={streak}
-            onUpdateRole={(newRole) => setTargetRole(newRole)}
-          />
-        );
-      case 'settings':
-        return (
-          <SettingsView
-            userName={userName}
-            targetRole={targetRole}
-            onUpdateProfile={handleUpdateProfile}
-          />
-        );
-      case 'company-intel':
-        return (
-          <CompanyScraperAgentView
-            userRole={targetRole}
-            onNavigate={setActiveTab}
-          />
-        );
-      case 'mcqs':
-        return <CsFundamentalsView />;
-      case 'puzzles':
-        return <BrainteasersView />;
-      default:
-        return (
-          <DashboardView
-            userName={userName}
-            targetRole={targetRole}
-            onNavigate={setActiveTab}
-          />
-        );
-    }
+    return (
+      <React.Suspense fallback={<ViewLoadingFallback />}>
+        {(() => {
+          switch (activeTab) {
+            case 'dashboard':
+              return (
+                <DashboardView
+                  userName={userName}
+                  targetRole={targetRole}
+                  onNavigate={setActiveTab}
+                />
+              );
+            case 'practice':
+              return <PracticeHubView onNavigate={setActiveTab} />;
+            case 'arena':
+              return <ArenaView />;
+            case 'sql':
+              return <SqlLabView />;
+            case 'battle':
+              return <BattleArenaView />;
+            case 'interview':
+              return <AiInterviewView />;
+            case 'resume':
+              return <ResumeAtsView targetRole={targetRole} />;
+            case 'roadmaps':
+              return <RoadmapsView userRole={targetRole} userName={userName} onNavigate={setActiveTab} />;
+            case 'assessments':
+              return <AssessmentsView />;
+            case 'leaderboard':
+              return <LeaderboardView />;
+            case 'profile':
+              return (
+                <ProfileView
+                  userName={userName}
+                  targetRole={targetRole}
+                  streak={streak}
+                  onUpdateRole={(newRole) => handleUpdateProfile(userName, newRole)}
+                />
+              );
+            case 'settings':
+              return (
+                <SettingsView
+                  userName={userName}
+                  targetRole={targetRole}
+                  onUpdateProfile={handleUpdateProfile}
+                />
+              );
+            case 'company-intel':
+              return (
+                <CompanyScraperAgentView
+                  userRole={targetRole}
+                  onNavigate={setActiveTab}
+                />
+              );
+            case 'mcqs':
+              return <CsFundamentalsView />;
+            case 'puzzles':
+              return <BrainteasersView />;
+            default:
+              return (
+                <DashboardView
+                  userName={userName}
+                  targetRole={targetRole}
+                  onNavigate={setActiveTab}
+                />
+              );
+          }
+        })()}
+      </React.Suspense>
+    );
   };
 
   // If in Phone Preview frame mode on desktop
@@ -237,6 +270,14 @@ export const App: React.FC = () => {
             {renderCurrentView()}
           </div>
 
+          {/* 24/7 AI Mentor Chatbot (shown on all screens except coding arena, mcq, and brainteasers) */}
+          <QuestChatbot
+            activeTab={activeTab}
+            userName={userName}
+            targetRole={targetRole}
+            isSimulator={true}
+          />
+
           {/* Fixed Mobile Bottom Nav Bar */}
           <div className="absolute bottom-0 left-0 right-0 z-50">
             <MobileNavBar activeTab={activeTab} onSelectTab={setActiveTab} />
@@ -249,6 +290,7 @@ export const App: React.FC = () => {
   // Standard Responsive View (Web on Desktop, Native App on Mobile)
   return (
     <div className="min-h-screen bg-[#070a13] text-slate-100 flex flex-col md:flex-row overflow-x-hidden font-['Plus_Jakarta_Sans']">
+      <ToastContainer />
       {/* Desktop Left Sidebar (hidden on mobile) */}
       <Sidebar
         activeTab={activeTab}
@@ -288,6 +330,13 @@ export const App: React.FC = () => {
         <main className="flex-1 p-3.5 sm:p-5 md:p-6 overflow-y-auto pb-24 md:pb-6">
           {renderCurrentView()}
         </main>
+
+        {/* 24/7 AI Mentor Chatbot (shown on all screens except coding arena, mcq, and brainteasers) */}
+        <QuestChatbot
+          activeTab={activeTab}
+          userName={userName}
+          targetRole={targetRole}
+        />
 
         {/* Fixed Mobile Bottom Navigation Bar (rendered on mobile) */}
         <div className="md:hidden">

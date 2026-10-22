@@ -28,6 +28,8 @@ import {
   Bot
 } from 'lucide-react';
 import { apiClient } from '../../services/api';
+import { showToast } from '../../components/Toast';
+import { recordActivity } from '../../services/activityTracker';
 
 interface RoadmapsViewProps {
   userRole?: string;
@@ -986,10 +988,11 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
               </span>
               <button
                 onClick={() => {
-                  alert('Milestone progress saved to your portfolio roadmap!');
+                  recordActivity('roadmap', { xp: 40 });
+                  showToast('Milestone progress saved to your portfolio roadmap! (+40 XP)', 'success');
                   setActiveProjectModal(null);
                 }}
-                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-600/30"
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-600/30 active:scale-95"
               >
                 Done & Save
               </button>
