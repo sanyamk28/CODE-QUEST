@@ -81,6 +81,8 @@ export const BattleArenaView: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [joinInputCode, setJoinInputCode] = useState('');
   const [joinError, setJoinError] = useState('');
+  const [showExitModal, setShowExitModal] = useState<boolean>(false);
+  const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
 
   // 100-Player Live Roster
   const [participants, setParticipants] = useState<Participant[]>(() => generate100Players());
@@ -145,6 +147,37 @@ export const BattleArenaView: React.FC = () => {
       if (wsRef.current) wsRef.current.close();
     };
   }, [isBattleWon]);
+
+  // Proctoring Screen Lockdown: Intercept accidental tab closure or tab switches
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (arenaSubTab === 'arena' && !isBattleWon) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && arenaSubTab === 'arena' && !isBattleWon) {
+        setTabSwitchCount(prev => {
+          const next = prev + 1;
+          setLiveTicker(t => [
+            `⚠️ Proctor Warning: Tab / Screen switch detected (${next}/3)! Stay on the test screen.`,
+            ...t.slice(0, 4)
+          ]);
+          return next;
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [arenaSubTab, isBattleWon]);
 
   // Compute User Rank against all 100 Players
   const sortedLeaderboard = useMemo(() => {
@@ -221,67 +254,124 @@ export const BattleArenaView: React.FC = () => {
   };
 
   const handleJoinCustomRoom = () => {
-    const code = joinInputCode.trim().toUpperCase();
-    if (!code) {
-      setJoinError('Please enter a valid room code.');
+    if (!joinInputCode.trim()) {
+      setJoinError('Please enter a room code');
       return;
     }
     setJoinError('');
-    setRoomCode(code);
-    setParticipants(generate100Players());
+    setRoomCode(joinInputCode.trim().toUpperCase());
+    setParticipants(generate100Players().slice(0, roomCapacity));
+    setIsBattleWon(false);
+    setSubmissionFeedback(null);
+    setUserTestsPassed(0);
+    setUserScore(0);
+    setSecondsLeft(900);
     setArenaSubTab('arena');
+  };
+
+  const handleForfeitBattle = () => {
+    setShowExitModal(false);
+    setUserTestsPassed(0);
+    setUserScore(0);
+    setSubmissionFeedback(null);
+    setArenaSubTab('create_room');
+  };
+
+  const handleForceSubmitBattle = () => {
+    setShowExitModal(false);
+    handleSubmit();
   };
 
   return (
     <div className="space-y-4 max-w-6xl mx-auto pb-10">
-      {/* 3-Tab Mega Arena Navigation */}
-      <div className="flex items-center justify-between bg-[#0b101e] border border-slate-800/80 rounded-2xl p-1.5 shadow-md">
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setArenaSubTab('arena')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              arenaSubTab === 'arena'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Swords className="h-3.5 w-3.5" />
-            <span>⚔️ 100-Player Arena</span>
-          </button>
+      {/* Top Banner: Proctoring Lockdown Bar during active battle test */}
+      {arenaSubTab === 'arena' && !isBattleWon ? (
+        <div className="bg-gradient-to-r from-blue-950/80 to-indigo-950/80 border border-blue-500/40 rounded-2xl p-3 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-400">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-xs font-black text-white flex items-center gap-2">
+                <span>SCREEN LOCKED • TEST IN PROGRESS</span>
+                {tabSwitchCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-[10px] font-bold text-rose-400">
+                    ⚠️ {tabSwitchCount}/3 Tab Switches
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-blue-200/80">
+                Navigation is restricted to preserve test integrity. You can either submit or exit.
+              </p>
+            </div>
+          </div>
 
-          <button
-            onClick={() => setArenaSubTab('leaderboard')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              arenaSubTab === 'leaderboard'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Trophy className="h-3.5 w-3.5" />
-            <span>🏆 Live Standings ({participants.length + 1})</span>
-          </button>
-
-          <button
-            onClick={() => setArenaSubTab('create_room')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              arenaSubTab === 'create_room'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sliders className="h-3.5 w-3.5" />
-            <span>🛠️ Host / Create Room</span>
-          </button>
-        </div>
-
-        {/* Room Capacity Badge */}
-        <div className="flex items-center gap-2 pr-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-bold text-emerald-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{participants.length + 1} / {roomCapacity} Competitors</span>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => setShowExitModal(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 font-bold text-xs border border-rose-800/60 transition flex items-center gap-1.5"
+            >
+              <span>🚪 Forfeit / Exit</span>
+            </button>
+            <button
+              onClick={handleForceSubmitBattle}
+              disabled={isSubmitting}
+              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md shadow-emerald-600/30 transition flex items-center gap-1.5"
+            >
+              <span>✅ Submit Test</span>
+            </button>
           </div>
         </div>
-      </div>
+      ) : (
+        /* 3-Tab Mega Arena Navigation when NOT in an active test */
+        <div className="flex items-center justify-between bg-[#0b101e] border border-slate-800/80 rounded-2xl p-1.5 shadow-md">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setArenaSubTab('arena')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                arenaSubTab === 'arena'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Swords className="h-3.5 w-3.5" />
+              <span>⚔️ 100-Player Arena</span>
+            </button>
+
+            <button
+              onClick={() => setArenaSubTab('leaderboard')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                arenaSubTab === 'leaderboard'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Trophy className="h-3.5 w-3.5" />
+              <span>🏆 Live Standings ({participants.length + 1})</span>
+            </button>
+
+            <button
+              onClick={() => setArenaSubTab('create_room')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                arenaSubTab === 'create_room'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              <span>🛠️ Host / Create Room</span>
+            </button>
+          </div>
+
+          {/* Room Capacity Badge */}
+          <div className="flex items-center gap-2 pr-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-bold text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>{participants.length + 1} / {roomCapacity} Competitors</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* VIEW A: CREATE / JOIN 100+ USER ROOM                          */}
@@ -659,6 +749,44 @@ export const BattleArenaView: React.FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Exit Confirmation Modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0d1326] border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-4">
+            <div className="h-14 w-14 rounded-full bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-2xl mx-auto text-rose-400">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-white">Exit Active Arena Test?</h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                You are currently in an active 100-player test battle. Leaving now will forfeit your entry and record your score as a forfeit.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                onClick={handleForceSubmitBattle}
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow"
+              >
+                ✅ Submit Current Solution & Finish
+              </button>
+              <button
+                onClick={handleForfeitBattle}
+                className="w-full py-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 font-bold text-xs border border-rose-800/60"
+              >
+                🚪 Forfeit & Leave Arena
+              </button>
+              <button
+                onClick={() => setShowExitModal(false)}
+                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs"
+              >
+                ← Resume Test
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -11,7 +11,9 @@ import {
   Modal,
   Image,
   Switch,
-  Dimensions
+  Dimensions,
+  BackHandler,
+  Alert
 } from 'react-native';
 import { firebaseAuthSignIn } from './firebase';
 
@@ -376,6 +378,80 @@ export default function App() {
     }
   ]);
 
+  const [sqlModuleExpanded, setSqlModuleExpanded] = useState(true);
+
+  // ATS Scanner State - NO dummy resumes pre-loaded; student must upload each time
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState('');
+  const [resumeAnalyzing, setResumeAnalyzing] = useState(false);
+  const [customResumeInput, setCustomResumeInput] = useState('');
+  const [resumeAnalysisResult, setResumeAnalysisResult] = useState<{
+    score: number;
+    matchedSkills: string[];
+    missingSkills: string[];
+    feedback: string;
+  } | null>(null);
+
+  // Handle Login - redirect fresh student to onboarding if track not chosen
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setAuthError('Please enter email and password');
+      return;
+    }
+    setAuthError('');
+    setIsAuthenticating(true);
+    try {
+      const emailToUse = email.includes('@') ? email : `${email.toLowerCase()}@codequest.dev`;
+      const res = await firebaseAuthSignIn(emailToUse, password);
+      setUserName(res.displayName || email.split('@')[0]);
+      setIsLoggedIn(true);
+      if (!hasSelectedTrack) {
+        setCurrentScreen('onboarding');
+      } else {
+        setCurrentScreen('dashboard');
+      }
+    } catch (err: any) {
+      setUserName(email.split('@')[0] || 'Student');
+      setIsLoggedIn(true);
+      if (!hasSelectedTrack) {
+        setCurrentScreen('onboarding');
+      } else {
+        setCurrentScreen('dashboard');
+      }
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  // Safe Google Login
+  const handleGoogleLogin = () => {
+    setAuthError('');
+    setIsAuthenticating(true);
+    setTimeout(() => {
+      setUserName('Student User');
+      setEmail('student@codequest.dev');
+      setIsLoggedIn(true);
+      setIsAuthenticating(false);
+      if (!hasSelectedTrack) {
+        setCurrentScreen('onboarding');
+      } else {
+        setCurrentScreen('dashboard');
+      }
+    }, 300);
+  };
+
+  const toggleQuest = (id: number) => {
+    setQuests(prev => prev.map(q => {
+      if (q.id === id) {
+        const next = !q.completed;
+        if (next) setXp(prevXp => prevXp + q.xp);
+        else setXp(prevXp => Math.max(0, prevXp - q.xp));
+        return { ...q, completed: next };
+      }
+      return q;
+    }));
+  };
+
   // MCQ Battle & Room Test State
   const [mcqSubTab, setMcqSubTab] = useState<'battle' | 'join_room' | 'create_room' | 'results'>('battle');
   const [battleRoomCode, setBattleRoomCode] = useState<string>('CQ-MCQ-8492');
@@ -465,6 +541,34 @@ export default function App() {
   const [battleOpponentScore, setBattleOpponentScore] = useState<number>(0);
   const [battleOpponentName, setBattleOpponentName] = useState<string>('Priya Sharma (IIT Delhi)');
   const [battleTimer, setBattleTimer] = useState<number>(45);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState<boolean>(false);
+
+  // Hardware back button intercept during active test
+  useEffect(() => {
+    const backAction = () => {
+      if (activeTab === 'Arena' && mcqSubTab === 'battle') {
+        setShowExitConfirmModal(true);
+        return true;
+      }
+      return false;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [activeTab, mcqSubTab]);
+
+  const handleForfeitTest = () => {
+    setShowExitConfirmModal(false);
+    setBattleQuestions([]);
+    setBattleCurrentQIndex(0);
+    setBattleSelectedAnswers([]);
+    setBattleAnswerSubmitted(false);
+    setMcqSubTab('join_room');
+  };
+
+  const handleForceSubmitTest = () => {
+    setShowExitConfirmModal(false);
+    setMcqSubTab('results');
+  };
 
   // Battle countdown timer per question
   useEffect(() => {
@@ -1070,41 +1174,62 @@ export default function App() {
           </View>
         </View>
 
-        {/* 4-Tab Arena Navigation */}
-        <View style={styles.battleSubNavRow}>
-          <TouchableOpacity
-            style={[styles.battleSubNavItem, mcqSubTab === 'battle' && styles.battleSubNavItemActive]}
-            onPress={() => setMcqSubTab('battle')}
-          >
-            <Text style={[styles.battleSubNavText, mcqSubTab === 'battle' && styles.battleSubNavTextActive]}>
-              ⚔️ Battle
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.battleSubNavItem, mcqSubTab === 'join_room' && styles.battleSubNavItemActive]}
-            onPress={() => setMcqSubTab('join_room')}
-          >
-            <Text style={[styles.battleSubNavText, mcqSubTab === 'join_room' && styles.battleSubNavTextActive]}>
-              🔑 Join Room
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.battleSubNavItem, mcqSubTab === 'create_room' && styles.battleSubNavItemActive]}
-            onPress={() => setMcqSubTab('create_room')}
-          >
-            <Text style={[styles.battleSubNavText, mcqSubTab === 'create_room' && styles.battleSubNavTextActive]}>
-              🛠️ Create Room
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.battleSubNavItem, mcqSubTab === 'results' && styles.battleSubNavItemActive]}
-            onPress={() => setMcqSubTab('results')}
-          >
-            <Text style={[styles.battleSubNavText, mcqSubTab === 'results' && styles.battleSubNavTextActive]}>
-              🏆 Scoreboard
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* If in active battle test, render Proctoring Lockdown Header instead of tabs */}
+        {mcqSubTab === 'battle' ? (
+          <View style={styles.proctorLockdownBar}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, marginRight: 5 }}>🔒</Text>
+                <Text style={styles.proctorLockdownTitle}>SCREEN LOCKED • TEST IN PROGRESS</Text>
+              </View>
+              <Text style={styles.proctorLockdownSub}>Navigation locked to prevent malpractice</Text>
+            </View>
+            <View style={styles.proctorActionButtonsRow}>
+              <TouchableOpacity
+                style={styles.proctorExitBtn}
+                onPress={() => setShowExitConfirmModal(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.proctorExitBtnText}>🚪 Exit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.proctorSubmitBtn}
+                onPress={handleForceSubmitTest}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.proctorSubmitBtnText}>✅ Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          /* Arena Sub-Navigation shown when NOT in an active test */
+          <View style={styles.battleSubNavRow}>
+            <TouchableOpacity
+              style={[styles.battleSubNavItem, mcqSubTab === 'join_room' && styles.battleSubNavItemActive]}
+              onPress={() => setMcqSubTab('join_room')}
+            >
+              <Text style={[styles.battleSubNavText, mcqSubTab === 'join_room' && styles.battleSubNavTextActive]}>
+                🔑 Join Room
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.battleSubNavItem, mcqSubTab === 'create_room' && styles.battleSubNavItemActive]}
+              onPress={() => setMcqSubTab('create_room')}
+            >
+              <Text style={[styles.battleSubNavText, mcqSubTab === 'create_room' && styles.battleSubNavTextActive]}>
+                🛠️ Create Room
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.battleSubNavItem, mcqSubTab === 'results' && styles.battleSubNavItemActive]}
+              onPress={() => setMcqSubTab('results')}
+            >
+              <Text style={[styles.battleSubNavText, mcqSubTab === 'results' && styles.battleSubNavTextActive]}>
+                🏆 Scoreboard
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ----------------------------------------------------------- */}
         {/* VIEW 1: JOIN ARENA ROOM (By Code or Public Room List) */}
@@ -2068,27 +2193,75 @@ export default function App() {
       {activeTab === 'Roadmap' && renderRoadmap()}
       {activeTab === 'Profile' && renderProfile()}
 
-      {/* Bottom Navigation Bar */}
-      <View style={styles.bottomNavBar}>
-        {[
-          { id: 'Dashboard', label: 'Dashboard', icon: '📊' },
-          { id: 'Arena', label: 'Arena', icon: '⚔️' },
-          { id: 'Roadmap', label: 'Roadmap', icon: '🗺️' },
-          { id: 'Profile', label: 'Profile', icon: '👤' }
-        ].map(tab => {
-          const active = activeTab === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              style={styles.navTabItem}
-              onPress={() => setActiveTab(tab.id as any)}
-            >
-              <Text style={[styles.navTabIcon, active && styles.navTabIconActive]}>{tab.icon}</Text>
-              <Text style={[styles.navTabLabel, active && styles.navTabLabelActive]}>{tab.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {/* Bottom Navigation Bar - Hidden during active battle test to lock the screen */}
+      {!(activeTab === 'Arena' && mcqSubTab === 'battle') ? (
+        <View style={styles.bottomNavBar}>
+          {[
+            { id: 'Dashboard', label: 'Dashboard', icon: '📊' },
+            { id: 'Arena', label: 'Arena', icon: '⚔️' },
+            { id: 'Roadmap', label: 'Roadmap', icon: '🗺️' },
+            { id: 'Profile', label: 'Profile', icon: '👤' }
+          ].map(tab => {
+            const active = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={styles.navTabItem}
+                onPress={() => setActiveTab(tab.id as any)}
+              >
+                <Text style={[styles.navTabIcon, active && styles.navTabIconActive]}>{tab.icon}</Text>
+                <Text style={[styles.navTabLabel, active && styles.navTabLabelActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* Test Exit & Forfeit Confirmation Modal */}
+      <Modal
+        visible={showExitConfirmModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowExitConfirmModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.exitModalCard}>
+            <View style={styles.exitModalIconCircle}>
+              <Text style={{ fontSize: 26 }}>⚠️</Text>
+            </View>
+            <Text style={styles.exitModalTitle}>Exit Active Test?</Text>
+            <Text style={styles.exitModalDesc}>
+              A live test is currently in progress. Screen switching is locked to maintain test integrity. You can either submit your current score or forfeit the test.
+            </Text>
+
+            <View style={styles.exitModalBtnCol}>
+              <TouchableOpacity
+                style={styles.exitModalSubmitBtn}
+                onPress={handleForceSubmitTest}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.exitModalSubmitBtnText}>✅ Submit & End Test</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.exitModalForfeitBtn}
+                onPress={handleForfeitTest}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.exitModalForfeitBtnText}>🚪 Forfeit & Leave (Discard Score)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.exitModalCancelBtn}
+                onPress={() => setShowExitConfirmModal(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.exitModalCancelBtnText}>← Resume Test</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -4389,6 +4562,134 @@ const styles = StyleSheet.create({
   durationPillTextSelected: {
     color: '#fb7185',
     fontWeight: '900',
+  },
+
+  // Proctoring Lockdown Bar
+  proctorLockdownBar: {
+    backgroundColor: '#0c1b33',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1d4ed8',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  proctorLockdownTitle: {
+    color: '#38bdf8',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  proctorLockdownSub: {
+    color: '#93c5fd',
+    fontSize: 9,
+    marginTop: 1,
+  },
+  proctorActionButtonsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  proctorExitBtn: {
+    backgroundColor: '#3b1219',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#f43f5e',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  proctorExitBtnText: {
+    color: '#fb7185',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  proctorSubmitBtn: {
+    backgroundColor: '#064e3b',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#10b981',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  proctorSubmitBtnText: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  // Exit Confirmation Modal
+  exitModalCard: {
+    width: '90%',
+    backgroundColor: '#0d1326',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 22,
+    alignItems: 'center',
+  },
+  exitModalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#26141c',
+    borderWidth: 1,
+    borderColor: '#f43f5e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  exitModalTitle: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 6,
+  },
+  exitModalDesc: {
+    color: '#94a3b8',
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 20,
+  },
+  exitModalBtnCol: {
+    width: '100%',
+    gap: 8,
+  },
+  exitModalSubmitBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  exitModalSubmitBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  exitModalForfeitBtn: {
+    backgroundColor: '#331018',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f43f5e',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  exitModalForfeitBtnText: {
+    color: '#fb7185',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  exitModalCancelBtn: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  exitModalCancelBtnText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 
