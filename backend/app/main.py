@@ -5,7 +5,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.database import Base, engine, get_db
+from app.core.database import Base, engine, get_db, SessionLocal
 from app.models import models
 from app.core.security import get_password_hash
 
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
         pass
 
     # Optional: Seed default accounts if not exists
-    db = next(get_db())
+    db = SessionLocal()
     try:
         admin_email = "admin@codequest.dev"
         existing_admin = db.query(models.User).filter(models.User.email == admin_email).first()

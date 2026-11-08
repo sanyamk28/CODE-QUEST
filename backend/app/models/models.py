@@ -12,7 +12,8 @@ assessment_questions = Table(
     'assessment_questions',
     Base.metadata,
     Column('assessment_id', UUID(as_uuid=True), ForeignKey('assessments.id', ondelete='CASCADE'), primary_key=True),
-    Column('question_id', UUID(as_uuid=True), ForeignKey('questions.id', ondelete='CASCADE'), primary_key=True)
+    Column('question_id', UUID(as_uuid=True), ForeignKey('questions.id', ondelete='CASCADE'), primary_key=True),
+    extend_existing=True
 )
 
 # Junction table for contest questions
@@ -20,7 +21,8 @@ contest_questions = Table(
     'contest_questions',
     Base.metadata,
     Column('contest_id', UUID(as_uuid=True), ForeignKey('contests.id', ondelete='CASCADE'), primary_key=True),
-    Column('question_id', UUID(as_uuid=True), ForeignKey('questions.id', ondelete='CASCADE'), primary_key=True)
+    Column('question_id', UUID(as_uuid=True), ForeignKey('questions.id', ondelete='CASCADE'), primary_key=True),
+    extend_existing=True
 )
 
 class User(Base):
