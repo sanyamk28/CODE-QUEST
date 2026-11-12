@@ -708,7 +708,7 @@ export const ArenaView: React.FC = () => {
             setMockIsRunning(false);
             setMockFinished(true);
             if (soundEnabled) playFanfareSound();
-            showToast('Time expired! Your Mock Interview round has completed.', 'info');
+            showToast('Time expired! Your Company Challenge round has completed.', 'info');
             return 0;
           }
           return prev - 1;
@@ -718,7 +718,7 @@ export const ArenaView: React.FC = () => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isMockInterviewMode, mockIsRunning, mockTimerSeconds, soundEnabled]);
+  }, [isMockInterviewMode, mockIsRunning, soundEnabled]);
 
   // Compute available topics from loaded problems (optimized memo)
   const availableTopics = useMemo(() => {
@@ -964,7 +964,7 @@ export const ArenaView: React.FC = () => {
       setIsMockInterviewMode(true);
       handleSelectProblem(selectedTwo[0]);
       if (soundEnabled) playRunSound();
-      showToast(`45-Minute ${company} Mock Interview started!`, 'success');
+      showToast(`45-Minute ${company} Company Challenge started!`, 'success');
     },
     [problems, handleSelectProblem, soundEnabled]
   );
@@ -1037,19 +1037,19 @@ export const ArenaView: React.FC = () => {
             <button
               onClick={() => setIsMockInterviewMode(false)}
               className="p-1.5 text-slate-400 hover:text-white transition"
-              title="Exit Mock Interview"
+              title="Exit Company Round"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
       ) : (
-        /* Top Navigation Bar: Mock Interview Trigger & Sound Toggle */
+        /* Top Navigation Bar: Company Round Trigger & Sound Toggle */
         <div className="flex items-center justify-between p-2.5 bg-[#0b101e] border border-slate-800/80 rounded-2xl">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
             <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 shrink-0 px-2">
               <Briefcase className="h-3.5 w-3.5 text-indigo-400" />
-              <span>Mock Rounds:</span>
+              <span>Company Timed Rounds:</span>
             </span>
             {(['Google', 'Meta', 'Amazon', 'Microsoft', 'Apple'] as const).map((comp) => (
               <button
