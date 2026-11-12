@@ -249,24 +249,6 @@ class DashboardResponse(BaseModel):
     weak_topics: List[str]
     strong_topics: List[str]
 
-# --- AI INTERVIEW SCHEMAS ---
-
-class InterviewStartRequest(BaseModel):
-    mode: str  # technical, behavioral, resume_based, system_design
-
-class InterviewStartResponse(BaseModel):
-    interview_id: UUID
-    first_question: str
-
-class InterviewMessageRequest(BaseModel):
-    message: str
-
-class InterviewMessageResponse(BaseModel):
-    interview_id: UUID
-    ai_response: str
-    status: str # ongoing, completed
-    report: Optional[Dict[str, Any]] = None
-
 # --- RESUME ANALYSIS SCHEMAS ---
 
 class ATSScoreBreakdown(BaseModel):

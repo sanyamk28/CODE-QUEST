@@ -50,7 +50,7 @@ interface StepItem {
   skills: string[];
   interviewFocus: string;
   tasks: string[];
-  practiceType: 'code' | 'sql' | 'interview' | 'quiz';
+  practiceType: 'code' | 'sql' | 'quiz';
   companies: string[];
 }
 
@@ -189,8 +189,8 @@ const PRESET_TRACKS: Record<string, TrackData> = {
             estimatedHours: 20,
             skills: ['System Design', 'Message Queues', 'Horizontal Scaling'],
             interviewFocus: 'Tradeoffs between at-least-once vs exactly-once delivery semantics',
-            tasks: ['Draft end-to-end architecture diagram in whiteboard mode', 'Calculate bandwidth, storage, and server capacity estimations', 'Mock interview defense on handling sudden traffic spikes (Black Friday)'],
-            practiceType: 'interview',
+            tasks: ['Draft end-to-end architecture diagram in whiteboard mode', 'Calculate bandwidth, storage, and server capacity estimations', 'Technical defense on handling sudden traffic spikes (Black Friday)'],
+            practiceType: 'code',
             companies: ['Google', 'Meta', 'Amazon', 'Apple']
           }
         ]
@@ -302,7 +302,7 @@ const PRESET_TRACKS: Record<string, TrackData> = {
             skills: ['Consistent Hashing', 'Raft', 'Distributed Caching'],
             interviewFocus: 'Designing Amazon Dynamo-style ring partitioning with virtual nodes',
             tasks: ['Implement consistent hashing ring with MD5 and virtual nodes', 'Demonstrate node failure failover without losing cache distribution', 'Present distributed rate limiter system design for 10M RPM'],
-            practiceType: 'interview',
+            practiceType: 'code',
             companies: ['Amazon', 'Google', 'Meta']
           }
         ]
@@ -402,7 +402,7 @@ const PRESET_TRACKS: Record<string, TrackData> = {
             skills: ['AI Agents', 'Function Calling', 'LLM Eval'],
             interviewFocus: 'Handling non-deterministic output, tool hallucination, and token streaming',
             tasks: ['Build code-execution agent with sandboxed Python runner', 'Implement loop guardrails and token usage throttling', 'Run automated Ragas evaluation suite for faithfulness and answer relevancy'],
-            practiceType: 'interview',
+            practiceType: 'code',
             companies: ['OpenAI', 'Google', 'Amazon']
           }
         ]
@@ -784,7 +784,6 @@ export const RoadmapsView: React.FC<RoadmapsViewProps> = ({
                 onClick={() => {
                   if (onNavigate) {
                     if (nextStep.practiceType === 'sql') onNavigate('sql');
-                    else if (nextStep.practiceType === 'interview') onNavigate('interview');
                     else onNavigate('practice');
                   } else {
                     setSelectedStepModal(nextStep);

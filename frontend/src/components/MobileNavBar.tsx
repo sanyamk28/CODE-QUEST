@@ -19,7 +19,7 @@ export const MobileNavBar: React.FC<MobileNavBarProps> = ({ activeTab, onSelectT
       id: 'practice' as ActiveTabType,
       label: 'Practice',
       icon: Terminal,
-      match: ['practice', 'arena', 'sql', 'mcqs', 'puzzles', 'interview', 'assessments', 'company-intel'],
+      match: ['practice', 'arena', 'sql', 'mcqs', 'puzzles', 'assessments', 'company-intel'],
     },
     {
       id: 'battle' as ActiveTabType,

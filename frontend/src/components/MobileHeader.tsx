@@ -34,8 +34,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         return 'SQL Lab';
       case 'battle':
         return 'Code Battle';
-      case 'interview':
-        return 'AI Interview';
       case 'resume':
         return 'ATS Resume Analyzer';
       case 'roadmaps':
@@ -65,7 +63,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
       return;
     }
     // Default smart back logic
-    if (['arena', 'sql', 'mcqs', 'puzzles', 'interview', 'assessments'].includes(activeTab)) {
+    if (['arena', 'sql', 'mcqs', 'puzzles', 'assessments'].includes(activeTab)) {
       onSelectTab('practice');
     } else if (['resume'].includes(activeTab)) {
       onSelectTab('roadmaps');

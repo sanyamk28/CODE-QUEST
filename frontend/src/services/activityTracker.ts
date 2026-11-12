@@ -9,7 +9,6 @@ export interface UserActivityStats {
   mcqsAnsweredCount: number;
   puzzlesSolvedCount: number;
   battlesWonCount: number;
-  interviewsDoneCount: number;
   roadmapStepsCount: number;
   assessmentsCount: number;
   totalXp: number;
@@ -23,7 +22,6 @@ const DEFAULT_STATS: UserActivityStats = {
   mcqsAnsweredCount: 0,
   puzzlesSolvedCount: 0,
   battlesWonCount: 0,
-  interviewsDoneCount: 0,
   roadmapStepsCount: 0,
   assessmentsCount: 0,
   totalXp: 0,
@@ -38,7 +36,6 @@ export const TARGET_GOALS = {
   mcq: 40,        // 40 questions for 100%
   puzzle: 20,     // 20 puzzles for 100%
   battle: 10,     // 10 battles for 100%
-  interview: 5,   // 5 mock interviews for 100%
   roadmap: 15     // 15 milestone steps for 100%
 };
 
@@ -75,7 +72,6 @@ export type ActivityType =
   | 'mcq'
   | 'puzzle'
   | 'battle'
-  | 'interview'
   | 'roadmap'
   | 'assessment';
 
@@ -99,9 +95,6 @@ export function recordActivity(type: ActivityType, options?: { xp?: number; delt
       break;
     case 'battle':
       stats.battlesWonCount = Math.max(0, stats.battlesWonCount + delta);
-      break;
-    case 'interview':
-      stats.interviewsDoneCount = Math.max(0, stats.interviewsDoneCount + delta);
       break;
     case 'roadmap':
       stats.roadmapStepsCount = Math.max(0, stats.roadmapStepsCount + delta);
@@ -130,7 +123,6 @@ export function calculateProgressPercentages(stats: UserActivityStats) {
   const mcqPct = Math.min(100, Math.round((stats.mcqsAnsweredCount / TARGET_GOALS.mcq) * 100));
   const puzzlePct = Math.min(100, Math.round((stats.puzzlesSolvedCount / TARGET_GOALS.puzzle) * 100));
   const battlePct = Math.min(100, Math.round((stats.battlesWonCount / TARGET_GOALS.battle) * 100));
-  const interviewPct = Math.min(100, Math.round((stats.interviewsDoneCount / TARGET_GOALS.interview) * 100));
 
   // Overall readiness starts at 0% and climbs as the candidate actually completes challenges
   const overallReadiness = Math.min(
@@ -153,7 +145,6 @@ export function calculateProgressPercentages(stats: UserActivityStats) {
     mcqPct,
     puzzlePct,
     battlePct,
-    interviewPct,
     overallReadiness,
     level,
     totalSolved

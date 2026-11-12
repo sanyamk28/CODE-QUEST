@@ -107,17 +107,6 @@ export const PracticeHubView: React.FC<PracticeHubViewProps> = ({ onNavigate }) 
       glowColor: 'shadow-rose-500/20'
     },
     {
-      id: 'interview',
-      title: 'AI Interview',
-      subtitle: `${stats.interviewsDoneCount} mock interviews completed`,
-      icon: Bot,
-      category: 'CS',
-      badge: 'AI',
-      totalCount: 'Interactive Voice/Text',
-      gradient: 'from-emerald-600 to-teal-600',
-      glowColor: 'shadow-emerald-500/20'
-    },
-    {
       id: 'assessments',
       title: 'Assessments',
       subtitle: `${stats.assessmentsCount} tests completed`,

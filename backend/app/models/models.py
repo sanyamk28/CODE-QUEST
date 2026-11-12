@@ -41,7 +41,6 @@ class User(Base):
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     submissions = relationship("Submission", back_populates="user", cascade="all, delete-orphan")
     progress = relationship("UserProgress", back_populates="user", cascade="all, delete-orphan")
-    interviews = relationship("Interview", back_populates="user", cascade="all, delete-orphan")
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
     contest_participations = relationship("ContestParticipant", back_populates="user", cascade="all, delete-orphan")
     discussions = relationship("Discussion", back_populates="user", cascade="all, delete-orphan")
@@ -286,37 +285,6 @@ class UserProgress(Base):
     __table_args__ = (
         Index('idx_user_subtopic', 'user_id', 'subtopic_id', unique=True),
     )
-
-
-class Interview(Base):
-    __tablename__ = "interviews"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    mode = Column(String, nullable=False) # technical, behavioral, resume_based, system_design
-    status = Column(String, default="ongoing") # ongoing, completed
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationships
-    user = relationship("User", back_populates="interviews")
-    session = relationship("InterviewSession", back_populates="interview", uselist=False, cascade="all, delete-orphan")
-
-
-class InterviewSession(Base):
-    __tablename__ = "interview_sessions"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    interview_id = Column(UUID(as_uuid=True), ForeignKey("interviews.id", ondelete="CASCADE"), nullable=False, unique=True)
-    transcripts = Column(JSON, default=list) # List of dict: [{"speaker": "AI", "text": "..."}, {"speaker": "USER", "text": "..."}]
-    overall_score = Column(Float, default=0.0)
-    technical_score = Column(Float, default=0.0)
-    communication_score = Column(Float, default=0.0)
-    strengths = Column(JSON, default=list)
-    weaknesses = Column(JSON, default=list)
-    feedback = Column(Text, nullable=True)
-
-    # Relationship
-    interview = relationship("Interview", back_populates="session")
 
 
 class Resume(Base):

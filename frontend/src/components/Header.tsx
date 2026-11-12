@@ -42,8 +42,6 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Brainteasers & Scenarios';
       case 'battle':
         return 'Code Battles';
-      case 'interview':
-        return 'AI Interview';
       case 'resume':
         return 'Resume ATS';
       case 'roadmaps':

@@ -60,7 +60,6 @@ export type ActiveTabType =
   | 'mcqs'
   | 'puzzles'
   | 'battle'
-  | 'interview'
   | 'resume'
   | 'roadmaps'
   | 'assessments'

@@ -15,7 +15,6 @@ const PracticeHubView = React.lazy(() => import('./features/practice/PracticeHub
 const ArenaView = React.lazy(() => import('./features/arena/ArenaView').then(m => ({ default: m.ArenaView })));
 const SqlLabView = React.lazy(() => import('./features/sql/SqlLabView').then(m => ({ default: m.SqlLabView })));
 const BattleArenaView = React.lazy(() => import('./features/battles/BattleArenaView').then(m => ({ default: m.BattleArenaView })));
-const AiInterviewView = React.lazy(() => import('./features/interview/AiInterviewView').then(m => ({ default: m.AiInterviewView })));
 const ResumeAtsView = React.lazy(() => import('./features/resume/ResumeAtsView').then(m => ({ default: m.ResumeAtsView })));
 const RoadmapsView = React.lazy(() => import('./features/roadmaps/RoadmapsView').then(m => ({ default: m.RoadmapsView })));
 const AssessmentsView = React.lazy(() => import('./features/assessments/AssessmentsView').then(m => ({ default: m.AssessmentsView })));
@@ -168,8 +167,6 @@ export const App: React.FC = () => {
               return <SqlLabView />;
             case 'battle':
               return <BattleArenaView />;
-            case 'interview':
-              return <AiInterviewView />;
             case 'resume':
               return <ResumeAtsView targetRole={targetRole} />;
             case 'roadmaps':

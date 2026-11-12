@@ -44,7 +44,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'mcqs' as ActiveTabType, label: 'CS Fundamentals', icon: Layers },
     { id: 'puzzles' as ActiveTabType, label: 'Brainteasers', icon: Puzzle },
     { id: 'battle' as ActiveTabType, label: 'Code Battles', icon: Swords, badge: 'LIVE' },
-    { id: 'interview' as ActiveTabType, label: 'AI Interview', icon: Bot, badge: 'AI' },
     { id: 'resume' as ActiveTabType, label: 'Resume ATS', icon: FileText },
     { id: 'roadmaps' as ActiveTabType, label: 'Career Roadmaps', icon: Compass },
     { id: 'assessments' as ActiveTabType, label: 'Assessments', icon: CheckSquare },

@@ -973,8 +973,8 @@ export const ArenaView: React.FC = () => {
     setMockIsRunning(false);
     setMockFinished(true);
     if (soundEnabled) playFanfareSound();
-    recordActivity('interview', { xp: 100 });
-    showToast('Mock Interview graded! +100 XP awarded.', 'success');
+    recordActivity('arena', { xp: 100 });
+    showToast('Company Challenge graded! +100 XP awarded.', 'success');
   }, [soundEnabled]);
 
   const formatTimer = (secs: number) => {

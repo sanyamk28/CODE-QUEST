@@ -552,14 +552,6 @@ export const CompanyScraperAgentView: React.FC<CompanyScraperAgentViewProps> = (
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => onNavigate('interview')}
-                    className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-sky-300 hover:text-white border border-slate-700/60 text-xs font-semibold flex items-center gap-1.5 transition"
-                  >
-                    <Bot className="h-3.5 w-3.5 text-sky-400" />
-                    <span>Mock with AI</span>
-                  </button>
-
-                  <button
                     onClick={() => onNavigate('arena')}
                     className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5 transition"
                   >

@@ -80,7 +80,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     { name: 'Master Coder', icon: '⚡', desc: 'Solved over 400+ algorithmic coding problems', color: 'from-amber-400 to-orange-500' },
     { name: 'SQL Guru', icon: '💎', desc: 'Mastered multi-table analytical window queries', color: 'from-cyan-400 to-blue-500' },
     { name: 'Streak Legend', icon: '🔥', desc: 'Kept a continuous problem-solving streak with Shield', color: 'from-rose-500 to-amber-500' },
-    { name: 'AI Champion', icon: '🤖', desc: 'Completed technical recruiter mock interviews', color: 'from-emerald-400 to-teal-500' },
+    { name: 'DSA Champion', icon: '💡', desc: 'Mastered core algorithmic data structures', color: 'from-emerald-400 to-teal-500' },
     { name: 'Battle King', icon: '⚔️', desc: 'Competed in live 1v1 speed battles', color: 'from-purple-500 to-indigo-500' },
   ];
 

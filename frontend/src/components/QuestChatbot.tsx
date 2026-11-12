@@ -94,7 +94,7 @@ const getLocalSmartResponse = (query: string, targetRole: string, screen: string
         `- **Weeks 1-2**: Master CS Fundamentals (OS, DBMS, Networks, OOP).\n` +
         `- **Weeks 3-5**: Core DSA Patterns (Sliding Window, Trees, Graphs, Heaps).\n` +
         `- **Weeks 6-8**: Practical Full-Stack or System Design projects.\n` +
-        `- **Weeks 9+**: Daily mock interviews using our AI Interviewer and live Battle Arena challenges!\n\n` +
+        `- **Weeks 9+**: Daily coding challenges in the Arena and live 1v1 Battle matches!\n\n` +
         `You can monitor your personalized milestone track in the **Roadmaps** tab anytime!`,
       suggestions: ['How many hours should I study daily?', 'How to prepare for Behavioral / STAR questions?', 'What projects stand out to recruiters?']
     };
@@ -107,7 +107,7 @@ const getLocalSmartResponse = (query: string, targetRole: string, screen: string
       `- 🗄️ **SQL & Databases**: Window functions, query tuning, and index strategies.\n` +
       `- 📄 **Resume & Career**: Google X-Y-Z bullet rewrites, ATS keywords for **${targetRole || 'Software Engineers'}**.\n` +
       `- 🏗️ **System Design & Architecture**: Scalability, caching, and distributed principles.\n` +
-      `- 🎯 **Preparation Advice**: Roadmaps, mock interview tips, and placement strategies.\n\n` +
+      `- 🎯 **Preparation Advice**: Career roadmaps, assessment test tips, and placement strategies.\n\n` +
       `What would you like to dive into today?`,
     suggestions: [
       'Explain Binary Search in simple terms',
