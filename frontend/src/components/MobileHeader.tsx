@@ -78,19 +78,19 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   if (isRootTab) {
     return (
-      <header className="sticky top-0 z-30 bg-[#070a13]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-800/80">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 shadow-sm">
         <div>
           <div className="flex items-center gap-1.5">
-            <span className="text-sm font-black text-white">Good morning, {userName.split(' ')[0]}</span>
+            <span className="text-sm font-black text-slate-900">Good morning, {userName.split(' ')[0]}</span>
             <span className="text-sm">👋</span>
           </div>
-          <p className="text-[11px] text-slate-400">Let's continue your placement journey</p>
+          <p className="text-[11px] text-slate-500">Let's continue your placement journey</p>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Flame streak */}
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-950/40 border border-orange-800/40 text-orange-400 text-xs font-bold">
-            <Flame className="h-3.5 w-3.5 fill-orange-400 text-orange-400" />
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-600 text-xs font-bold">
+            <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
             <span>{streak || 12}</span>
           </div>
 
@@ -107,16 +107,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-[#070a13]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-800/80">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-200 shadow-sm">
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={handleBack}
           aria-label="Go Back"
-          className="p-1.5 -ml-1 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 shrink-0 transition"
+          className="p-1.5 -ml-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shrink-0 transition"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-sm sm:text-base font-extrabold text-white truncate tracking-tight">
+        <h1 className="text-sm sm:text-base font-extrabold text-slate-900 truncate tracking-tight">
           {title}
         </h1>
       </div>
@@ -126,7 +126,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <>
             <button
               onClick={() => showToast('Problem saved to bookmarks!', 'success')}
-              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white transition active:scale-95"
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 transition active:scale-95 border border-slate-200"
             >
               <Bookmark className="h-4 w-4" />
             </button>
@@ -135,7 +135,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 navigator.clipboard?.writeText(window.location.href);
                 showToast('Link copied to clipboard!', 'info');
               }}
-              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white transition active:scale-95"
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 transition active:scale-95 border border-slate-200"
             >
               <Share2 className="h-4 w-4" />
             </button>

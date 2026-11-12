@@ -102,23 +102,23 @@ export const AuthView: React.FC<AuthViewProps> = ({
   // SCREEN 1: Mobile Splash Screen
   if (currentScreen === 'splash') {
     return (
-      <div className="min-h-screen w-full bg-[#070a13] text-slate-100 flex flex-col justify-between items-center p-6 md:p-10 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-hidden select-none">
+      <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col justify-between items-center p-6 md:p-10 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-hidden select-none">
         {/* Ambient background glows */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-600/25 rounded-full blur-[110px] pointer-events-none" />
-        <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 translate-y-1/2 w-80 h-80 bg-blue-600/20 rounded-full blur-[110px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 rounded-full blur-[110px] pointer-events-none" />
+        <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 translate-y-1/2 w-80 h-80 bg-blue-500/10 rounded-full blur-[110px] pointer-events-none" />
 
         {/* Top bar */}
         <div className="w-full max-w-md flex items-center justify-between z-10 pt-2">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-semibold text-slate-400">Live Placement Platform</span>
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-semibold text-slate-600">Live Placement Platform</span>
           </div>
           <button
             onClick={() => {
               setIsSignUp(false);
               setCurrentScreen('auth');
             }}
-            className="text-xs font-semibold text-sky-400 hover:text-sky-300 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800 transition"
+            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 transition"
           >
             Sign In
           </button>
@@ -129,19 +129,19 @@ export const AuthView: React.FC<AuthViewProps> = ({
           {/* Glowing Monogram Logo */}
           <div className="relative group">
             <div className="h-24 w-24 rounded-3xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-sky-400 p-[2px] shadow-2xl shadow-indigo-500/40 animate-pulse">
-              <div className="h-full w-full bg-[#090d16] rounded-[22px] flex items-center justify-center">
-                <span className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-tr from-indigo-400 to-sky-300">
+              <div className="h-full w-full bg-white rounded-[22px] flex items-center justify-center">
+                <span className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-tr from-indigo-600 to-sky-500">
                   C
                 </span>
               </div>
             </div>
-            <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-sky-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-60 transition duration-500" />
+            <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-sky-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition duration-500" />
           </div>
 
           {/* Title & Tagline */}
           <div className="space-y-2">
-            <h1 className="text-3xl font-black tracking-tight text-white">Code Quest</h1>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-xs">
+            <h1 className="text-3xl font-black tracking-tight text-slate-900">Code Quest</h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-xs">
               Master Tech Interviews. Calibrate Your Skills. Land Your Dream Role.
             </p>
           </div>
@@ -149,19 +149,19 @@ export const AuthView: React.FC<AuthViewProps> = ({
           {/* Floating Badges Illustration */}
           <div className="relative w-72 h-44 my-4 flex items-center justify-center">
             {/* Floating Python Badge */}
-            <div className="absolute top-2 left-4 bg-[#0d162b]/95 border border-sky-500/40 rounded-xl px-3 py-2 shadow-lg backdrop-blur-md flex items-center gap-2 transform -rotate-6">
-              <Code2 className="h-4 w-4 text-sky-400" />
-              <span className="text-[11px] font-bold text-sky-200">Python / DSA</span>
+            <div className="absolute top-2 left-4 bg-white/95 border border-sky-300 rounded-xl px-3 py-2 shadow-md backdrop-blur-md flex items-center gap-2 transform -rotate-6">
+              <Code2 className="h-4 w-4 text-sky-600" />
+              <span className="text-[11px] font-bold text-sky-900">Python / DSA</span>
             </div>
 
             {/* Floating SQL Badge */}
-            <div className="absolute top-3 right-4 bg-[#0d162b]/95 border border-indigo-500/40 rounded-xl px-3 py-2 shadow-lg backdrop-blur-md flex items-center gap-2 transform rotate-6">
-              <Database className="h-4 w-4 text-indigo-400" />
-              <span className="text-[11px] font-bold text-indigo-200">SQL Lab</span>
+            <div className="absolute top-3 right-4 bg-white/95 border border-indigo-300 rounded-xl px-3 py-2 shadow-md backdrop-blur-md flex items-center gap-2 transform rotate-6">
+              <Database className="h-4 w-4 text-indigo-600" />
+              <span className="text-[11px] font-bold text-indigo-900">SQL Lab</span>
             </div>
 
             {/* Floating Laptop Graphic */}
-            <div className="w-56 bg-[#0a0f1d] border border-slate-700/80 rounded-2xl p-3 shadow-2xl shadow-indigo-950/70 transform hover:scale-105 transition-transform duration-300">
+            <div className="w-56 bg-slate-50 border border-slate-200 rounded-2xl p-3 shadow-md transform hover:scale-105 transition-transform duration-300">
               <div className="flex items-center gap-1 pb-1.5 mb-1.5 border-b border-slate-800">
                 <span className="h-2 w-2 rounded-full bg-rose-500" />
                 <span className="h-2 w-2 rounded-full bg-amber-500" />
@@ -208,13 +208,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
   // SCREEN 2: Login / Signup Screen
   return (
-    <div className="min-h-screen w-full bg-[#070a13] text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-8 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-hidden select-none">
+    <div className="min-h-screen w-full bg-white text-slate-900 flex items-center justify-center p-4 sm:p-6 md:p-8 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-hidden select-none">
       {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-sky-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-sky-500/10 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Main Container */}
-      <div className="w-full max-w-4xl bg-[#090d16]/90 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 min-h-[580px]">
+      <div className="w-full max-w-4xl bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 min-h-[580px]">
         {/* Form Column */}
         <div className="p-6 sm:p-8 md:p-10 flex flex-col justify-between">
           <div>
@@ -222,24 +222,24 @@ export const AuthView: React.FC<AuthViewProps> = ({
             <div className="flex items-center justify-between mb-6">
               <button
                 onClick={() => setCurrentScreen('splash')}
-                className="p-2 rounded-xl bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800 transition flex items-center gap-1.5 text-xs font-semibold"
+                className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition flex items-center gap-1.5 text-xs font-semibold"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back</span>
               </button>
 
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-900/60 px-2.5 py-1 rounded-full border border-slate-800">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Secure Authentication</span>
               </div>
             </div>
 
             {/* Headline */}
             <div className="space-y-1.5 mb-5">
-              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {isSignUp ? 'Create Your Account' : 'Sign In to Continue'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 {isSignUp
                   ? 'Register with your email and password to begin preparation'
                   : 'Enter your email and password to access your candidate workspace'}
@@ -248,14 +248,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
             {/* Error Message Box */}
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
                 <span className="leading-relaxed">{error}</span>
               </div>
             )}
 
             {/* Tab Selector: Sign In vs Sign Up */}
-            <div className="p-1 rounded-xl bg-[#0e1424] border border-slate-800/80 flex mb-4">
+            <div className="p-1 rounded-xl bg-slate-100 border border-slate-200 flex mb-4">
               <button
                 type="button"
                 onClick={() => {
@@ -264,8 +264,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   !isSignUp
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Sign In
@@ -278,17 +278,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   isSignUp
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Sign Up
               </button>
             </div>
 
-            {/* Notice for seamless random login */}
-            <div className="mb-4 px-3 py-2 rounded-xl bg-indigo-950/40 border border-indigo-800/40 text-[11px] text-indigo-300 flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+            {/* Notice for seamless login */}
+            <div className="mb-4 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-[11px] text-indigo-700 flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
               <span>Enter any email and password. Your candidate data is saved permanently in the database.</span>
             </div>
 
@@ -296,49 +296,49 @@ export const AuthView: React.FC<AuthViewProps> = ({
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {isSignUp && (
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">Your Name</label>
+                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">Your Name</label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. Sanyam Kumar"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0e1424] border border-slate-800 text-xs text-slate-200 outline-none focus:border-indigo-500 transition font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 outline-none focus:border-indigo-500 transition font-medium"
                     required
                   />
                 </div>
               )}
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Email Address</label>
+                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Email Address</label>
                 <div className="relative">
-                  <Mail className="h-4 w-4 absolute left-3.5 top-3 text-slate-500" />
+                  <Mail className="h-4 w-4 absolute left-3.5 top-3 text-slate-400" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-[#0e1424] border border-slate-800 text-xs text-slate-200 outline-none focus:border-indigo-500 transition font-medium"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 outline-none focus:border-indigo-500 transition font-medium"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Password</label>
+                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Password</label>
                 <div className="relative">
-                  <Lock className="h-4 w-4 absolute left-3.5 top-3 text-slate-500" />
+                  <Lock className="h-4 w-4 absolute left-3.5 top-3 text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#0e1424] border border-slate-800 text-xs text-slate-200 outline-none focus:border-indigo-500 transition font-medium"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 outline-none focus:border-indigo-500 transition font-medium"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-2.5 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3.5 top-2.5 text-slate-400 hover:text-slate-600"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -348,7 +348,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 mt-4 active:scale-[0.99]"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 mt-4 active:scale-[0.99]"
               >
                 {loading ? (
                   <>
@@ -366,7 +366,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </div>
 
           {/* Toggle bottom link */}
-          <div className="pt-3 border-t border-slate-800/80 text-center text-xs text-slate-400 mt-4">
+          <div className="pt-3 border-t border-slate-200 text-center text-xs text-slate-500 mt-4">
             {isSignUp ? (
               <span>
                 Already have an account?{' '}
@@ -376,7 +376,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     setIsSignUp(false);
                     setError(null);
                   }}
-                  className="text-sky-400 hover:text-sky-300 font-bold ml-1"
+                  className="text-indigo-600 hover:text-indigo-700 font-bold ml-1"
                 >
                   Sign In
                 </button>
@@ -390,7 +390,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     setIsSignUp(true);
                     setError(null);
                   }}
-                  className="text-sky-400 hover:text-sky-300 font-bold ml-1"
+                  className="text-indigo-600 hover:text-indigo-700 font-bold ml-1"
                 >
                   Sign Up
                 </button>
@@ -400,37 +400,37 @@ export const AuthView: React.FC<AuthViewProps> = ({
         </div>
 
         {/* Right Hero Graphic Column (Desktop) */}
-        <div className="hidden lg:flex flex-col justify-between p-10 bg-gradient-to-br from-[#0c1324] via-[#090e1c] to-[#070b14] border-l border-slate-800/80 relative overflow-hidden">
-          <div className="absolute top-10 right-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-10 left-10 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="hidden lg:flex flex-col justify-between p-10 bg-slate-50 border-l border-slate-200 relative overflow-hidden">
+          <div className="absolute top-10 right-10 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-10 left-10 w-64 h-64 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex items-center justify-between">
-            <div className="px-3 py-1 rounded-full bg-slate-900/80 border border-slate-700/60 text-[11px] font-semibold text-slate-300 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="px-3 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 flex items-center gap-2 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Step 1: Authenticate Candidate</span>
             </div>
           </div>
 
           <div className="relative z-10 my-auto py-8 flex flex-col items-center justify-center">
-            <div className="w-80 rounded-2xl bg-[#090f1d] border border-slate-700/70 p-4 shadow-2xl shadow-indigo-950/60">
-              <div className="flex items-center gap-1.5 pb-2 mb-3 border-b border-slate-800">
+            <div className="w-80 rounded-2xl bg-white border border-slate-200 p-4 shadow-lg">
+              <div className="flex items-center gap-1.5 pb-2 mb-3 border-b border-slate-200">
                 <div className="h-2 w-2 rounded-full bg-rose-500" />
                 <div className="h-2 w-2 rounded-full bg-amber-500" />
                 <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] text-slate-500 font-mono ml-2">codequest.dev/portal</span>
+                <span className="text-[10px] text-slate-400 font-mono ml-2">codequest.dev/portal</span>
               </div>
-              <div className="bg-[#050913] rounded-lg p-3 font-mono text-[10px] space-y-1.5 text-slate-300">
-                <div className="text-indigo-400"># Personalized Prep Flow:</div>
-                <div className="text-sky-300">1. Authenticate with Email & Password</div>
-                <div className="text-emerald-400">2. Select Targeted Engineering Role</div>
-                <div className="text-purple-400">3. Calibrate Timeline & Knowledge %</div>
-                <div className="text-amber-300">4. Tailored DSA, SQL & AI Roadmaps</div>
+              <div className="bg-slate-50 rounded-lg p-3 font-mono text-[10px] space-y-1.5 text-slate-700 border border-slate-200">
+                <div className="text-indigo-600 font-bold"># Personalized Prep Flow:</div>
+                <div className="text-sky-700">1. Authenticate with Email & Password</div>
+                <div className="text-emerald-700">2. Select Targeted Engineering Role</div>
+                <div className="text-purple-700">3. Calibrate Timeline & Knowledge %</div>
+                <div className="text-amber-700">4. Tailored DSA, SQL & AI Roadmaps</div>
               </div>
             </div>
           </div>
 
-          <div className="relative z-10 text-center pt-4 border-t border-slate-800/60">
-            <p className="text-xs font-semibold text-slate-300 tracking-wide">
+          <div className="relative z-10 text-center pt-4 border-t border-slate-200">
+            <p className="text-xs font-semibold text-slate-600 tracking-wide">
               Every candidate gets custom-calibrated questions & analytics
             </p>
           </div>

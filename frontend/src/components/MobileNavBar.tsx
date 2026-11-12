@@ -43,7 +43,7 @@ export const MobileNavBar: React.FC<MobileNavBarProps> = ({ activeTab, onSelectT
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#090d16]/95 backdrop-blur-xl border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around select-none shadow-[0_-8px_20px_rgba(0,0,0,0.5)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200 px-2 py-1.5 flex items-center justify-around select-none shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = tab.match.includes(activeTab);
@@ -54,23 +54,23 @@ export const MobileNavBar: React.FC<MobileNavBarProps> = ({ activeTab, onSelectT
             onClick={() => onSelectTab(tab.id)}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all relative group ${
               isActive
-                ? 'text-sky-400 font-bold'
-                : 'text-slate-400 hover:text-slate-200 font-medium'
+                ? 'text-indigo-600 font-bold'
+                : 'text-slate-500 hover:text-slate-800 font-medium'
             }`}
           >
             {/* Active Pill Glow Indicator */}
             {isActive && (
-              <span className="absolute -top-1.5 w-6 h-1 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 shadow-md shadow-sky-400/50" />
+              <span className="absolute -top-1.5 w-6 h-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 shadow-sm" />
             )}
 
             <div className="relative">
               <Icon
                 className={`h-5 w-5 transition-transform duration-200 ${
-                  isActive ? 'scale-110 text-sky-400 stroke-[2.2]' : 'text-slate-400 group-hover:scale-105'
+                  isActive ? 'scale-110 text-indigo-600 stroke-[2.2]' : 'text-slate-500 group-hover:scale-105'
                 }`}
               />
               {tab.badge && (
-                <span className="absolute -top-1 -right-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-[#090d16] animate-pulse" />
+                <span className="absolute -top-1 -right-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
               )}
             </div>
 
