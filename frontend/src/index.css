@@ -3,14 +3,9 @@
 @tailwind utilities;
 
 @layer base {
-  html {
-    background-color: #ffffff;
-    color: #0f172a;
-  }
-
   body {
-    background-color: #ffffff;
-    color: #0f172a;
+    background-color: #070a13;
+    color: #f1f5f9;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
   
@@ -19,60 +14,60 @@
   }
 }
 
-/* Light sleek scrollbar */
+/* Custom sleek scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: #080d19;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #1e293b;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #334155;
 }
 
-/* Subtle glow effects */
+/* Glow effects matching screenshot */
 .glow-blue {
-  box-shadow: 0 4px 20px -2px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 30px -5px rgba(59, 130, 246, 0.35);
 }
 
 .glow-indigo {
-  box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 30px -5px rgba(99, 102, 241, 0.35);
 }
 
 .glow-cyan {
-  box-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.2);
+  box-shadow: 0 0 30px -5px rgba(6, 182, 212, 0.35);
 }
 
 .glow-emerald {
-  box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
 }
 
 .glow-amber {
-  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 0 30px -5px rgba(245, 158, 11, 0.35);
 }
 
 .glow-rose {
-  box-shadow: 0 4px 20px -2px rgba(244, 63, 94, 0.2);
+  box-shadow: 0 0 30px -5px rgba(244, 63, 94, 0.35);
 }
 
 .glow-purple {
-  box-shadow: 0 4px 20px -2px rgba(168, 85, 247, 0.2);
+  box-shadow: 0 0 30px -5px rgba(168, 85, 247, 0.35);
 }
 
-/* Clean light tech grid background pattern */
+/* Dark tech grid background pattern */
 .bg-tech-grid {
   background-size: 32px 32px;
   background-image: 
-    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
 
 /* Isometric float animations */
@@ -92,197 +87,4 @@
 
 .animate-pulse-glow {
   animation: pulseGlow 2s infinite ease-in-out;
-}
-
-/* ===================================================================
-   WHITE THEME ADAPTATION (Pure White Screen Backgrounds Across App)
-   =================================================================== */
-
-/* Screen Canvas & Main Content Backdrops */
-.bg-\[\#070a13\],
-.bg-\[\#04060c\],
-.bg-\[\#080d19\],
-.bg-\[\#080d1a\],
-.bg-\[\#060810\],
-.bg-\[\#060913\],
-.bg-\[\#060a12\],
-.bg-\[\#070b14\],
-.bg-slate-950 {
-  background-color: #ffffff !important;
-}
-
-/* Cards, Sidebars, Modals & Surfaces */
-.bg-\[\#090d16\],
-.bg-\[\#090d18\],
-.bg-\[\#090e1b\],
-.bg-\[\#090e1c\],
-.bg-\[\#090f21\],
-.bg-\[\#0a0f1d\],
-.bg-\[\#0b101e\],
-.bg-\[\#0b1020\],
-.bg-\[\#0b1124\],
-.bg-\[\#0b1224\],
-.bg-\[\#0c1326\],
-.bg-\[\#0d1324\],
-.bg-\[\#0d1326\],
-.bg-\[\#0d1426\],
-.bg-\[\#0d162b\],
-.bg-\[\#0e1424\],
-.bg-\[\#0d1322\],
-.bg-\[\#070d1e\],
-.bg-\[\#0f172e\],
-.bg-\[\#10162a\],
-.bg-\[\#11192e\],
-.bg-slate-900 {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
-}
-
-/* Translucent backdrop overlays */
-.bg-\[\#090d16\]\/95,
-.bg-\[\#070a13\]\/95,
-.bg-\[\#090e1b\]\/80,
-.bg-\[\#090e1c\]\/90,
-.bg-\[\#0d162b\]\/95,
-.bg-\[\#090d18\]\/95,
-.bg-slate-900\/95,
-.bg-slate-900\/90,
-.bg-slate-900\/80,
-.bg-slate-900\/60,
-.bg-slate-900\/50,
-.bg-slate-950\/90,
-.bg-slate-950\/80,
-.bg-slate-950\/60 {
-  background-color: rgba(255, 255, 255, 0.96) !important;
-  border-color: #e2e8f0 !important;
-}
-
-/* Dark gradient overrides so panels don't show pitch black gradients */
-.from-\[\#0c1326\],
-.from-\[\#0c1324\],
-.from-\[\#0d1326\],
-.from-\[\#090d16\],
-.from-\[\#070a13\],
-.from-slate-950,
-.from-slate-900 {
-  --tw-gradient-from: #ffffff var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: rgb(255 255 255 / 0) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
-}
-
-.via-\[\#0b1020\],
-.via-\[\#090e1c\],
-.via-\[\#0e1424\],
-.via-slate-900 {
-  --tw-gradient-to: rgb(248 250 252 / 0) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), #f8fafc var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
-}
-
-.to-\[\#080d1a\],
-.to-\[\#070b14\],
-.to-\[\#090d16\],
-.to-slate-950,
-.to-slate-900 {
-  --tw-gradient-to: #ffffff var(--tw-gradient-to-position) !important;
-}
-
-/* Secondary Panels, Pills, Inputs & Containers */
-.bg-slate-900\/40,
-.bg-slate-900\/30,
-.bg-slate-900\/20,
-.bg-slate-800\/50,
-.bg-slate-800\/40,
-.bg-slate-800\/30,
-.bg-slate-800\/20 {
-  background-color: #f8fafc !important;
-  border-color: #e2e8f0 !important;
-}
-
-/* Borders */
-.border-slate-800,
-.border-slate-800\/90,
-.border-slate-800\/80,
-.border-slate-800\/60,
-.border-slate-800\/50,
-.border-slate-800\/40,
-.border-slate-700,
-.border-slate-700\/60,
-.border-slate-700\/50,
-.border-slate-700\/40 {
-  border-color: #e2e8f0 !important;
-}
-
-/* Typography High-Contrast Adjustment */
-.text-slate-100 {
-  color: #1e293b !important;
-}
-
-.text-slate-200 {
-  color: #334155 !important;
-}
-
-.text-slate-300 {
-  color: #475569 !important;
-}
-
-.text-slate-400 {
-  color: #64748b !important;
-}
-
-/* Text white headings inside white panels turn to dark slate */
-h1.text-white,
-h2.text-white,
-h3.text-white,
-h4.text-white,
-p.text-white,
-div.text-white:not([class*="bg-indigo-"]):not([class*="bg-blue-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-purple-"]):not([class*="from-"]) {
-  color: #0f172a !important;
-}
-
-/* Accent Badges & Tags */
-.bg-emerald-950\/30,
-.bg-emerald-950\/40,
-.bg-emerald-950\/50 {
-  background-color: #ecfdf5 !important;
-  border-color: #a7f3d0 !important;
-  color: #047857 !important;
-}
-
-.bg-orange-950\/40,
-.bg-orange-950\/30 {
-  background-color: #fff7ed !important;
-  border-color: #fed7aa !important;
-  color: #ea580c !important;
-}
-
-.bg-indigo-950\/50,
-.bg-indigo-950\/60,
-.bg-indigo-950\/70 {
-  background-color: #eef2ff !important;
-  border-color: #c7d2fe !important;
-  color: #4338ca !important;
-}
-
-.bg-sky-950\/40,
-.bg-sky-950\/50 {
-  background-color: #f0f9ff !important;
-  border-color: #bae6fd !important;
-  color: #0369a1 !important;
-}
-
-.bg-rose-950\/40,
-.bg-rose-950\/50 {
-  background-color: #fff1f2 !important;
-  border-color: #fecdd3 !important;
-  color: #be123c !important;
-}
-
-/* Form controls */
-input, textarea, select {
-  color: #0f172a !important;
-}
-
-input::placeholder, textarea::placeholder {
-  color: #94a3b8 !important;
 }
