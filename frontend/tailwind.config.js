@@ -9,16 +9,25 @@ export default {
     extend: {
       colors: {
         cyber: {
-          dark: '#070a13',
-          darker: '#03050a',
-          card: '#0d1322',
-          border: '#1e293b',
-          accent: '#38bdf8',
-          glow: '#6366f1',
-          neon: '#10b981',
-          danger: '#ef4444',
-          warning: '#f59e0b'
+          void: '#06080F',
+          dark: '#070A13',
+          darker: '#04060C',
+          card: '#0D1322',
+          surface: '#11192E',
+          border: '#1E293B',
+          cyan: '#00E5FF',
+          accent: '#38BDF8',
+          glow: '#6366F1',
+          violet: '#8B5CF6',
+          neon: '#10B981',
+          danger: '#EF4444',
+          warning: '#F59E0B'
         }
+      },
+      boxShadow: {
+        'cyber-cyan': '0 0 25px -3px rgba(0, 229, 255, 0.35)',
+        'cyber-indigo': '0 0 30px -3px rgba(99, 102, 241, 0.4)',
+        'cyber-card': '0 10px 30px -5px rgba(0, 0, 0, 0.7)'
       }
     },
   },

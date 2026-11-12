@@ -214,24 +214,24 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#070a13] text-slate-100 flex flex-col justify-start items-center p-4 sm:p-6 md:p-10 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-x-hidden">
+    <div className="min-h-screen w-full bg-[#06080F] text-slate-100 flex flex-col justify-start items-center p-4 sm:p-6 md:p-10 font-['Plus_Jakarta_Sans'] bg-tech-grid relative overflow-x-hidden">
       {/* Ambient background glows */}
-      <div className="absolute top-10 left-1/3 w-96 h-96 bg-indigo-600/15 rounded-full blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-10 right-1/3 w-96 h-96 bg-purple-600/15 rounded-full blur-[130px] pointer-events-none" />
+      <div className="absolute top-10 left-1/3 w-96 h-96 bg-cyan-500/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-10 right-1/3 w-96 h-96 bg-indigo-600/20 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Main Container */}
       <div className="w-full max-w-4xl relative z-10 space-y-8 my-auto">
         {/* Header Section */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-950/70 border border-indigo-700/50 text-indigo-300 text-xs font-semibold shadow-inner">
-            <Sparkles className="h-3.5 w-3.5 text-sky-400 animate-spin" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-950/50 border border-cyan-500/40 text-cyan-300 text-xs font-semibold shadow-inner shadow-cyan-950/50">
+            <Sparkles className="h-3.5 w-3.5 text-cyan-400 animate-spin" />
             <span>Welcome, {userName || 'Candidate'}! Step 2 of 2: Candidate Calibration</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
             Customize Your Career Preparation Path
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto font-medium">
-            Code Quest dynamically tailors coding problems, SQL labs, and AI interview simulations based on your targeted position and current skill level.
+            Code Quest dynamically tailors coding problems, SQL labs, and challenges based on your targeted position and current skill level.
           </p>
         </div>
 
@@ -242,7 +242,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
         )}
 
         {/* STEP 1: TARGET ROLE SELECTION */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-[#090e1c]/90 border border-slate-800/90 shadow-2xl backdrop-blur-xl space-y-5">
+        <div className="p-6 sm:p-8 rounded-3xl bg-[#0B0F1C]/95 border border-cyan-500/20 shadow-2xl backdrop-blur-xl space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-sm">

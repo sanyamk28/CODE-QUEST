@@ -53,16 +53,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="hidden md:flex w-64 bg-[#090d16] border-r border-slate-800/80 flex-col h-screen sticky top-0 select-none z-30 shrink-0">
+    <aside className="hidden md:flex w-64 bg-[#090D18] border-r border-slate-800/80 flex-col h-screen sticky top-0 select-none z-30 shrink-0">
       {/* Brand Header */}
-      <div className="p-4 flex items-center justify-between border-b border-slate-800/60">
+      <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
         <div 
           onClick={() => onSelectTab('dashboard')} 
           className="flex items-center gap-3 cursor-pointer group"
         >
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 via-sky-500 to-emerald-500 p-[1.5px] flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition">
-            <div className="h-full w-full bg-[#090d16] rounded-[10px] flex items-center justify-center text-sky-400">
-              <Sparkles className="h-4 w-4 text-sky-400 animate-pulse" />
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-400 via-indigo-500 to-purple-500 p-[1.5px] flex items-center justify-center shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition">
+            <div className="h-full w-full bg-[#0B0F1C] rounded-[10px] flex items-center justify-center text-cyan-400">
+              <Sparkles className="h-4 w-4 text-cyan-400 animate-pulse" />
             </div>
           </div>
           <div>
@@ -85,14 +85,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onSelectTab(item.id)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
                 isActive
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 border border-cyan-400/20'
+                  : 'text-slate-400 hover:text-cyan-300 hover:bg-[#11192E]'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Icon
                   className={`h-4 w-4 transition-colors ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-sky-400'
+                    isActive ? 'text-cyan-300' : 'text-slate-400 group-hover:text-cyan-400'
                   }`}
                 />
                 <span className="tracking-wide">{item.label}</span>
@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       ? 'bg-white/20 text-white'
                       : item.badge === 'LIVE'
                       ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                      : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                      : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
                   }`}
                 >
                   {item.badge}
@@ -117,20 +117,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* User Profile Card at bottom */}
-      <div className="p-3 border-t border-slate-800/70 bg-[#070b13]">
-        <div className="flex items-center justify-between p-2 rounded-xl bg-slate-900/60 border border-slate-800/60">
+      <div className="p-3 border-t border-slate-800/80 bg-[#06080F]">
+        <div className="flex items-center justify-between p-2 rounded-xl bg-[#0D1322] border border-slate-800/80">
           <div 
             onClick={() => onSelectTab('profile')} 
             className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
           >
             <div className="relative">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow">
+              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow shadow-cyan-500/25 ring-2 ring-cyan-500/20">
                 SK
               </div>
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#090d16]" />
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0B0F1C]" />
             </div>
             <div className="truncate">
-              <div className="text-xs font-bold text-white truncate hover:text-sky-400 transition">
+              <div className="text-xs font-bold text-white truncate hover:text-cyan-400 transition">
                 {userName || 'Sanyam Kumar'}
               </div>
               <div className="text-[10px] text-slate-400 truncate">

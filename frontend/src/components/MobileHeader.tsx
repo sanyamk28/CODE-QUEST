@@ -78,7 +78,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   if (isRootTab) {
     return (
-      <header className="sticky top-0 z-30 bg-[#070a13]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-800/80">
+      <header className="sticky top-0 z-30 bg-[#090D18]/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between border-b border-slate-800/80 shadow-md">
         <div>
           <div className="flex items-center gap-1.5">
             <span className="text-sm font-black text-white">Good morning, {userName.split(' ')[0]}</span>
@@ -89,15 +89,15 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
         <div className="flex items-center gap-2">
           {/* Flame streak */}
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-950/40 border border-orange-800/40 text-orange-400 text-xs font-bold">
-            <Flame className="h-3.5 w-3.5 fill-orange-400 text-orange-400" />
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-950/40 border border-orange-500/40 text-orange-400 text-xs font-bold shadow-[0_0_12px_rgba(249,115,22,0.25)]">
+            <Flame className="h-3.5 w-3.5 fill-orange-400 text-orange-400 animate-pulse" />
             <span>{streak || 12}</span>
           </div>
 
           {/* User Avatar */}
           <button
             onClick={() => onSelectTab('profile')}
-            className="h-8 w-8 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow ring-2 ring-indigo-500/20"
+            className="h-8 w-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow ring-2 ring-cyan-500/30"
           >
             {userName ? userName.substring(0, 2).toUpperCase() : 'SK'}
           </button>
@@ -107,12 +107,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   }
 
   return (
-    <header className="sticky top-0 z-30 bg-[#070a13]/95 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-slate-800/80">
+    <header className="sticky top-0 z-30 bg-[#090D18]/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between border-b border-slate-800/80 shadow-md">
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={handleBack}
           aria-label="Go Back"
-          className="p-1.5 -ml-1 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-800 shrink-0 transition"
+          className="p-1.5 -ml-1 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/60 shrink-0 transition"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -126,7 +126,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           <>
             <button
               onClick={() => showToast('Problem saved to bookmarks!', 'success')}
-              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white transition active:scale-95"
+              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-cyan-400 transition active:scale-95 border border-slate-800/80"
             >
               <Bookmark className="h-4 w-4" />
             </button>
@@ -135,7 +135,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 navigator.clipboard?.writeText(window.location.href);
                 showToast('Link copied to clipboard!', 'info');
               }}
-              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-white transition active:scale-95"
+              className="p-1.5 rounded-lg bg-slate-900/60 text-slate-400 hover:text-cyan-400 transition active:scale-95 border border-slate-800/80"
             >
               <Share2 className="h-4 w-4" />
             </button>

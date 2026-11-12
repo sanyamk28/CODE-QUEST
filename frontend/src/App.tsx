@@ -220,16 +220,16 @@ export const App: React.FC = () => {
   // If in Phone Preview frame mode on desktop
   if (isPhonePreview && !isNativeMobile) {
     return (
-      <div className="min-h-screen bg-[#04060c] text-slate-100 flex flex-col items-center justify-center p-4 font-['Plus_Jakarta_Sans'] select-none">
+      <div className="min-h-screen bg-[#04060C] text-slate-100 flex flex-col items-center justify-center p-4 font-['Plus_Jakarta_Sans'] select-none">
         {/* Frame Top Switcher Bar */}
-        <div className="w-full max-w-md flex items-center justify-between py-2 px-4 mb-3 bg-[#090d16] border border-slate-800 rounded-2xl shadow-lg">
+        <div className="w-full max-w-md flex items-center justify-between py-2 px-4 mb-3 bg-[#090D18] border border-cyan-500/20 rounded-2xl shadow-xl shadow-cyan-950/20">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-bold text-white">Mobile App Simulator (390 × 844)</span>
+            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="text-xs font-bold text-white tracking-wide">Mobile App Simulator (390 × 844)</span>
           </div>
           <button
             onClick={() => setIsPhonePreview(false)}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white text-xs font-bold transition shadow-sm"
           >
             <Monitor className="h-3.5 w-3.5" />
             <span>Switch to Web</span>
@@ -237,15 +237,15 @@ export const App: React.FC = () => {
         </div>
 
         {/* iPhone Frame */}
-        <div className="w-[390px] h-[844px] bg-[#070a13] rounded-[48px] border-[10px] border-slate-800/90 shadow-[0_25px_70px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden relative ring-1 ring-slate-700/50">
+        <div className="w-[390px] h-[844px] bg-[#06080F] rounded-[48px] border-[10px] border-slate-900 shadow-[0_25px_80px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden relative ring-1 ring-cyan-500/30">
           {/* Dynamic Island / Notch */}
           <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-50 flex items-center justify-between px-2.5">
             <span className="h-2.5 w-2.5 rounded-full bg-slate-900 border border-slate-800" />
-            <span className="h-2 w-2 rounded-full bg-blue-900/60" />
+            <span className="h-2 w-2 rounded-full bg-cyan-500/40" />
           </div>
 
           {/* Status Bar */}
-          <div className="pt-2 px-6 pb-1 flex items-center justify-between text-[11px] font-bold text-slate-400 z-40 bg-[#070a13]">
+          <div className="pt-2 px-6 pb-1 flex items-center justify-between text-[11px] font-bold text-slate-400 z-40 bg-[#06080F]">
             <span>9:41</span>
             <div className="flex items-center gap-1.5">
               <span>5G</span>
@@ -263,7 +263,7 @@ export const App: React.FC = () => {
           />
 
           {/* Mobile Screen Scrollable Body */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 pb-20 scrollbar-none">
+          <div className="flex-1 overflow-y-auto px-4 py-3 pb-20 scrollbar-none bg-[#06080F]">
             {renderCurrentView()}
           </div>
 
@@ -286,7 +286,7 @@ export const App: React.FC = () => {
 
   // Standard Responsive View (Web on Desktop, Native App on Mobile)
   return (
-    <div className="min-h-screen bg-[#070a13] text-slate-100 flex flex-col md:flex-row overflow-x-hidden font-['Plus_Jakarta_Sans']">
+    <div className="min-h-screen bg-[#06080F] text-slate-100 flex flex-col md:flex-row overflow-x-hidden font-['Plus_Jakarta_Sans']">
       <ToastContainer />
       {/* Desktop Left Sidebar (hidden on mobile) */}
       <Sidebar
@@ -298,7 +298,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#070a13]">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#06080F]">
         {/* Mobile Header (rendered on mobile) */}
         <div className="md:hidden">
           <MobileHeader
@@ -324,7 +324,7 @@ export const App: React.FC = () => {
         </div>
 
         {/* Dynamic View Container */}
-        <main className="flex-1 p-3.5 sm:p-5 md:p-6 overflow-y-auto pb-24 md:pb-6">
+        <main className="flex-1 p-3.5 sm:p-5 md:p-6 overflow-y-auto pb-24 md:pb-6 bg-[#06080F]">
           {renderCurrentView()}
         </main>
 
