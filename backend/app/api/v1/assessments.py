@@ -1,9 +1,10 @@
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional
+from uuid import UUID
 import json
 
 from app.core.database import get_db
@@ -28,7 +29,15 @@ def get_assessment_detail(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    assessment = db.query(models.Assessment).filter(models.Assessment.id == id).first()
+    try:
+        aid = UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assessment ID format")
+
+    assessment = db.query(models.Assessment).options(
+        selectinload(models.Assessment.questions).joinedload(models.Question.topic),
+        selectinload(models.Assessment.questions).joinedload(models.Question.subtopic),
+    ).filter(models.Assessment.id == aid).first()
     if not assessment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -43,7 +52,16 @@ async def submit_assessment(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    assessment = db.query(models.Assessment).filter(models.Assessment.id == id).first()
+    try:
+        aid = UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid assessment ID format")
+
+    assessment = db.query(models.Assessment).options(
+        selectinload(models.Assessment.questions).joinedload(models.Question.mcq_detail),
+        selectinload(models.Assessment.questions).joinedload(models.Question.coding_detail),
+        selectinload(models.Assessment.questions).joinedload(models.Question.sql_detail),
+    ).filter(models.Assessment.id == aid).first()
     if not assessment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

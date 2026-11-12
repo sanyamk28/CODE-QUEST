@@ -1,7 +1,7 @@
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from datetime import datetime
 from uuid import UUID
@@ -56,7 +56,20 @@ def get_active_contests(
     current_user: models.User = Depends(get_current_user)
 ):
     now = datetime.utcnow()
-    contests = db.query(models.Contest).all()
+    # Eagerly load questions to eliminate N+1 queries
+    contests = db.query(models.Contest).options(
+        selectinload(models.Contest.questions)
+    ).all()
+    
+    # Batch query user registrations in a single set lookup
+    contest_ids = [c.id for c in contests]
+    registered_contest_ids = set()
+    if contest_ids:
+        registered_rows = db.query(models.ContestParticipant.contest_id).filter(
+            models.ContestParticipant.contest_id.in_(contest_ids),
+            models.ContestParticipant.user_id == current_user.id
+        ).all()
+        registered_contest_ids = {r[0] for r in registered_rows}
     
     result = []
     for c in contests:
@@ -66,19 +79,13 @@ def get_active_contests(
         elif now > c.end_time:
             status_c = "COMPLETED"
             
-        # Check if user is registered
-        registered = db.query(models.ContestParticipant).filter(
-            models.ContestParticipant.contest_id == c.id,
-            models.ContestParticipant.user_id == current_user.id
-        ).first() is not None
-        
         result.append({
             "id": str(c.id),
             "title": c.title,
             "start_time": c.start_time,
             "end_time": c.end_time,
             "status": status_c,
-            "is_registered": registered,
+            "is_registered": c.id in registered_contest_ids,
             "questions_count": len(c.questions)
         })
     return result

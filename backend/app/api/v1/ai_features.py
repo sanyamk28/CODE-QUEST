@@ -305,10 +305,10 @@ def generate_smart_chat_fallback(query: str, target_role: str, screen: str, user
             "- **Phase 1**: Core CS Fundamentals (OS, DBMS, Computer Networks, OOP).\n"
             "- **Phase 2**: High-Frequency DSA patterns (Arrays, Hashing, Two Pointers, Trees, Graphs).\n"
             "- **Phase 3**: Practical Projects & SQL. Build and optimize end-to-end applications.\n"
-            "- **Phase 4**: Timed assessments, Mock Interviews with our AI Interviewer, and Code Battles.\n\n"
+            "- **Phase 4**: Timed assessments, Company Challenges, and Code Battles.\n\n"
             "👉 Visit the **Roadmaps** section in the navigation menu for tailored role milestones!"
         )
-        suggestions = ["How many DSA questions should I solve daily?", "How to practice with the AI Interviewer?", "Tips for mock technical rounds"]
+        suggestions = ["How many DSA questions should I solve daily?", "How to practice with Company Challenges?", "Tips for technical rounds"]
     # 6. General / Friendly
     else:
         reply = (
@@ -317,7 +317,7 @@ def generate_smart_chat_fallback(query: str, target_role: str, screen: str, user
             f"- 🧠 **DSA & Algorithms**: Problem-solving intuition, time/space complexity, and code explanations.\n"
             f"- 🗄️ **SQL & System Design**: Query optimization, database schemas, and architectural patterns.\n"
             f"- 📄 **Resume & Career**: ATS scoring tips, project suggestions, and recruiter expectations for **{target_role or 'Software Engineers'}**.\n"
-            f"- 🎯 **Platform Guidance**: Navigating roadmaps, battle mode, assessments, and interview simulations.\n\n"
+            f"- 🎯 **Platform Guidance**: Navigating roadmaps, battle mode, assessments, and coding challenges.\n\n"
             f"What would you like to explore or solve together right now?"
         )
         suggestions = ["Explain Binary Search in simple terms", "How can I improve my SQL skills?", "What should I focus on for FAANG interviews?"]
