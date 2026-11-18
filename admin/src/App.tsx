@@ -364,7 +364,20 @@ export default function App() {
     fetchLiveCurriculum();
     fetchLiveStudents();
     fetchLiveQuestions();
+    fetchLiveSecurityLogs();
   }, [apiEndpoint]);
+
+  // Live Fetch Security Logs
+  const fetchLiveSecurityLogs = async () => {
+    try {
+      const res = await axios.get(`${apiEndpoint}/auth/security-logs`, { timeout: 3000 });
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setSecurityLogs(res.data);
+      }
+    } catch {
+      // Keep offline initial state
+    }
+  };
 
   // Live Fetch Students
   const fetchLiveStudents = async () => {
@@ -379,7 +392,7 @@ export default function App() {
           enrolled: item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
           role: item.target_role || 'Software Engineer',
           solved: Math.floor(item.xp / 10) || 0,
-          readiness: Math.round(item.readiness_score || 50),
+          readiness: Math.round(item.readiness_score || 0),
           status: item.is_active !== false ? 'Active' : 'Suspended'
         }));
         setStudents(mapped);
@@ -1281,18 +1294,18 @@ export default function App() {
               {/* 3 Security Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
-                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL LOGINS (24H)</p>
-                  <h3 className="text-2xl font-black text-white mt-2">1,482</h3>
-                  <p className="text-xs text-emerald-400 font-semibold mt-1">↗ Normal platform traffic</p>
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">TOTAL LOGINS (RECORDED)</p>
+                  <h3 className="text-2xl font-black text-white mt-2">{securityLogs.length}</h3>
+                  <p className="text-xs text-emerald-400 font-semibold mt-1">↗ Live database event stream</p>
                 </div>
                 <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
                   <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">FAILED ATTEMPTS</p>
-                  <h3 className="text-2xl font-black text-white mt-2">12</h3>
-                  <p className="text-xs text-amber-400 font-semibold mt-1">✓ Rate limits enforced</p>
+                  <h3 className="text-2xl font-black text-white mt-2">0</h3>
+                  <p className="text-xs text-emerald-400 font-semibold mt-1">✓ Rate limits enforced</p>
                 </div>
                 <div className="bg-[#0c122c] border border-[#1a2444] p-5 rounded-2xl">
-                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">ACTIVE SESSIONS</p>
-                  <h3 className="text-2xl font-black text-white mt-2">184</h3>
+                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">REGISTERED STUDENTS</p>
+                  <h3 className="text-2xl font-black text-white mt-2">{students.length}</h3>
                   <p className="text-xs text-blue-400 font-semibold mt-1">🌐 JWT Authenticated</p>
                 </div>
               </div>

@@ -85,14 +85,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onSelectTab(item.id)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
                 isActive
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 border border-cyan-400/20'
-                  : 'text-slate-400 hover:text-cyan-300 hover:bg-[#11192E]'
+                  ? 'bg-gradient-to-r from-cyan-500/20 via-cyan-500/5 to-transparent text-cyan-300 font-bold border-l-2 border-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.18)] pl-3'
+                  : 'text-slate-400 hover:text-cyan-300 hover:bg-[#0D1424]/80'
               }`}
             >
               <div className="flex items-center gap-3">
                 <Icon
                   className={`h-4 w-4 transition-colors ${
-                    isActive ? 'text-cyan-300' : 'text-slate-400 group-hover:text-cyan-400'
+                    isActive ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(0,229,255,0.7)]' : 'text-slate-400 group-hover:text-cyan-400'
                   }`}
                 />
                 <span className="tracking-wide">{item.label}</span>
@@ -102,10 +102,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span
                   className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${
                     isActive
-                      ? 'bg-white/20 text-white'
+                      ? 'bg-cyan-400/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_10px_rgba(0,229,255,0.3)]'
                       : item.badge === 'LIVE'
-                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                      : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse'
+                      : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                   }`}
                 >
                   {item.badge}

@@ -249,11 +249,25 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </p>
             </div>
 
-            {/* Error Message Box */}
+            {/* Error Message Box with Create Account Prompt */}
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-200">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
-                <span className="leading-relaxed">{error}</span>
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex flex-col gap-2 animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+                  <span className="leading-relaxed">{error}</span>
+                </div>
+                {(error.toLowerCase().includes('create a new account') || error.toLowerCase().includes('not exist')) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setError(null);
+                    }}
+                    className="self-start mt-1 px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                  >
+                    <span>Click Here to Create a New Account ➔</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -289,10 +303,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </button>
             </div>
 
-            {/* Notice for seamless random login */}
-            <div className="mb-4 px-3 py-2 rounded-xl bg-indigo-950/40 border border-indigo-800/40 text-[11px] text-indigo-300 flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-              <span>Enter any email and password. Your candidate data is saved permanently in the database.</span>
+            {/* Helpful Guidance Notice */}
+            <div className="mb-4 px-3 py-2 rounded-xl bg-cyan-950/30 border border-cyan-800/40 text-[11px] text-cyan-300 flex items-center gap-2">
+              <Sparkles className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+              <span>{isSignUp ? 'Enter your details below to create your permanent student account.' : 'New to Code Quest? Select "Sign Up" above to register.'}</span>
             </div>
 
             {/* Email / Password Form */}

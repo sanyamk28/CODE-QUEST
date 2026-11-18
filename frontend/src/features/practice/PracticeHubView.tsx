@@ -142,8 +142,8 @@ export const PracticeHubView: React.FC<PracticeHubViewProps> = ({ onNavigate }) 
             onClick={() => setSelectedFilter(cat)}
             className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
               selectedFilter === cat
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                : 'bg-[#0e1424] text-slate-400 hover:text-white border border-slate-800'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(0,229,255,0.25)]'
+                : 'bg-[#0A1020] text-slate-400 hover:text-cyan-300 border border-slate-800/80'
             }`}
           >
             {cat}
@@ -153,13 +153,13 @@ export const PracticeHubView: React.FC<PracticeHubViewProps> = ({ onNavigate }) 
 
       {/* Search Bar matching Screen 4 */}
       <div className="relative">
-        <Search className="h-4 w-4 absolute left-3.5 top-3 text-slate-500" />
+        <Search className="h-4 w-4 absolute left-3.5 top-3 text-cyan-400/70" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search modules or topics..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#090d16] border border-slate-800 text-xs text-slate-200 outline-none focus:border-indigo-500 transition"
+          className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#080D1A] border border-cyan-500/20 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 transition shadow-inner"
         />
       </div>
 
@@ -171,26 +171,26 @@ export const PracticeHubView: React.FC<PracticeHubViewProps> = ({ onNavigate }) 
             <div
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className="p-4 sm:p-5 rounded-3xl bg-[#090e1c] border border-slate-800/80 hover:border-slate-700 hover:bg-[#0b1224] transition duration-200 cursor-pointer flex items-center justify-between group shadow-lg"
+              className="p-4 sm:p-5 rounded-3xl bg-[#080D1A] border border-slate-800/80 hover:border-cyan-500/40 hover:bg-[#0A1122] transition duration-200 cursor-pointer flex items-center justify-between group shadow-lg"
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 {/* Rounded Icon Box with gradient & glow */}
                 <div className={`h-12 w-12 rounded-2xl bg-gradient-to-tr ${item.gradient} p-[1px] shadow-lg ${item.glowColor} shrink-0`}>
-                  <div className="h-full w-full bg-[#080d1a] rounded-[15px] flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-white group-hover:scale-110 transition duration-300" />
+                  <div className="h-full w-full bg-[#06080F] rounded-[15px] flex items-center justify-center">
+                    <Icon className="h-5 w-5 text-cyan-300 group-hover:scale-110 transition duration-300" />
                   </div>
                 </div>
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white group-hover:text-sky-300 transition truncate">
+                    <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition truncate">
                       {item.title}
                     </h3>
                     {item.badge && (
                       <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase tracking-wider ${
                         item.badge === 'LIVE'
                           ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse'
-                          : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                          : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
                       }`}>
                         {item.badge}
                       </span>
@@ -213,7 +213,7 @@ export const PracticeHubView: React.FC<PracticeHubViewProps> = ({ onNavigate }) 
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
                       <path
-                        className={item.progress >= 70 ? 'text-emerald-400' : item.progress >= 30 ? 'text-sky-400' : 'text-blue-500'}
+                        className={item.progress >= 70 ? 'text-emerald-400' : item.progress >= 30 ? 'text-cyan-400' : 'text-sky-400'}
                         strokeDasharray={`${item.progress}, 100`}
                         strokeWidth="3.5"
                         strokeLinecap="round"
@@ -222,10 +222,10 @@ export const PracticeHubView: React.FC<PracticeHubViewProps> = ({ onNavigate }) 
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
                     </svg>
-                    <span className="absolute text-[10px] font-black text-slate-200">{item.progress}%</span>
+                    <span className="absolute text-[10px] font-black text-slate-200 font-mono">{item.progress}%</span>
                   </div>
                 ) : (
-                  <div className="h-8 w-8 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-indigo-600 transition">
+                  <div className="h-8 w-8 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-400 group-hover:text-cyan-300 group-hover:bg-cyan-950/60 transition">
                     <ChevronRight className="h-4 w-4" />
                   </div>
                 )}

@@ -44,9 +44,9 @@ export const InstallPwaButton: React.FC<{ className?: string }> = ({ className =
     <button
       onClick={handleInstallClick}
       title="Install Code Quest to your Laptop (Runs in its own window anytime)"
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/90 to-indigo-600/90 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 border border-indigo-500/30 transition active:scale-95 animate-in fade-in duration-300 ${className}`}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-bold shadow-[0_0_15px_rgba(0,229,255,0.15)] border border-cyan-500/30 transition active:scale-95 animate-in fade-in duration-300 ${className}`}
     >
-      <Laptop className="h-3.5 w-3.5 text-sky-200" />
+      <Laptop className="h-3.5 w-3.5 text-cyan-400" />
       <span>Install App</span>
     </button>
   );

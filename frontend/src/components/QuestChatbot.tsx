@@ -398,22 +398,22 @@ export const QuestChatbot: React.FC<QuestChatbotProps> = ({
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_8px_25px_rgba(79,70,229,0.45)] hover:shadow-[0_10px_35px_rgba(79,70,229,0.65)] hover:scale-105 active:scale-95 transition-all duration-300 border border-indigo-400/30"
+          className="group relative flex items-center gap-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-[#0B0F1C] via-[#0E1628] to-[#0A1120] text-cyan-300 shadow-[0_8px_30px_rgba(0,229,255,0.35)] hover:shadow-[0_10px_40px_rgba(0,229,255,0.55)] hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/50"
           title="Open QuestAI Mentor Chatbot"
         >
           {/* Subtle animated halo */}
-          <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 opacity-40 blur-sm group-hover:opacity-75 transition duration-300 animate-pulse" />
+          <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-500 opacity-50 blur-sm group-hover:opacity-85 transition duration-300 animate-pulse" />
 
           <div className="relative flex items-center justify-center">
-            <Bot className="h-5 w-5 text-white animate-bounce" />
-            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-[#070a13]" />
+            <Bot className="h-5 w-5 text-cyan-400 animate-bounce" />
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-[#06080F]" />
           </div>
 
           <div className="relative flex flex-col text-left">
-            <span className="text-xs font-bold tracking-wide flex items-center gap-1">
-              QuestAI <Sparkles className="h-3 w-3 text-amber-300 fill-amber-300" />
+            <span className="text-xs font-bold tracking-wide flex items-center gap-1 text-white">
+              QuestAI <Sparkles className="h-3 w-3 text-cyan-300 fill-cyan-400" />
             </span>
-            <span className="text-[10px] text-indigo-100 font-medium">Ask Anything</span>
+            <span className="text-[10px] text-cyan-400 font-medium">Ask Anything</span>
           </div>
         </button>
       )}
