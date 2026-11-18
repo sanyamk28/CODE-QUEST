@@ -320,6 +320,7 @@ export const App: React.FC = () => {
             onSelectTab={setActiveTab}
             isPhonePreview={isPhonePreview}
             onTogglePhonePreview={() => setIsPhonePreview(!isPhonePreview)}
+            onLogout={handleLogout}
           />
         </div>
 

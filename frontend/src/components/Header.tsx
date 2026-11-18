@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Flame, Bell, User, Sparkles, LogIn, Smartphone, Monitor } from 'lucide-react';
+import { Search, Flame, Bell, User, Sparkles, LogOut, Smartphone, Monitor } from 'lucide-react';
 import { ActiveTabType } from '../types';
 import { InstallPwaButton } from './InstallPwaButton';
 
@@ -12,6 +12,7 @@ interface HeaderProps {
   onSearch?: (query: string) => void;
   isPhonePreview?: boolean;
   onTogglePhonePreview?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSearch,
   isPhonePreview,
   onTogglePhonePreview,
+  onLogout,
 }) => {
   const getPageTitle = (tab: ActiveTabType) => {
     switch (tab) {
@@ -113,15 +115,17 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Auth Screen Previewer Toggle */}
-        <button
-          onClick={() => onSelectTab('login')}
-          title="View Login / Signup Screen"
-          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/60 text-xs font-semibold transition"
-        >
-          <LogIn className="h-3.5 w-3.5 text-cyan-400" />
-          <span>Login / Splash</span>
-        </button>
+        {/* Direct Logout Button */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            title="Log Out of Code Quest"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 hover:border-rose-500/60 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+          >
+            <LogOut className="h-3.5 w-3.5 text-rose-400" />
+            <span>Logout</span>
+          </button>
+        )}
 
         {/* Day Streak Flame */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-950/40 border border-orange-500/40 text-orange-300 shadow-[0_0_15px_rgba(249,115,22,0.2)]">
