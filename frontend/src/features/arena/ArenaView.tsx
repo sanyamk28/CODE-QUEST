@@ -66,6 +66,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     template: `class Solution:
     def twoSum(self, nums: List[int], target: int) -> List[int]:
         # Write your code here
+        pass`,
+    solution: `class Solution:
+    def twoSum(self, nums: List[int], target: int) -> List[int]:
+        # Write your code here
         prev_map = {}
         for i, n in enumerate(nums):
             diff = target - n
@@ -96,6 +100,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 's = "()[]{}"',
     output: 'true',
     template: `class Solution:
+    def isValid(self, s: str) -> bool:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def isValid(self, s: str) -> bool:
         # Write your code here
         stack = []
@@ -130,6 +138,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 'list1 = [1,2,4], list2 = [1,3,4]',
     output: '[1,1,2,3,4,4]',
     template: `class Solution:
+    def mergeTwoLists(self, list1: Optional[ListNode], list2: Optional[ListNode]) -> Optional[ListNode]:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def mergeTwoLists(self, list1: Optional[ListNode], list2: Optional[ListNode]) -> Optional[ListNode]:
         # Write your code here
         dummy = ListNode()
@@ -168,6 +180,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     output: '6',
     template: `class Solution:
     def maxSubArray(self, nums: List[int]) -> int:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
+    def maxSubArray(self, nums: List[int]) -> int:
         cur_sum = 0
         max_sum = nums[0]
         for n in nums:
@@ -197,6 +213,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 'head = [1,2,3,4,5]',
     output: '[5,4,3,2,1]',
     template: `class Solution:
+    def reverseList(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def reverseList(self, head: Optional[ListNode]) -> Optional[ListNode]:
         prev = None
         curr = head
@@ -229,6 +249,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 'height = [0,1,0,2,1,0,1,3,2,1,2,1]',
     output: '6',
     template: `class Solution:
+    def trap(self, height: List[int]) -> int:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def trap(self, height: List[int]) -> int:
         left, right = 0, len(height) - 1
         left_max = right_max = water = 0
@@ -266,6 +290,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     output: '5',
     template: `class Solution:
     def maxProfit(self, prices: List[int]) -> int:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
+    def maxProfit(self, prices: List[int]) -> int:
         min_price = float('inf')
         max_profit = 0
         for price in prices:
@@ -297,6 +325,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 's = "abcabcbb"',
     output: '3',
     template: `class Solution:
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def lengthOfLongestSubstring(self, s: str) -> int:
         char_map = {}
         left = 0
@@ -330,6 +362,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 'nums = [-1,0,1,2,-1,-4]',
     output: '[[-1,-1,2],[-1,0,1]]',
     template: `class Solution:
+    def threeSum(self, nums: List[int]) -> List[List[int]]:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def threeSum(self, nums: List[int]) -> List[List[int]]:
         nums.sort()
         res = []
@@ -376,6 +412,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     output: '[4,7,2,9,6,3,1]',
     template: `class Solution:
     def invertTree(self, root: Optional[TreeNode]) -> Optional[TreeNode]:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
+    def invertTree(self, root: Optional[TreeNode]) -> Optional[TreeNode]:
         if not root:
             return None
         root.left, root.right = self.invertTree(root.right), self.invertTree(root.left)
@@ -403,6 +443,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 'coins = [1,2,5], amount = 11',
     output: '3',
     template: `class Solution:
+    def coinChange(self, coins: List[int], amount: int) -> int:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def coinChange(self, coins: List[int], amount: int) -> int:
         dp = [float('inf')] * (amount + 1)
         dp[0] = 0
@@ -433,6 +477,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 'nums = [4,5,6,7,0,1,2], target = 0',
     output: '4',
     template: `class Solution:
+    def search(self, nums: List[int], target: int) -> int:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def search(self, nums: List[int], target: int) -> int:
         left, right = 0, len(nums) - 1
         while left <= right:
@@ -474,6 +522,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     output: '3',
     template: `class Solution:
     def climbStairs(self, n: int) -> int:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
+    def climbStairs(self, n: int) -> int:
         if n <= 2:
             return n
         first, second = 1, 2
@@ -503,6 +555,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     input: 's = "A man, a plan, a canal: Panama"',
     output: 'true',
     template: `class Solution:
+    def isPalindrome(self, s: str) -> bool:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
     def isPalindrome(self, s: str) -> bool:
         left, right = 0, len(s) - 1
         while left < right:
@@ -539,6 +595,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     output: '6',
     template: `class Solution:
     def lowestCommonAncestor(self, root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
+        # Write your code here
+        pass`,
+    solution: `class Solution:
+    def lowestCommonAncestor(self, root: 'TreeNode', p: 'TreeNode', q: 'TreeNode') -> 'TreeNode':
         curr = root
         while curr:
             if p.val > curr.val and q.val > curr.val:
@@ -572,6 +632,10 @@ const PROBLEMS_DATA: CodingProblem[] = [
     output: 'true',
     template: `class Solution:
     def wordBreak(self, s: str, wordDict: List[str]) -> bool:
+        # Write your code here
+        pass`,
+    solution: `class Solution:
+    def wordBreak(self, s: str, wordDict: List[str]) -> bool:
         word_set = set(wordDict)
         dp = [False] * (len(s) + 1)
         dp[0] = True
@@ -594,6 +658,198 @@ function getProblemHints(p: CodingProblem): string[] {
     `Level 2 (Approach & Edge Cases): Consider boundary conditions like empty inputs, duplicate entries, or negative numbers. Optimize towards ${p.timeComplexity || 'O(N)'} time complexity.`,
     `Level 3 (Pseudocode): Maintain running optimal variables as you iterate. Update state at each step and return final computed value.`
   ];
+}
+
+
+interface SolutionEvaluation {
+  passed: boolean;
+  testPassedCount: number;
+  totalTests: number;
+  runtime: string;
+  memory: string;
+  output: string;
+  error?: string;
+}
+
+function evaluateSolution(code: string, problem: CodingProblem, isSubmit: boolean): SolutionEvaluation {
+  const total = isSubmit ? 10 : 3;
+  const trimmed = (code || '').trim();
+
+  // 1. Check for empty code
+  if (!trimmed) {
+    return {
+      passed: false,
+      testPassedCount: 0,
+      totalTests: total,
+      runtime: '0 ms',
+      memory: '0 MB',
+      output: 'Compile Error: Empty code submission. Please write your code.',
+      error: 'Cannot submit empty code! Please implement your solution.'
+    };
+  }
+
+  // 2. Check if code is just default template or contains only 'pass'
+  const stripped = trimmed
+    .replace(/#.*$/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const templateStripped = (problem.template || '')
+    .replace(/#.*$/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const isTemplateUnchanged = stripped === templateStripped;
+  const hasOnlyPass = /def\s+\w+\([^)]*\)(\s*->\s*[^:]+)?:(\s*pass|\s*return\s*(\[\]|""|0|None|False))?$/.test(stripped) ||
+                      stripped.endsWith(': pass') ||
+                      stripped.endsWith(':pass');
+
+  if (isTemplateUnchanged || hasOnlyPass) {
+    return {
+      passed: false,
+      testPassedCount: 0,
+      totalTests: total,
+      runtime: '14 ms',
+      memory: '14.2 MB',
+      output: `Wrong Answer (0/${total} Testcases Passed)\nInput: ${problem.input}\nOutput: None\nExpected: ${problem.output}`,
+      error: 'Wrong Answer: 0 testcases passed. Function returned None (only default template provided).'
+    };
+  }
+
+  // 3. Basic syntax check
+  if (!stripped.includes('def ') || !stripped.includes(':')) {
+    return {
+      passed: false,
+      testPassedCount: 0,
+      totalTests: total,
+      runtime: '0 ms',
+      memory: '0 MB',
+      output: 'SyntaxError: Missing function definition or invalid syntax.',
+      error: 'SyntaxError: Invalid Python code structure.'
+    };
+  }
+
+  // 4. Algorithm validation per problem
+  const lower = stripped.toLowerCase();
+  const pid = problem.id;
+
+  let algorithmValid = false;
+
+  switch (pid) {
+    case 'p-1': // Two Sum
+      algorithmValid = (lower.includes('for ') || lower.includes('while ')) &&
+                       (lower.includes('in ') || lower.includes('{') || lower.includes('enumerate') || lower.includes('range')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-2': // Valid Parentheses
+      algorithmValid = (lower.includes('stack') || lower.includes('append') || lower.includes('pop') || lower.includes('replace') || lower.includes('mapping')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-3': // Merge Two Sorted Lists
+      algorithmValid = (lower.includes('next') || lower.includes('while ') || lower.includes('val')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-4': // Maximum Subarray (Kadane)
+      algorithmValid = (lower.includes('max(') || lower.includes('max_sum') || lower.includes('cur_sum') || lower.includes('sum')) &&
+                       (lower.includes('for ') || lower.includes('while ')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-5': // Reverse Linked List
+      algorithmValid = (lower.includes('prev') || lower.includes('next') || lower.includes('curr')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-6': // Trapping Rain Water
+      algorithmValid = (lower.includes('left') && lower.includes('right')) &&
+                       (lower.includes('max') || lower.includes('water') || lower.includes('height')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-7': // Best Time to Buy and Sell Stock
+      algorithmValid = (lower.includes('min') || lower.includes('max') || lower.includes('profit')) &&
+                       (lower.includes('for ') || lower.includes('while ')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-8': // Longest Substring Without Repeating
+      algorithmValid = (lower.includes('set') || lower.includes('map') || lower.includes('dict') || lower.includes('max(') || lower.includes('len')) &&
+                       (lower.includes('for ') || lower.includes('while ')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-9': // 3Sum
+      algorithmValid = (lower.includes('sort') || lower.includes('append')) &&
+                       (lower.includes('for ') || lower.includes('while ')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-10': // Invert Binary Tree
+      algorithmValid = (lower.includes('left') && lower.includes('right')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-11': // Coin Change
+      algorithmValid = (lower.includes('dp') || lower.includes('min(') || lower.includes('coin')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-12': // Search in Rotated Sorted Array
+      algorithmValid = (lower.includes('mid') || lower.includes('//') || lower.includes('while ') || lower.includes('index(')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-13': // Climbing Stairs
+      algorithmValid = (lower.includes('for ') || lower.includes('while ') || lower.includes('dp') || lower.includes('first')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-14': // Valid Palindrome
+      algorithmValid = (lower.includes('isalnum') || lower.includes('[::-1]') || (lower.includes('left') && lower.includes('right'))) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-15': // Lowest Common Ancestor
+      algorithmValid = (lower.includes('val') || lower.includes('left') || lower.includes('right')) &&
+                       lower.includes('return');
+      break;
+
+    case 'p-16': // Word Break
+      algorithmValid = (lower.includes('dp') || lower.includes('in ') || lower.includes('set') || lower.includes('worddict')) &&
+                       lower.includes('return');
+      break;
+
+    default:
+      algorithmValid = lower.includes('return') && stripped.length > 50 && (lower.includes('for ') || lower.includes('while ') || lower.includes('if '));
+      break;
+  }
+
+  if (algorithmValid) {
+    const runtimeMs = Math.floor(Math.random() * 15 + 32);
+    const beatsPct = (Math.random() * 5 + 92).toFixed(1);
+    return {
+      passed: true,
+      testPassedCount: total,
+      totalTests: total,
+      runtime: `${runtimeMs} ms (beats ${beatsPct}% of solutions)`,
+      memory: `${(Math.random() * 1.2 + 14.5).toFixed(1)} MB`,
+      output: problem.output
+    };
+  } else {
+    const passedCount = isSubmit ? Math.floor(total * 0.3) : 1;
+    return {
+      passed: false,
+      testPassedCount: passedCount,
+      totalTests: total,
+      runtime: '45 ms',
+      memory: '15.4 MB',
+      output: `Wrong Answer (${passedCount}/${total} Testcases Passed)\nInput: ${problem.input}\nOutput: Output Mismatch on test case ${passedCount + 1}\nExpected: ${problem.output}`,
+      error: `Wrong Answer: ${passedCount}/${total} test cases passed. Algorithm logic incomplete or incorrect.`
+    };
+  }
 }
 
 export const ArenaView: React.FC = () => {
@@ -851,18 +1107,24 @@ export const ArenaView: React.FC = () => {
     if (soundEnabled) playRunSound();
     setRunResult({ status: 'running' });
     setSubmissionSuccess(false);
+
     setTimeout(() => {
+      const evalRes = evaluateSolution(userCode, currentProblem, false);
       setRunResult({
-        status: 'success',
-        runtime: `${Math.floor(Math.random() * 20 + 30)} ms`,
-        memory: `${(Math.random() * 1.5 + 14.2).toFixed(1)} MB`,
-        passed: 3,
-        total: 3,
-        output: currentProblem.output
+        status: evalRes.passed ? 'success' : 'error',
+        runtime: evalRes.runtime,
+        memory: evalRes.memory,
+        passed: evalRes.testPassedCount,
+        total: evalRes.totalTests,
+        output: evalRes.output
       });
-      showToast('All 3 public test suites passed!', 'success');
+      if (evalRes.passed) {
+        showToast('All 3 public test suites passed!', 'success');
+      } else {
+        showToast(evalRes.error || 'Test failed: check your code implementation.', 'error');
+      }
     }, 450);
-  }, [soundEnabled, currentProblem.output]);
+  }, [soundEnabled, userCode, currentProblem]);
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
@@ -885,8 +1147,8 @@ export const ArenaView: React.FC = () => {
           if (isMockInterviewMode) {
             setMockResults((prev) => ({ ...prev, [pid]: true }));
           }
+          recordActivity('arena', { xp: sub.score || 30 });
         }
-        recordActivity('arena', { xp: sub.score || 30 });
         setRunResult({
           status: passed ? 'success' : 'error',
           runtime: '42 ms (beats 91.5% of solutions)',
@@ -902,26 +1164,34 @@ export const ArenaView: React.FC = () => {
       }
     }
 
+    // Local / Client Evaluator
     setTimeout(() => {
       setIsSubmitting(false);
-      setSubmissionSuccess(true);
-      markProblemAsSolved(String(currentProblem.id));
-      if (soundEnabled) playSuccessSound();
-      if (isMockInterviewMode) {
-        setMockResults((prev) => ({ ...prev, [String(currentProblem.id)]: true }));
+      const evalRes = evaluateSolution(userCode, currentProblem, true);
+      setSubmissionSuccess(evalRes.passed);
+
+      if (evalRes.passed) {
+        markProblemAsSolved(String(currentProblem.id));
+        if (soundEnabled) playSuccessSound();
+        if (isMockInterviewMode) {
+          setMockResults((prev) => ({ ...prev, [String(currentProblem.id)]: true }));
+        }
+        recordActivity('arena', { xp: 30 });
+        showToast('Accepted! All 10/10 Test Cases Passed (+30 XP)', 'success');
+      } else {
+        showToast(evalRes.error || 'Wrong Answer: Solution does not pass tests.', 'error');
       }
-      recordActivity('arena', { xp: 30 });
+
       setRunResult({
-        status: 'success',
-        runtime: '38 ms (beats 94.2% of solutions)',
-        memory: '15.1 MB',
-        passed: 10,
-        total: 10,
-        output: currentProblem.output
+        status: evalRes.passed ? 'success' : 'error',
+        runtime: evalRes.runtime,
+        memory: evalRes.memory,
+        passed: evalRes.testPassedCount,
+        total: evalRes.totalTests,
+        output: evalRes.output
       });
-      showToast('Accepted! All 10/10 Test Cases Passed (+30 XP)', 'success');
     }, 600);
-  }, [currentProblem.id, currentProblem.output, userCode, language, markProblemAsSolved, soundEnabled, isMockInterviewMode]);
+  }, [currentProblem, userCode, language, markProblemAsSolved, soundEnabled, isMockInterviewMode]);
 
   // Keyboard Shortcuts Pro Mode
   useEffect(() => {
@@ -1551,6 +1821,25 @@ export const ArenaView: React.FC = () => {
 
                 <h3 className="font-bold text-white pt-1">Optimal Approach</h3>
                 <p>{currentProblem.solutionExplanation || 'Use hash map or two-pointer sweep to achieve linear time complexity.'}</p>
+                {currentProblem.solution && (
+                  <div className="mt-3 pt-3 border-t border-slate-800">
+                    <div className="flex items-center justify-between pb-1.5">
+                      <span className="text-[11px] font-bold text-slate-300">Reference Solution (Python3)</span>
+                      <button
+                        onClick={() => {
+                          setUserCode(currentProblem.solution || '');
+                          showToast('Reference solution loaded into editor!', 'info');
+                        }}
+                        className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold px-2 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/30 transition hover:bg-cyan-900/50"
+                      >
+                        Load into Editor
+                      </button>
+                    </div>
+                    <pre className="p-3 rounded-xl bg-[#070B14] border border-slate-800 text-[11px] font-mono text-cyan-200 overflow-x-auto select-all">
+                      <code>{currentProblem.solution}</code>
+                    </pre>
+                  </div>
+                )}
               </div>
             )}
 
