@@ -56,6 +56,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
         });
 
         const data = res.data;
+        if (typeof data === 'string' && data.includes('<!DOCTYPE')) {
+          throw new Error('Backend server is not connected to this web host. Please launch the live tunnel with Share-Live-Public-Link.bat or use Demo Mode.');
+        }
+        if (!data || typeof data !== 'object' || !data.access_token) {
+          throw new Error('Unexpected response from server. Please verify the backend service is running.');
+        }
+
         if (data.access_token) {
           localStorage.setItem('cq_token', data.access_token);
         }
@@ -65,13 +72,20 @@ export const AuthView: React.FC<AuthViewProps> = ({
         
         onLoginSuccess(userDisplayName, data.target_role || '', data.needs_onboarding ?? true);
       } else {
-        // Login API call - if new user, backend auto-creates and saves their credentials!
+        // Login API call
         const res = await apiClient.post('/auth/login', {
           email: cleanEmail,
           password: password,
         });
 
         const data = res.data;
+        if (typeof data === 'string' && data.includes('<!DOCTYPE')) {
+          throw new Error('Backend server is not connected to this web host. Please launch the live tunnel with Share-Live-Public-Link.bat or use Demo Mode.');
+        }
+        if (!data || typeof data !== 'object' || !data.access_token) {
+          throw new Error('Unexpected response from server. Please verify the backend service is running.');
+        }
+
         if (data.access_token) {
           localStorage.setItem('cq_token', data.access_token);
         }
@@ -86,12 +100,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
       console.error('Authentication error:', err);
       const detail = err.response?.data?.detail;
       let msg = 'Authentication failed. Please verify your credentials.';
-      if (typeof detail === 'string') {
+      if (err.message && (err.message.includes('Backend server') || err.message.includes('Unexpected response'))) {
+        msg = err.message;
+      } else if (typeof detail === 'string') {
         msg = detail;
       } else if (Array.isArray(detail) && detail[0]?.msg) {
         msg = detail[0].msg;
       } else if (err.message === 'Network Error') {
-        msg = 'Backend connection offline or initializing. Please retry in a moment.';
+        msg = 'Backend connection offline. If on Vercel, please launch Share-Live-Public-Link.bat on your laptop or continue in Demo Mode.';
       }
       setError(msg);
     } finally {
@@ -204,6 +220,20 @@ export const AuthView: React.FC<AuthViewProps> = ({
               Create Account
             </button>
           </p>
+
+          <div className="text-center pt-1">
+            <button
+              onClick={() => {
+                const demoName = 'Demo Student';
+                localStorage.setItem('cq_user_name', demoName);
+                localStorage.setItem('cq_logged_in', 'true');
+                onLoginSuccess(demoName, 'Software Engineer', false);
+              }}
+              className="text-[11px] text-slate-500 hover:text-cyan-400 font-medium transition"
+            >
+              ⚡ Instant Viva Demo / Teacher Guest Access
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -266,6 +296,21 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     className="self-start mt-1 px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
                   >
                     <span>Click Here to Create a New Account ➔</span>
+                  </button>
+                )}
+                {(error.toLowerCase().includes('offline') || error.toLowerCase().includes('not connected') || error.toLowerCase().includes('network')) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cleanEmail = email.trim().toLowerCase();
+                      const demoName = cleanEmail ? cleanEmail.split('@')[0].toUpperCase() : 'Student';
+                      localStorage.setItem('cq_user_name', demoName);
+                      localStorage.setItem('cq_logged_in', 'true');
+                      onLoginSuccess(demoName, 'Software Engineer', false);
+                    }}
+                    className="self-start mt-1 px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                  >
+                    <span>Explore in Demo Guest Mode ➔</span>
                   </button>
                 )}
               </div>
@@ -413,6 +458,21 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 </button>
               </span>
             )}
+
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const demoName = 'Demo Student';
+                  localStorage.setItem('cq_user_name', demoName);
+                  localStorage.setItem('cq_logged_in', 'true');
+                  onLoginSuccess(demoName, 'Software Engineer', false);
+                }}
+                className="text-[11px] text-slate-500 hover:text-cyan-400 font-medium transition"
+              >
+                ⚡ Instant Viva Demo / Teacher Guest Access
+              </button>
+            </div>
           </div>
         </div>
 

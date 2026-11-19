@@ -40,9 +40,10 @@ apiClient.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       const url = error.config?.url || '';
       const method = (error.config?.method || 'get').toLowerCase();
-      // Don't auto-logout for read-only problem browsing so fallback problems can display smoothly
+      // Don't auto-logout for read-only problem browsing or auth attempts (login/signup error banners)
       const isPublicBrowse = method === 'get' && url.includes('/problems');
-      if (!isPublicBrowse && typeof window !== 'undefined') {
+      const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/google') || url.includes('/auth/github');
+      if (!isPublicBrowse && !isAuthAttempt && typeof window !== 'undefined') {
         window.dispatchEvent(new Event('cq_auth_expired'));
       }
     }
