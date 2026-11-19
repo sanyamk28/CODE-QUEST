@@ -86,7 +86,7 @@ import ast
 FORBIDDEN_PYTHON_MODULES = {
     "os", "subprocess", "shutil", "socket", "http", "urllib", "requests",
     "pty", "commands", "ctypes", "winreg", "signal", "multiprocessing", "threading",
-    "posix", "nt", "importlib", "pickle", "shelve", "webbrowser", "sys"
+    "posix", "nt", "importlib", "pickle", "shelve", "webbrowser"
 }
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__", "open", "getattr", "setattr", "delattr"}
 
@@ -192,6 +192,8 @@ def run_single_testcase(code: str, language: str, input_data: str, expected_outp
         "LC_ALL": "en_US.UTF-8",
         "TEMP": temp_dir,
         "TMP": temp_dir,
+        "SystemRoot": os.environ.get("SystemRoot", "C:\\Windows"),
+        "WINDIR": os.environ.get("WINDIR", "C:\\Windows"),
     }
 
     try:

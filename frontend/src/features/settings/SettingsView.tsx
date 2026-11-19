@@ -26,11 +26,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateProfile,
 }) => {
   const [activeTab, setActiveTab] = useState<'account' | 'preferences' | 'notifications' | 'security'>('account');
-  const [fullName, setFullName] = useState(userName || 'Sanyam Kumar');
-  const [username, setUsername] = useState('sanyam_kumar');
-  const [role, setRole] = useState(targetRole || 'Data Engineer');
-  const [bio, setBio] = useState('Passionate about data engineering and building scalable systems.');
+  const [fullName, setFullName] = useState(() => localStorage.getItem('cq_user_name') || userName || 'Candidate');
+  const [username, setUsername] = useState(() => (localStorage.getItem('cq_user_name') || userName || 'candidate').toLowerCase().replace(/\s+/g, '_'));
+  const [role, setRole] = useState(() => localStorage.getItem('cq_target_role') || targetRole || 'Software Engineer');
+  const [college, setCollege] = useState(() => localStorage.getItem('cq_user_college') || '');
+  const [degree, setDegree] = useState(() => localStorage.getItem('cq_user_degree') || '');
+  const [bio, setBio] = useState(() => localStorage.getItem('cq_user_bio') || 'Aspiring engineer preparing for placement rounds with Code Quest.');
+  const [avatar, setAvatar] = useState(() => localStorage.getItem('cq_user_avatar') || '');
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (userName) setFullName(userName);
@@ -40,9 +44,62 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (targetRole) setRole(targetRole);
   }, [targetRole]);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 256;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setAvatar(dataUrl);
+          localStorage.setItem('cq_user_avatar', dataUrl);
+          window.dispatchEvent(new CustomEvent('cq_profile_updated'));
+          showToast('Profile photo updated!', 'success');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateProfile(fullName, role);
+    const cleanName = fullName.trim() || 'Candidate';
+    const cleanRole = role.trim() || 'Software Engineer';
+    const cleanCollege = college.trim();
+    const cleanDegree = degree.trim();
+    const cleanBio = bio.trim();
+
+    localStorage.setItem('cq_user_name', cleanName);
+    localStorage.setItem('cq_target_role', cleanRole);
+    localStorage.setItem('cq_user_college', cleanCollege);
+    localStorage.setItem('cq_user_degree', cleanDegree);
+    localStorage.setItem('cq_user_bio', cleanBio);
+    if (avatar) localStorage.setItem('cq_user_avatar', avatar);
+
+    window.dispatchEvent(new CustomEvent('cq_profile_updated'));
+    onUpdateProfile(cleanName, cleanRole);
     setSavedFeedback(true);
     showToast('Profile and settings updated successfully!', 'success');
     setTimeout(() => setSavedFeedback(false), 2500);
@@ -125,19 +182,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <form onSubmit={handleSave} className="space-y-5 max-w-xl">
           {/* Avatar with Change Photo button */}
           <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-black text-lg text-white shadow-md">
-              {fullName.substring(0, 2).toUpperCase() || 'SK'}
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-black text-lg text-white shadow-md overflow-hidden ring-2 ring-indigo-500/30">
+              {avatar ? (
+                <img src={avatar} alt={fullName} className="h-full w-full object-cover" />
+              ) : (
+                fullName.substring(0, 2).toUpperCase() || 'ST'
+              )}
             </div>
             <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
               <button
                 type="button"
-                onClick={() => showToast('Avatar updated successfully!', 'success')}
+                onClick={() => fileInputRef.current?.click()}
                 className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-2 active:scale-95"
               >
                 <Camera className="h-3.5 w-3.5 text-sky-400" />
                 <span>Change Photo</span>
               </button>
-              <div className="text-[10px] text-slate-500 mt-1">JPG, GIF or PNG. Max size 2MB</div>
+              <div className="text-[10px] text-slate-500 mt-1">JPG, WebP or PNG. Auto-optimized</div>
             </div>
           </div>
 
@@ -150,6 +218,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={(e) => setFullName(e.target.value)}
               className="w-full bg-[#0e1424] border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500 transition"
               required
+            />
+          </div>
+
+          {/* College / University */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-300">College / University</label>
+            <input
+              type="text"
+              value={college}
+              onChange={(e) => setCollege(e.target.value)}
+              placeholder="e.g. DTU, IIT Delhi, VIT..."
+              className="w-full bg-[#0e1424] border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-cyan-500 transition"
+            />
+          </div>
+
+          {/* Degree & Branch */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-300">Degree & Branch</label>
+            <input
+              type="text"
+              value={degree}
+              onChange={(e) => setDegree(e.target.value)}
+              placeholder="e.g. B.Tech Computer Science, MCA..."
+              className="w-full bg-[#0e1424] border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500 transition"
             />
           </div>
 

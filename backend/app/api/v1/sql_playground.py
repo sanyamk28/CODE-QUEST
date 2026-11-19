@@ -166,21 +166,22 @@ def execute_sql_query(
             detail="Multi-statement SQL queries are not permitted. Submit a single query."
         )
 
-    # 3. Check that query starts with SELECT or WITH
     lower_query = no_comments.lower()
-    if not (lower_query.startswith("select") or lower_query.startswith("with")):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Queries must start with SELECT or WITH statements."
-        )
 
-    # 4. Strict word-boundary regex check for forbidden keywords
+    # 3. Strict word-boundary regex check for forbidden keywords first
     for kw in FORBIDDEN_KEYWORDS:
         if re.search(r'\b' + re.escape(kw) + r'\b', lower_query):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Forbidden keyword '{kw}' detected. Only read-only SELECT queries are allowed."
             )
+
+    # 4. Check that query starts with SELECT or WITH
+    if not (lower_query.startswith("select") or lower_query.startswith("with")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Queries must start with SELECT or WITH statements."
+        )
 
     # 5. Execute strictly inside an isolated in-memory SQLite sandbox with native engine authorizer
     sql_error = None

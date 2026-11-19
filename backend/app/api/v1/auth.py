@@ -430,7 +430,8 @@ from typing import List
 
 @router.get("/students", response_model=List[StudentAdminResponse])
 def get_students(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
 ):
     students = db.query(User).filter(User.is_admin == False).order_by(User.created_at.desc()).all()
     res = []
@@ -452,7 +453,8 @@ def get_students(
 
 @router.get("/security-logs")
 def get_security_logs(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
 ):
     logins = db.query(LoginHistory).order_by(LoginHistory.login_time.desc()).limit(200).all()
     res = []
