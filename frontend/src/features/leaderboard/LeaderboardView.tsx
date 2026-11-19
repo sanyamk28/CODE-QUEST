@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Trophy, Flame, Swords, Code2, Sparkles, Medal, Crown, Search } from 'lucide-react';
 
 interface Candidate {
@@ -10,54 +10,61 @@ interface Candidate {
   isYou?: boolean;
 }
 
-const LEADERBOARDS_DATA: Record<'Global' | 'College' | 'Friends', { podium: any[]; list: Candidate[] }> = {
-  Global: {
-    podium: [
-      { rank: 2, name: 'Aditi', xp: '2,340 XP', avatar: 'AD', color: 'from-slate-400 to-slate-600', ringColor: 'border-slate-400' },
-      { rank: 1, name: 'Sanyam', xp: '2,500 XP', avatar: 'SK', isYou: true, color: 'from-amber-400 to-yellow-600', ringColor: 'border-amber-400' },
-      { rank: 3, name: 'Rohan', xp: '2,120 XP', avatar: 'RO', color: 'from-amber-600 to-orange-700', ringColor: 'border-amber-600' },
-    ],
-    list: [
-      { rank: 4, name: 'Priya', college: 'IIT Delhi', xp: '1,980 XP', avatar: 'PR' },
-      { rank: 5, name: 'Kunal', college: 'BITS Pilani', xp: '1,850 XP', avatar: 'KU' },
-      { rank: 6, name: 'Neha', college: 'NIT Trichy', xp: '1,720 XP', avatar: 'NE' },
-      { rank: 7, name: 'Arjun', college: 'IIT Bombay', xp: '1,680 XP', avatar: 'AR' },
-      { rank: 8, name: 'Ananya', college: 'IIIT Hyderabad', xp: '1,540 XP', avatar: 'AN' },
-      { rank: 9, name: 'Vikram', college: 'IIT Roorkee', xp: '1,420 XP', avatar: 'VI' },
-      { rank: 10, name: 'Ishita', college: 'DTU Delhi', xp: '1,380 XP', avatar: 'IS' },
-    ]
-  },
-  College: {
-    podium: [
-      { rank: 2, name: 'Kunal', xp: '1,850 XP', avatar: 'KU', color: 'from-slate-400 to-slate-600', ringColor: 'border-slate-400' },
-      { rank: 1, name: 'Sanyam', xp: '2,500 XP', avatar: 'SK', isYou: true, color: 'from-amber-400 to-yellow-600', ringColor: 'border-amber-400' },
-      { rank: 3, name: 'Neha', xp: '1,720 XP', avatar: 'NE', color: 'from-amber-600 to-orange-700', ringColor: 'border-amber-600' },
-    ],
-    list: [
-      { rank: 4, name: 'Gaurav', college: 'JIMS Rohini', xp: '1,310 XP', avatar: 'GA' },
-      { rank: 5, name: 'Tanvi', college: 'JIMS Rohini', xp: '1,240 XP', avatar: 'TA' },
-      { rank: 6, name: 'Mehul', college: 'JIMS Rohini', xp: '1,150 XP', avatar: 'ME' },
-      { rank: 7, name: 'Pooja', college: 'JIMS Rohini', xp: '980 XP', avatar: 'PO' }
-    ]
-  },
-  Friends: {
-    podium: [
-      { rank: 2, name: 'Aditya', xp: '2,200 XP', avatar: 'AD', color: 'from-slate-400 to-slate-600', ringColor: 'border-slate-400' },
-      { rank: 1, name: 'Sanyam', xp: '2,500 XP', avatar: 'SK', isYou: true, color: 'from-amber-400 to-yellow-600', ringColor: 'border-amber-400' },
-      { rank: 3, name: 'Rohan', xp: '2,120 XP', avatar: 'RO', color: 'from-amber-600 to-orange-700', ringColor: 'border-amber-600' },
-    ],
-    list: [
-      { rank: 4, name: 'Dhruv', college: 'Roommate', xp: '1,640 XP', avatar: 'DH' },
-      { rank: 5, name: 'Simran', college: 'Batchmate', xp: '1,490 XP', avatar: 'SI' }
-    ]
-  }
-};
-
 export const LeaderboardView: React.FC = () => {
   const [filter, setFilter] = useState<'Global' | 'College' | 'Friends'>('Global');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const currentBoard = LEADERBOARDS_DATA[filter];
+  const userName = localStorage.getItem('cq_user_name') || 'Candidate';
+  const userCollege = localStorage.getItem('cq_user_college') || 'Campus Peer';
+  const userAvatar = localStorage.getItem('cq_user_avatar');
+  const userInitials = userName.substring(0, 2).toUpperCase();
+
+  const data = useMemo(() => {
+    return {
+      Global: {
+        podium: [
+          { rank: 2, name: 'Aditi', xp: '2,340 XP', avatar: 'AD', color: 'from-slate-400 to-slate-600', ringColor: 'border-slate-400' },
+          { rank: 1, name: userName, xp: '2,500 XP', avatar: userInitials, isYou: true, color: 'from-amber-400 to-yellow-600', ringColor: 'border-amber-400', photo: userAvatar },
+          { rank: 3, name: 'Rohan', xp: '2,120 XP', avatar: 'RO', color: 'from-amber-600 to-orange-700', ringColor: 'border-amber-600' },
+        ],
+        list: [
+          { rank: 4, name: 'Priya', college: 'IIT Delhi', xp: '1,980 XP', avatar: 'PR' },
+          { rank: 5, name: 'Kunal', college: 'BITS Pilani', xp: '1,850 XP', avatar: 'KU' },
+          { rank: 6, name: 'Neha', college: 'NIT Trichy', xp: '1,720 XP', avatar: 'NE' },
+          { rank: 7, name: 'Arjun', college: 'IIT Bombay', xp: '1,680 XP', avatar: 'AR' },
+          { rank: 8, name: 'Ananya', college: 'IIIT Hyderabad', xp: '1,540 XP', avatar: 'AN' },
+          { rank: 9, name: 'Vikram', college: 'IIT Roorkee', xp: '1,420 XP', avatar: 'VI' },
+          { rank: 10, name: 'Ishita', college: 'DTU Delhi', xp: '1,380 XP', avatar: 'IS' },
+        ]
+      },
+      College: {
+        podium: [
+          { rank: 2, name: 'Kunal', xp: '1,850 XP', avatar: 'KU', color: 'from-slate-400 to-slate-600', ringColor: 'border-slate-400' },
+          { rank: 1, name: userName, xp: '2,500 XP', avatar: userInitials, isYou: true, color: 'from-amber-400 to-yellow-600', ringColor: 'border-amber-400', photo: userAvatar },
+          { rank: 3, name: 'Neha', xp: '1,720 XP', avatar: 'NE', color: 'from-amber-600 to-orange-700', ringColor: 'border-amber-600' },
+        ],
+        list: [
+          { rank: 4, name: 'Gaurav', college: userCollege, xp: '1,310 XP', avatar: 'GA' },
+          { rank: 5, name: 'Tanvi', college: userCollege, xp: '1,240 XP', avatar: 'TA' },
+          { rank: 6, name: 'Mehul', college: userCollege, xp: '1,150 XP', avatar: 'ME' },
+          { rank: 7, name: 'Pooja', college: userCollege, xp: '980 XP', avatar: 'PO' }
+        ]
+      },
+      Friends: {
+        podium: [
+          { rank: 2, name: 'Aditya', xp: '2,200 XP', avatar: 'AD', color: 'from-slate-400 to-slate-600', ringColor: 'border-slate-400' },
+          { rank: 1, name: userName, xp: '2,500 XP', avatar: userInitials, isYou: true, color: 'from-amber-400 to-yellow-600', ringColor: 'border-amber-400', photo: userAvatar },
+          { rank: 3, name: 'Rohan', xp: '2,120 XP', avatar: 'RO', color: 'from-amber-600 to-orange-700', ringColor: 'border-amber-600' },
+        ],
+        list: [
+          { rank: 4, name: 'Dhruv', college: 'Roommate', xp: '1,640 XP', avatar: 'DH' },
+          { rank: 5, name: 'Simran', college: 'Batchmate', xp: '1,490 XP', avatar: 'SI' }
+        ]
+      }
+    };
+  }, [userName, userCollege, userAvatar, userInitials]);
+
+  const currentBoard = data[filter];
 
   const filteredList = currentBoard.list.filter(
     (c) =>
@@ -112,9 +119,13 @@ export const LeaderboardView: React.FC = () => {
           <div className="flex flex-col items-center flex-1">
             <div className="relative mb-2">
               <Crown className="h-5 w-5 text-amber-400 absolute -top-5 left-1/2 -translate-x-1/2 animate-bounce" />
-              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-600 border-2 border-amber-300 p-0.5 shadow-xl shadow-amber-500/20">
-                <div className="h-full w-full bg-[#080d19] rounded-full flex items-center justify-center font-black text-sm text-amber-300">
-                  {currentBoard.podium[1].avatar}
+              <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-600 border-2 border-amber-300 p-0.5 shadow-xl shadow-amber-500/20 overflow-hidden">
+                <div className="h-full w-full bg-[#080d19] rounded-full flex items-center justify-center font-black text-sm text-amber-300 overflow-hidden">
+                  {currentBoard.podium[1].photo ? (
+                    <img src={currentBoard.podium[1].photo} alt="Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    currentBoard.podium[1].avatar
+                  )}
                 </div>
               </div>
               <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-amber-500 border border-amber-300 text-slate-950 flex items-center justify-center font-black text-xs shadow-md">

@@ -69,8 +69,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
         const userDisplayName = data.name || fullName.trim() || cleanEmail.split('@')[0];
         localStorage.setItem('cq_user_name', userDisplayName);
         localStorage.setItem('cq_logged_in', 'true');
+        if (data.college) localStorage.setItem('cq_user_college', data.college);
+        if (data.degree) localStorage.setItem('cq_user_degree', data.degree);
+        if (data.skills && Array.isArray(data.skills)) localStorage.setItem('cq_user_skills', JSON.stringify(data.skills));
         
-        onLoginSuccess(userDisplayName, data.target_role || '', data.needs_onboarding ?? true);
+        const needsOnboard = data.needs_onboarding || !data.target_role || !data.college || !data.degree;
+        onLoginSuccess(userDisplayName, data.target_role || '', needsOnboard);
       } else {
         // Login API call
         const res = await apiClient.post('/auth/login', {
@@ -92,8 +96,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
         const userDisplayName = data.name || cleanEmail.split('@')[0];
         localStorage.setItem('cq_user_name', userDisplayName);
         localStorage.setItem('cq_logged_in', 'true');
+        if (data.college) localStorage.setItem('cq_user_college', data.college);
+        if (data.degree) localStorage.setItem('cq_user_degree', data.degree);
+        if (data.skills && Array.isArray(data.skills)) localStorage.setItem('cq_user_skills', JSON.stringify(data.skills));
         
-        const needsOnboard = data.needs_onboarding || !data.target_role;
+        const needsOnboard = data.needs_onboarding || !data.target_role || !data.college || !data.degree;
         onLoginSuccess(userDisplayName, data.target_role || '', needsOnboard);
       }
     } catch (err: any) {

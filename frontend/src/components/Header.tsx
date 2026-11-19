@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Flame, Bell, User, Sparkles, LogOut, Smartphone, Monitor } from 'lucide-react';
 import { ActiveTabType } from '../types';
 import { InstallPwaButton } from './InstallPwaButton';
@@ -26,6 +26,16 @@ export const Header: React.FC<HeaderProps> = ({
   onTogglePhonePreview,
   onLogout,
 }) => {
+  const [avatar, setAvatar] = useState<string>(() => localStorage.getItem('cq_user_avatar') || '');
+
+  useEffect(() => {
+    const handleSync = () => {
+      setAvatar(localStorage.getItem('cq_user_avatar') || '');
+    };
+    window.addEventListener('cq_profile_updated', handleSync);
+    return () => window.removeEventListener('cq_profile_updated', handleSync);
+  }, []);
+
   const getPageTitle = (tab: ActiveTabType) => {
     switch (tab) {
       case 'dashboard':
@@ -142,9 +152,14 @@ export const Header: React.FC<HeaderProps> = ({
         {/* User Avatar */}
         <div 
           onClick={() => onSelectTab('profile')}
-          className="h-8 w-8 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow cursor-pointer hover:ring-2 hover:ring-indigo-400 transition"
+          className="h-8 w-8 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow cursor-pointer hover:ring-2 hover:ring-indigo-400 transition overflow-hidden"
+          title="Open Profile"
         >
-          {userName ? userName.substring(0, 2).toUpperCase() : 'SK'}
+          {avatar ? (
+            <img src={avatar} alt={userName} className="h-full w-full object-cover" />
+          ) : (
+            userName ? userName.substring(0, 2).toUpperCase() : 'ST'
+          )}
         </div>
       </div>
     </header>

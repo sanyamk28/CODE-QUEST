@@ -52,15 +52,27 @@ export const App: React.FC = () => {
     return localStorage.getItem('cq_logged_in') === 'true';
   });
 
-  // User must complete role selection, duration, and knowledge percentage calibration
+  // User must complete college, degree, role selection, and knowledge percentage calibration
   const [needsOnboarding, setNeedsOnboarding] = useState<boolean>(() => {
     const role = localStorage.getItem('cq_target_role');
     const onboarded = localStorage.getItem('cq_onboarded');
-    return !onboarded || !role;
+    const college = localStorage.getItem('cq_user_college');
+    const degree = localStorage.getItem('cq_user_degree');
+    return !onboarded || !role || !college || !degree;
   });
 
   const [isPhonePreview, setIsPhonePreview] = useState<boolean>(false);
   const [isNativeMobile, setIsNativeMobile] = useState<boolean>(false);
+
+  // Sync profile updates globally across components
+  useEffect(() => {
+    const handleProfileUpdated = () => {
+      setUserName(localStorage.getItem('cq_user_name') || 'Student');
+      setTargetRole(localStorage.getItem('cq_target_role') || '');
+    };
+    window.addEventListener('cq_profile_updated', handleProfileUpdated);
+    return () => window.removeEventListener('cq_profile_updated', handleProfileUpdated);
+  }, []);
 
   // Detect screen size for automatic responsive behavior
   useEffect(() => {
@@ -76,7 +88,8 @@ export const App: React.FC = () => {
     if (name) setUserName(name);
     setIsLoggedIn(true);
 
-    if (userNeedsOnboarding || !role) {
+    const hasAcademic = !!(localStorage.getItem('cq_user_college') && localStorage.getItem('cq_user_degree'));
+    if (userNeedsOnboarding || !role || !hasAcademic) {
       setNeedsOnboarding(true);
     } else {
       if (role) setTargetRole(role);
@@ -90,6 +103,10 @@ export const App: React.FC = () => {
     localStorage.removeItem('cq_logged_in');
     localStorage.removeItem('cq_user_name');
     localStorage.removeItem('cq_target_role');
+    localStorage.removeItem('cq_user_college');
+    localStorage.removeItem('cq_user_degree');
+    localStorage.removeItem('cq_user_skills');
+    localStorage.removeItem('cq_user_avatar');
     localStorage.removeItem('cq_onboarded');
     localStorage.removeItem('cq_study_duration');
     localStorage.removeItem('cq_daily_goal');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   User,
   Flame,
@@ -24,12 +24,18 @@ import {
   Download,
   ShieldCheck,
   ExternalLink,
-  Target
+  Target,
+  Camera,
+  Upload,
+  Trash2,
+  Building2,
+  BookOpen
 } from 'lucide-react';
 
 import { ActiveTabType } from '../../types';
 import { getUserActivityStats, calculateProgressPercentages } from '../../services/activityTracker';
 import { showToast } from '../../components/Toast';
+import { apiClient } from '../../services/api';
 
 interface ProfileViewProps {
   userName: string;
@@ -37,6 +43,20 @@ interface ProfileViewProps {
   streak: number;
   onUpdateRole?: (role: string) => void;
 }
+
+const POPULAR_COLLEGES = [
+  'IIT Delhi', 'DTU', 'NSUT', 'BITS Pilani', 'VIT Vellore', 'NIT Trichy', 'IIIT Hyderabad', 'JIMS Rohini', 'SRM University'
+];
+
+const POPULAR_DEGREES = [
+  'B.Tech CSE', 'B.Tech IT', 'MCA', 'BCA', 'B.Sc Computer Science', 'M.Tech', 'B.E. Computer Engineering'
+];
+
+const DEFAULT_LANGUAGES = [
+  'Python', 'Java', 'C++', 'C', 'JavaScript', 'TypeScript', 'SQL', 'Go', 'Rust', 'Kotlin', 'Swift', 'HTML / CSS', 'React', 'Node.js'
+];
+
+const PRESET_AVATARS = ['🤖', '🚀', '💻', '⚡', '🛡️', '🎓', '🎯', '🦁'];
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   userName,
@@ -46,25 +66,62 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const [stats, setStats] = useState(() => getUserActivityStats());
 
+  // User Profile Data from localStorage
+  const [name, setName] = useState<string>(() => localStorage.getItem('cq_user_name') || userName || 'Candidate');
+  const [college, setCollege] = useState<string>(() => localStorage.getItem('cq_user_college') || '');
+  const [degree, setDegree] = useState<string>(() => localStorage.getItem('cq_user_degree') || '');
+  const [avatar, setAvatar] = useState<string>(() => localStorage.getItem('cq_user_avatar') || '');
+  const [skills, setSkills] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('cq_user_skills');
+      return saved ? JSON.parse(saved) : ['Python', 'SQL', 'Algorithms', 'System Design'];
+    } catch {
+      return ['Python', 'SQL', 'Algorithms', 'System Design'];
+    }
+  });
+
+  // Modal & inline states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
+  const [newSkill, setNewSkill] = useState('');
+  const [isAddingSkill, setIsAddingSkill] = useState(false);
+
+  // Edit Modal form fields
+  const [editName, setEditName] = useState(name);
+  const [editCollege, setEditCollege] = useState(college);
+  const [editDegree, setEditDegree] = useState(degree);
+  const [editRole, setEditRole] = useState(targetRole || 'Software Engineer');
+  const [editAvatar, setEditAvatar] = useState(avatar);
+  const [editSkills, setEditSkills] = useState<string[]>(skills);
+  const [customSkillModalInput, setCustomSkillModalInput] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync stats and profile on external events
   useEffect(() => {
     const handleUpdate = () => {
       setStats(getUserActivityStats());
     };
+    const handleProfileSync = () => {
+      setName(localStorage.getItem('cq_user_name') || userName || 'Candidate');
+      setCollege(localStorage.getItem('cq_user_college') || '');
+      setDegree(localStorage.getItem('cq_user_degree') || '');
+      setAvatar(localStorage.getItem('cq_user_avatar') || '');
+      try {
+        const saved = localStorage.getItem('cq_user_skills');
+        if (saved) setSkills(JSON.parse(saved));
+      } catch {}
+    };
+
     window.addEventListener('cq_activity_updated', handleUpdate);
-    return () => window.removeEventListener('cq_activity_updated', handleUpdate);
-  }, []);
+    window.addEventListener('cq_profile_updated', handleProfileSync);
+    return () => {
+      window.removeEventListener('cq_activity_updated', handleUpdate);
+      window.removeEventListener('cq_profile_updated', handleProfileSync);
+    };
+  }, [userName]);
 
   const percentages = useMemo(() => calculateProgressPercentages(stats), [stats]);
-
-  const [skills, setSkills] = useState([
-    'Python', 'SQL', 'Algorithms', 'System Design', 'Two Pointers', 'Dynamic Programming'
-  ]);
-  const [newSkill, setNewSkill] = useState('');
-  const [isAddingSkill, setIsAddingSkill] = useState(false);
-  const [isEditingRole, setIsEditingRole] = useState(false);
-  const [customRoleInput, setCustomRoleInput] = useState(targetRole || 'Data Engineer');
-  const [selectedBadge, setSelectedBadge] = useState<string | null>(null);
-  const [showShareModal, setShowShareModal] = useState(false);
 
   // Solved problems count from localStorage
   const solvedCount = useMemo(() => {
@@ -107,23 +164,131 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }).join(' ');
   }, [radarMetrics]);
 
+  // Handle image upload with canvas resize to max 256x256
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (JPG, PNG, WebP)', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setEditAvatar(dataUrl);
+          showToast('Image selected! Click Save to apply.', 'info');
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectPresetAvatar = (emoji: string) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="100%" height="100%" rx="32" fill="#0f172a"/><text x="50%" y="54%" font-size="64" dominant-baseline="middle" text-anchor="middle">${emoji}</text></svg>`;
+    const dataUri = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    setEditAvatar(dataUri);
+  };
+
+  const handleOpenEditModal = () => {
+    setEditName(name);
+    setEditCollege(college);
+    setEditDegree(degree);
+    setEditRole(targetRole || 'Software Engineer');
+    setEditAvatar(avatar);
+    setEditSkills([...skills]);
+    setShowEditModal(true);
+  };
+
+  const handleSaveProfile = async () => {
+    const cleanName = editName.trim() || 'Candidate';
+    const cleanCollege = editCollege.trim();
+    const cleanDegree = editDegree.trim();
+    const cleanRole = editRole.trim() || 'Software Engineer';
+
+    // Save to state
+    setName(cleanName);
+    setCollege(cleanCollege);
+    setDegree(cleanDegree);
+    setAvatar(editAvatar);
+    setSkills(editSkills);
+
+    // Save to localStorage
+    localStorage.setItem('cq_user_name', cleanName);
+    localStorage.setItem('cq_user_college', cleanCollege);
+    localStorage.setItem('cq_user_degree', cleanDegree);
+    localStorage.setItem('cq_target_role', cleanRole);
+    localStorage.setItem('cq_user_skills', JSON.stringify(editSkills));
+    if (editAvatar) {
+      localStorage.setItem('cq_user_avatar', editAvatar);
+    } else {
+      localStorage.removeItem('cq_user_avatar');
+    }
+
+    onUpdateRole?.(cleanRole);
+    window.dispatchEvent(new CustomEvent('cq_profile_updated'));
+
+    // Try sending to backend to persist into Postgres
+    try {
+      await apiClient.post('/auth/onboard', {
+        name: cleanName,
+        college: cleanCollege,
+        degree: cleanDegree,
+        skills: editSkills,
+        target_role: cleanRole
+      });
+    } catch (e) {
+      // Offline fallback is already active
+    }
+
+    setShowEditModal(false);
+    showToast('Profile updated successfully!', 'success');
+  };
+
+  // Inline Quick Add Skill
   const handleAddSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills(prev => [...prev, newSkill.trim()]);
+      const updated = [...skills, newSkill.trim()];
+      setSkills(updated);
+      localStorage.setItem('cq_user_skills', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('cq_profile_updated'));
       setNewSkill('');
       setIsAddingSkill(false);
+      showToast(`Added ${newSkill.trim()} to verified skills!`, 'success');
     }
   };
 
   const handleRemoveSkill = (skillToRemove: string) => {
-    setSkills(prev => prev.filter(s => s !== skillToRemove));
-  };
-
-  const handleSaveRole = () => {
-    if (customRoleInput.trim()) {
-      onUpdateRole?.(customRoleInput.trim());
-      setIsEditingRole(false);
-    }
+    const updated = skills.filter(s => s !== skillToRemove);
+    setSkills(updated);
+    localStorage.setItem('cq_user_skills', JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('cq_profile_updated'));
   };
 
   const handleCopyShareLink = useCallback(() => {
@@ -139,26 +304,56 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     <div className="space-y-5 max-w-2xl mx-auto pb-6">
       {/* User Header Profile Card */}
       <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-5 shadow-xl flex items-center justify-between">
-        <div className="flex items-center gap-3.5">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-indigo-500/20">
-              {userName ? userName.substring(0, 2).toUpperCase() : 'SK'}
+        <div className="flex items-center gap-3.5 min-w-0">
+          {/* Avatar with Click-to-edit */}
+          <div 
+            onClick={handleOpenEditModal}
+            className="relative group cursor-pointer shrink-0"
+            title="Click to Change Photo & Profile"
+          >
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-indigo-500/20 overflow-hidden ring-2 ring-indigo-500/30">
+              {avatar ? (
+                <img src={avatar} alt={name} className="h-full w-full object-cover" />
+              ) : (
+                name ? name.substring(0, 2).toUpperCase() : 'ST'
+              )}
+            </div>
+            <div className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+              <Camera className="h-4 w-4 text-white" />
             </div>
             <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 ring-4 ring-[#0b101e]" />
           </div>
 
-          <div className="space-y-0.5">
+          <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-black text-white">{userName || 'Sanyam Kumar'}</h1>
-              <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <h1 className="text-base font-black text-white truncate">{name}</h1>
+              <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
                 Verified Coder
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">MCA Student • JIMS Rohini</p>
-            <div className="text-xs font-bold text-sky-400 flex items-center gap-1.5 pt-0.5">
-              <span>{targetRole || 'Data Engineer'}</span>
+
+            {/* User-defined Degree and College */}
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-300 font-medium">
+              <GraduationCap className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+              <span className="truncate">
+                {degree && college
+                  ? `${degree} • ${college}`
+                  : degree || college || 'Add College & Degree'}
+              </span>
               <button
-                onClick={() => setIsEditingRole(!isEditingRole)}
+                onClick={handleOpenEditModal}
+                className="text-slate-500 hover:text-white transition p-0.5 rounded hover:bg-slate-800"
+                title="Edit College & Degree"
+              >
+                <Edit2 className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* Target Role & Quick Edit */}
+            <div className="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+              <span className="truncate">{targetRole || 'Software Engineer'}</span>
+              <button
+                onClick={handleOpenEditModal}
                 className="text-slate-500 hover:text-white transition"
                 title="Edit Target Role"
               >
@@ -168,8 +363,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        {/* Circular Readiness Gauge & Share Card Trigger */}
-        <div className="flex items-center gap-3">
+        {/* Circular Readiness Gauge, Edit Profile Button & Share Card Trigger */}
+        <div className="flex items-center gap-2.5 shrink-0 ml-2">
           <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
               <path
@@ -193,39 +388,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
 
           <button
+            onClick={handleOpenEditModal}
+            className="p-2.5 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-300 hover:text-white transition shadow-sm active:scale-95 flex items-center gap-1.5"
+            title="Edit Full Profile"
+          >
+            <Edit2 className="h-4 w-4" />
+            <span className="text-xs font-bold hidden sm:inline">Edit Profile</span>
+          </button>
+
+          <button
             onClick={() => setShowShareModal(true)}
-            className="p-2.5 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-300 hover:text-white transition shadow-sm active:scale-95"
+            className="p-2.5 rounded-2xl bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/40 text-cyan-300 hover:text-white transition shadow-sm active:scale-95"
             title="Share Portfolio Achievement Card"
           >
             <Share2 className="h-4 w-4" />
           </button>
         </div>
       </div>
-
-      {/* Inline Role Editing */}
-      {isEditingRole && (
-        <div className="p-3 bg-[#0e1424] rounded-2xl border border-slate-800 flex items-center gap-2">
-          <input
-            type="text"
-            value={customRoleInput}
-            onChange={(e) => setCustomRoleInput(e.target.value)}
-            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none"
-            placeholder="e.g. Data Engineer, AI Engineer..."
-          />
-          <button
-            onClick={handleSaveRole}
-            className="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs"
-          >
-            Save
-          </button>
-          <button
-            onClick={() => setIsEditingRole(false)}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-400 text-xs"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
 
       {/* 6 Stats Grid */}
       <div className="grid grid-cols-3 gap-2.5">
@@ -267,7 +446,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {/* Radar Chart */}
           <div className="w-56 h-56 flex items-center justify-center relative">
             <svg viewBox="0 0 220 220" className="w-full h-full overflow-visible">
-              {/* Concentric rings */}
               {[0.25, 0.5, 0.75, 1.0].map((scale, idx) => {
                 const ringPoints = Array.from({ length: 6 }).map((_, i) => {
                   const angle = (Math.PI * 2 / 6) * i - Math.PI / 2;
@@ -287,7 +465,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 );
               })}
 
-              {/* Axis lines */}
               {Array.from({ length: 6 }).map((_, i) => {
                 const angle = (Math.PI * 2 / 6) * i - Math.PI / 2;
                 const x2 = 110 + 70 * Math.cos(angle);
@@ -305,17 +482,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 );
               })}
 
-              {/* Radar Data Polygon */}
               <polygon
                 points={radarPolygonPoints}
                 fill="rgba(99, 102, 241, 0.25)"
-                stroke="#818cf8"
+                stroke="#6366f1"
                 strokeWidth="2"
-                strokeLinejoin="round"
-                className="transition-all duration-700"
               />
 
-              {/* Vertices dots */}
               {radarMetrics.map((m, i) => {
                 const angle = (Math.PI * 2 / 6) * i - Math.PI / 2;
                 const dist = (m.score / 100) * 70;
@@ -336,19 +509,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </svg>
           </div>
 
-          {/* Metric Breakdown Badges */}
-          <div className="flex-1 space-y-1.5 w-full">
-            {radarMetrics.map((m) => (
-              <div key={m.label} className="flex items-center justify-between text-xs p-1.5 rounded-xl bg-[#0e1424] border border-slate-800">
-                <span className="text-slate-300 font-medium">{m.label}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-1 rounded-full bg-slate-800 overflow-hidden hidden sm:block">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full"
-                      style={{ width: `${m.score}%` }}
-                    />
-                  </div>
+          {/* Metric breakdown list */}
+          <div className="flex-1 space-y-2 w-full">
+            {radarMetrics.map((m, i) => (
+              <div key={i} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-300 font-medium">{m.label}</span>
                   <span className="font-mono font-bold text-sky-400 text-[11px]">{m.score}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-full"
+                    style={{ width: `${m.score}%` }}
+                  />
                 </div>
               </div>
             ))}
@@ -356,15 +529,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Verified Skills Section */}
+      {/* Verified Skills & Languages Section */}
       <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-5 shadow-xl space-y-3">
         <div className="flex items-center justify-between pb-1 border-b border-slate-800/60">
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">Verified Skills</h3>
+          <div className="flex items-center gap-2">
+            <Code2 className="h-4 w-4 text-cyan-400" />
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Known Programming Languages & Stacks</h3>
+          </div>
           <button
             onClick={() => setIsAddingSkill(!isAddingSkill)}
-            className="text-[11px] font-bold text-sky-400 hover:text-sky-300"
+            className="text-[11px] font-bold text-sky-400 hover:text-sky-300 transition"
           >
-            + Add Skill
+            + Add Language / Tool
           </button>
         </div>
 
@@ -374,14 +550,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               type="text"
               value={newSkill}
               onChange={(e) => setNewSkill(e.target.value)}
-              placeholder="e.g. Apache Spark, Docker..."
-              className="flex-1 px-3 py-1.5 rounded-xl bg-[#0e1424] border border-slate-700 text-xs text-white outline-none"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddSkill()}
+              placeholder="e.g. Go, Rust, React Native, Redis..."
+              className="flex-1 px-3 py-1.5 rounded-xl bg-[#0e1424] border border-slate-700 text-xs text-white outline-none focus:border-cyan-400"
+              autoFocus
             />
             <button
               onClick={handleAddSkill}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs"
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs"
             >
               Add
+            </button>
+            <button
+              onClick={() => setIsAddingSkill(false)}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white text-xs"
+            >
+              Cancel
             </button>
           </div>
         )}
@@ -390,7 +574,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {skills.map((skill) => (
             <span
               key={skill}
-              className="px-3 py-1 rounded-xl bg-[#0e1424] border border-slate-800 text-xs font-semibold text-sky-300 shadow-sm flex items-center gap-1.5 group"
+              className="px-3 py-1.5 rounded-xl bg-[#0e1424] border border-slate-800 text-xs font-semibold text-sky-300 shadow-sm flex items-center gap-1.5 group hover:border-slate-700"
             >
               <span>{skill}</span>
               <button
@@ -405,7 +589,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Achievements Section */}
+      {/* Badges & Achievements Section */}
       <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-5 shadow-xl space-y-3">
         <h3 className="text-xs font-bold text-white uppercase tracking-wider pb-1 border-b border-slate-800/60">
           Badges & Achievements
@@ -441,6 +625,246 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         )}
       </div>
 
+      {/* ================= EDIT PROFILE MODAL ================= */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in overflow-y-auto">
+          <div className="bg-[#0b101e] border border-indigo-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl relative space-y-5 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+                  <Edit2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Edit Your Profile</h3>
+                  <p className="text-[11px] text-slate-400">Update your college, degree, languages & photo</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Photo / Avatar Uploader */}
+            <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-[#070c18] border border-slate-800">
+              <div className="relative shrink-0">
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-cyan-400 to-indigo-600 p-0.5 overflow-hidden">
+                  <div className="h-full w-full bg-[#090D18] rounded-[14px] flex items-center justify-center overflow-hidden">
+                    {editAvatar ? (
+                      <img src={editAvatar} alt="Avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="font-bold text-lg text-white">
+                        {editName ? editName.substring(0, 2).toUpperCase() : 'ST'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition"
+                  >
+                    <Upload className="h-3 w-3" />
+                    <span>Upload Image</span>
+                  </button>
+
+                  {editAvatar && (
+                    <button
+                      type="button"
+                      onClick={() => setEditAvatar('')}
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-300 text-xs font-medium transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {/* Preset Avatars */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-500 font-mono">Preset:</span>
+                  {PRESET_AVATARS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleSelectPresetAvatar(emoji)}
+                      className="h-6 w-6 rounded-lg bg-[#0e1424] hover:bg-indigo-950/60 border border-slate-800 text-xs flex items-center justify-center transition"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-3.5 text-left">
+              {/* Name */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Full Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070c18] border border-slate-800 text-xs text-white outline-none focus:border-indigo-400 transition"
+                  placeholder="Your full name"
+                />
+              </div>
+
+              {/* College */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">College / University</label>
+                <input
+                  type="text"
+                  value={editCollege}
+                  onChange={(e) => setEditCollege(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070c18] border border-slate-800 text-xs text-white outline-none focus:border-cyan-400 transition"
+                  placeholder="e.g. DTU, IIT Delhi, VIT, JIMS Rohini..."
+                />
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {POPULAR_COLLEGES.slice(0, 5).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setEditCollege(c)}
+                      className="text-[9px] px-2 py-0.5 rounded bg-[#0e1424] text-slate-400 border border-slate-800 hover:text-white"
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Degree */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Degree & Branch</label>
+                <input
+                  type="text"
+                  value={editDegree}
+                  onChange={(e) => setEditDegree(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070c18] border border-slate-800 text-xs text-white outline-none focus:border-indigo-400 transition"
+                  placeholder="e.g. B.Tech Computer Science, MCA 2nd Year..."
+                />
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {POPULAR_DEGREES.slice(0, 5).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setEditDegree(d)}
+                      className="text-[9px] px-2 py-0.5 rounded bg-[#0e1424] text-slate-400 border border-slate-800 hover:text-white"
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target Role */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-300">Target Role / Track</label>
+                <input
+                  type="text"
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070c18] border border-slate-800 text-xs text-white outline-none focus:border-indigo-400 transition"
+                  placeholder="e.g. Data Engineer, Full Stack Developer..."
+                />
+              </div>
+
+              {/* Languages / Skills Multi-Select */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-xs font-bold text-slate-300">Languages & Technical Skills</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DEFAULT_LANGUAGES.map((lang) => {
+                    const isSelected = editSkills.includes(lang);
+                    return (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setEditSkills(prev => prev.filter(s => s !== lang));
+                          } else {
+                            setEditSkills(prev => [...prev, lang]);
+                          }
+                        }}
+                        className={`text-[10px] px-2.5 py-1 rounded-lg border font-semibold transition ${
+                          isSelected
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-[0_0_8px_rgba(0,229,255,0.2)]'
+                            : 'bg-[#0e1424] text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                      >
+                        {isSelected ? `✓ ${lang}` : lang}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={customSkillModalInput}
+                    onChange={(e) => setCustomSkillModalInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customSkillModalInput.trim()) {
+                        if (!editSkills.includes(customSkillModalInput.trim())) {
+                          setEditSkills(prev => [...prev, customSkillModalInput.trim()]);
+                          setCustomSkillModalInput('');
+                        }
+                      }
+                    }}
+                    placeholder="+ Add custom language / tool..."
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-[#070c18] border border-slate-800 text-xs text-white outline-none focus:border-indigo-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customSkillModalInput.trim() && !editSkills.includes(customSkillModalInput.trim())) {
+                        setEditSkills(prev => [...prev, customSkillModalInput.trim()]);
+                        setCustomSkillModalInput('');
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 hover:text-white text-xs font-bold"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold shadow-lg shadow-indigo-600/30 transition transform active:scale-95"
+              >
+                Save Profile Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Shareable Achievement Card Modal */}
       {showShareModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
@@ -449,68 +873,64 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               onClick={() => setShowShareModal(false)}
               className="absolute top-4 right-4 p-1 rounded-xl text-slate-400 hover:text-white"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </button>
 
             <div className="text-center space-y-1">
-              <h2 className="text-base font-bold text-white">Share Portfolio Card</h2>
-              <p className="text-xs text-slate-400">Share your verified interview prep readiness on LinkedIn or Twitter.</p>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400">Official Candidate Transcript</span>
+              <h3 className="text-lg font-black text-white">{name}</h3>
+              <p className="text-xs text-slate-400">
+                {degree && college ? `${degree} • ${college}` : targetRole}
+              </p>
             </div>
 
-            {/* Rendered Preview Card */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-950/80 via-[#0a0f1d] to-purple-950/80 border border-indigo-500/40 shadow-inner space-y-4 text-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                <span>CODE QUEST Verified Candidate</span>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-lg font-black text-white">{userName || 'Sanyam Kumar'}</div>
-                <div className="text-xs text-indigo-300 font-semibold">{targetRole || 'Data Engineer'}</div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                <div className="p-2 rounded-xl bg-[#0e1424] border border-slate-800">
-                  <div className="text-base font-black text-amber-400 font-mono">{solvedCount}</div>
-                  <div className="text-[10px] text-slate-400">Problems Solved</div>
+            {/* Visual Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1428] via-[#090f1e] to-[#060a14] border border-indigo-500/40 space-y-3 shadow-inner">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-indigo-600 flex items-center justify-center text-white font-black overflow-hidden">
+                    {avatar ? <img src={avatar} alt={name} className="h-full w-full object-cover" /> : (name ? name.substring(0, 2).toUpperCase() : 'ST')}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">{name}</div>
+                    <div className="text-[10px] text-sky-400 font-mono">{targetRole}</div>
+                  </div>
                 </div>
-                <div className="p-2 rounded-xl bg-[#0e1424] border border-slate-800">
-                  <div className="text-base font-black text-sky-400 font-mono">{streak}d</div>
-                  <div className="text-[10px] text-slate-400">Daily Streak</div>
-                </div>
-                <div className="p-2 rounded-xl bg-[#0e1424] border border-slate-800">
-                  <div className="text-base font-black text-emerald-400 font-mono">{percentages.overallReadiness}%</div>
-                  <div className="text-[10px] text-slate-400">Readiness</div>
+                <div className="text-right">
+                  <div className="text-xs font-mono font-black text-amber-400">{stats.totalXp} XP</div>
+                  <div className="text-[9px] text-slate-400">L{percentages.level} Verified</div>
                 </div>
               </div>
 
-              <div className="flex flex-wrap justify-center gap-1.5 pt-1">
-                {skills.slice(0, 4).map((s) => (
-                  <span key={s} className="px-2 py-0.5 rounded-md bg-[#0e1424] text-[10px] text-slate-300 border border-slate-800 font-mono">
-                    {s}
-                  </span>
-                ))}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center font-mono">
+                <div>
+                  <div className="text-xs font-bold text-white">{stats.streak}d</div>
+                  <div className="text-[9px] text-slate-400">Streak</div>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-sky-400">{solvedCount}</div>
+                  <div className="text-[9px] text-slate-400">DSA Solved</div>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-emerald-400">{percentages.overallReadiness}%</div>
+                  <div className="text-[9px] text-slate-400">Readiness</div>
+                </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={handleCopyShareLink}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition active:scale-95"
+                className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition"
               >
                 <Share2 className="h-3.5 w-3.5" />
-                <span>Copy Shareable Link</span>
+                <span>Copy Shareable URL</span>
               </button>
               <button
-                onClick={() => {
-                  showToast('Achievement badge saved!', 'success');
-                  setShowShareModal(false);
-                }}
-                className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition"
+                onClick={() => setShowShareModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition"
               >
-                <Download className="h-3.5 w-3.5" />
-                <span>Done</span>
+                Close
               </button>
             </div>
           </div>

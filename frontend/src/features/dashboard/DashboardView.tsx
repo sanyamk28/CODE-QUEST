@@ -37,13 +37,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
 }) => {
   const [stats, setStats] = useState(() => getUserActivityStats());
+  const [avatar, setAvatar] = useState<string>(() => localStorage.getItem('cq_user_avatar') || '');
+  const [college, setCollege] = useState<string>(() => localStorage.getItem('cq_user_college') || '');
+  const [degree, setDegree] = useState<string>(() => localStorage.getItem('cq_user_degree') || '');
 
   useEffect(() => {
     const handleUpdate = () => {
       setStats(getUserActivityStats());
     };
+    const handleProfileSync = () => {
+      setAvatar(localStorage.getItem('cq_user_avatar') || '');
+      setCollege(localStorage.getItem('cq_user_college') || '');
+      setDegree(localStorage.getItem('cq_user_degree') || '');
+    };
     window.addEventListener('cq_activity_updated', handleUpdate);
-    return () => window.removeEventListener('cq_activity_updated', handleUpdate);
+    window.addEventListener('cq_profile_updated', handleProfileSync);
+    return () => {
+      window.removeEventListener('cq_activity_updated', handleUpdate);
+      window.removeEventListener('cq_profile_updated', handleProfileSync);
+    };
   }, []);
 
   const percentages = useMemo(() => calculateProgressPercentages(stats), [stats]);
@@ -72,8 +84,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-cyan-500/15 relative z-10">
           <div className="flex items-center gap-3.5">
             <div className="relative">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#091024] to-[#040711] border border-cyan-400/40 flex items-center justify-center text-cyan-300 font-extrabold text-base shadow-[0_0_15px_rgba(0,229,255,0.25)]">
-                {userName ? userName.substring(0, 2).toUpperCase() : 'SK'}
+              <div 
+                onClick={() => onNavigate('profile')}
+                className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#091024] to-[#040711] border border-cyan-400/40 flex items-center justify-center text-cyan-300 font-extrabold text-base shadow-[0_0_15px_rgba(0,229,255,0.25)] overflow-hidden cursor-pointer hover:border-cyan-300 transition"
+                title="View Profile"
+              >
+                {avatar ? (
+                  <img src={avatar} alt={userName} className="h-full w-full object-cover" />
+                ) : (
+                  userName ? userName.substring(0, 2).toUpperCase() : 'ST'
+                )}
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-[#0B0F1C] shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
             </div>
@@ -82,6 +102,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="text-[11px] font-mono tracking-wider uppercase text-cyan-400/80 flex items-center gap-1.5">
                 <Terminal className="h-3 w-3 text-cyan-400" />
                 <span>TARGET SPECIALIZATION</span>
+                {college && (
+                  <span className="text-slate-400 font-sans normal-case">
+                    • {degree ? `${degree}, ` : ''}{college}
+                  </span>
+                )}
               </div>
               <div className="text-lg font-black text-white flex items-center gap-2.5">
                 <span className="tracking-tight">{targetRole || 'Data Engineer'}</span>

@@ -115,7 +115,8 @@ def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
         )
         
     has_role = bool(user.profile and user.profile.target_role and user.profile.target_role.strip())
-    needs_onboard = not has_role
+    has_academic = bool(user.profile and user.profile.college and user.profile.degree)
+    needs_onboard = not (has_role and has_academic)
         
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
@@ -125,6 +126,9 @@ def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
     
     user_name = user.profile.name if user.profile and user.profile.name else clean_email.split("@")[0].title()
     target_role = user.profile.target_role if user.profile and user.profile.target_role else ""
+    college = user.profile.college if user.profile else None
+    degree = user.profile.degree if user.profile else None
+    skills = user.profile.skills if user.profile and user.profile.skills else []
     
     return TokenResponse(
         access_token=access_token,
@@ -135,7 +139,10 @@ def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
         user_id=str(user.id),
         email=user.email,
         name=user_name,
-        target_role=target_role
+        target_role=target_role,
+        college=college,
+        degree=degree,
+        skills=skills
     )
 
 @router.post("/google", response_model=TokenResponse)
@@ -273,14 +280,26 @@ def google_login(payload: GoogleLoginRequest, request: Request, db: Session = De
     # Log login tracking details
     log_login_event(db, user.id, "google", request)
     
+    has_role = bool(user.profile and user.profile.target_role and user.profile.target_role.strip())
+    has_academic = bool(user.profile and user.profile.college and user.profile.degree)
+    needs_onboard = is_new or not (has_role and has_academic)
+    college = user.profile.college if user.profile else None
+    degree = user.profile.degree if user.profile else None
+    skills = user.profile.skills if user.profile and user.profile.skills else []
+    
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         is_admin=False,  # Always False for student Google login
         is_new_user=is_new,
+        needs_onboarding=needs_onboard,
         user_id=str(user.id),
         email=user.email,
-        name=user.profile.name if user.profile and user.profile.name else name
+        name=user.profile.name if user.profile and user.profile.name else name,
+        target_role=user.profile.target_role if user.profile and user.profile.target_role else "Software Engineer",
+        college=college,
+        degree=degree,
+        skills=skills
     )
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -398,6 +417,14 @@ def get_profile(
             detail="Profile not found. Please complete onboarding."
         )
     return profile
+
+@router.put("/profile", response_model=ProfileResponse)
+def update_profile(
+    onboard_in: OnboardingRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return onboard_user(onboard_in=onboard_in, current_user=current_user, db=db)
 
 from typing import List
 

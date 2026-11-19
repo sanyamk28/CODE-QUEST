@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Code2,
@@ -35,6 +35,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   targetRole,
   onLogout,
 }) => {
+  const [avatar, setAvatar] = useState<string>(() => localStorage.getItem('cq_user_avatar') || '');
+  const [college, setCollege] = useState<string>(() => localStorage.getItem('cq_user_college') || '');
+
+  useEffect(() => {
+    const handleSync = () => {
+      setAvatar(localStorage.getItem('cq_user_avatar') || '');
+      setCollege(localStorage.getItem('cq_user_college') || '');
+    };
+    window.addEventListener('cq_profile_updated', handleSync);
+    return () => window.removeEventListener('cq_profile_updated', handleSync);
+  }, []);
   const navItems = [
     { id: 'dashboard' as ActiveTabType, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'practice' as ActiveTabType, label: 'Practice Hub', icon: Layers, badge: 'HUB' },
@@ -124,17 +135,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
           >
             <div className="relative">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow shadow-cyan-500/25 ring-2 ring-cyan-500/20">
-                SK
+              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow shadow-cyan-500/25 ring-2 ring-cyan-500/20 overflow-hidden">
+                {avatar ? (
+                  <img src={avatar} alt={userName} className="h-full w-full object-cover" />
+                ) : (
+                  userName ? userName.substring(0, 2).toUpperCase() : 'ST'
+                )}
               </div>
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0B0F1C]" />
             </div>
             <div className="truncate">
               <div className="text-xs font-bold text-white truncate hover:text-cyan-400 transition">
-                {userName || 'Sanyam Kumar'}
+                {userName || 'Candidate'}
               </div>
               <div className="text-[10px] text-slate-400 truncate">
-                {targetRole || 'Data Engineer'}
+                {targetRole || 'Software Engineer'}{college ? ` • ${college}` : ''}
               </div>
             </div>
           </div>

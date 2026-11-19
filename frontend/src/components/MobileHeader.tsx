@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Flame, Bell, Settings, Share2, Bookmark, Search, User } from 'lucide-react';
 import { ActiveTabType } from '../types';
 import { showToast } from './Toast';
@@ -20,6 +20,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   onSelectTab,
   onBack,
 }) => {
+  const [avatar, setAvatar] = useState<string>(() => localStorage.getItem('cq_user_avatar') || '');
+
+  useEffect(() => {
+    const handleSync = () => {
+      setAvatar(localStorage.getItem('cq_user_avatar') || '');
+    };
+    window.addEventListener('cq_profile_updated', handleSync);
+    return () => window.removeEventListener('cq_profile_updated', handleSync);
+  }, []);
+
   const isRootTab = activeTab === 'dashboard';
 
   const getTitle = () => {
@@ -97,9 +107,14 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
           {/* User Avatar */}
           <button
             onClick={() => onSelectTab('profile')}
-            className="h-8 w-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow ring-2 ring-cyan-500/30"
+            className="h-8 w-8 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow ring-2 ring-cyan-500/30 overflow-hidden"
+            title="Open Profile"
           >
-            {userName ? userName.substring(0, 2).toUpperCase() : 'SK'}
+            {avatar ? (
+              <img src={avatar} alt={userName} className="h-full w-full object-cover" />
+            ) : (
+              userName ? userName.substring(0, 2).toUpperCase() : 'ST'
+            )}
           </button>
         </div>
       </header>

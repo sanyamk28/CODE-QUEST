@@ -26,6 +26,9 @@ class TokenResponse(BaseModel):
     email: Optional[str] = None
     name: Optional[str] = None
     target_role: Optional[str] = None
+    college: Optional[str] = None
+    degree: Optional[str] = None
+    skills: List[str] = []
 
 class TokenRefresh(BaseModel):
     refresh_token: str
