@@ -21,7 +21,13 @@ import {
   Layers,
   Check,
   RotateCcw,
-  Play
+  Play,
+  ArrowRight,
+  LogOut,
+  UserCheck,
+  Lock,
+  Gamepad2,
+  School
 } from 'lucide-react';
 import { playRunSound, playSuccessSound } from '../../services/soundEffects';
 import { showToast } from '../../components/Toast';
@@ -49,14 +55,13 @@ function generate100Players(): Participant[] {
     const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
     const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
     const col = colleges[Math.floor(Math.random() * colleges.length)];
-    const passed = Math.floor(Math.random() * 5); // start with 0-4 passed
     players.push({
       id: `player-${i}`,
       name: `${fn} ${ln}`,
       college: col,
       avatar: `${fn[0]}${ln[0]}`,
-      testCasesPassed: passed,
-      score: passed * 10,
+      testCasesPassed: 0,
+      score: 0,
       lines: Math.floor(Math.random() * 15) + 5
     });
   }
@@ -104,21 +109,22 @@ const BATTLE_MCQ_QUESTIONS = [
 ];
 
 export const BattleArenaView: React.FC = () => {
-  // Navigation Mode
-  const [arenaSubTab, setArenaSubTab] = useState<'arena' | 'create_room' | 'leaderboard'>('arena');
+  // Navigation Mode: 'lobby' (default) | 'waiting_room' | 'arena' | 'create_room' | 'leaderboard'
+  const [arenaSubTab, setArenaSubTab] = useState<'lobby' | 'waiting_room' | 'arena' | 'create_room' | 'leaderboard'>('lobby');
 
   // Room Configuration (Configured by Teacher or Room Host)
-  const [roomCode, setRoomCode] = useState<string>('MEGA-8492');
+  const [roomCode, setRoomCode] = useState<string>('CODE-8492');
   const [roomCapacity, setRoomCapacity] = useState<number>(30); // Default classroom batch
   const [battleTrack, setBattleTrack] = useState<'coding' | 'mcq' | 'sql'>('coding');
   const [battleTopic, setBattleTopic] = useState<string>('Mixed CS Core');
   const [battleDurationMins, setBattleDurationMins] = useState<number>(15);
   const [roomDifficulty, setRoomDifficulty] = useState<string>('Medium');
+  const [isHost, setIsHost] = useState<boolean>(true);
+  const [isMatchStarted, setIsMatchStarted] = useState<boolean>(false);
 
   const [copiedCode, setCopiedCode] = useState(false);
   const [joinInputCode, setJoinInputCode] = useState('');
   const [joinError, setJoinError] = useState('');
-  const [showExitModal, setShowExitModal] = useState<boolean>(false);
   const [tabSwitchCount, setTabSwitchCount] = useState<number>(0);
 
   // Participants & Leaderboard
@@ -151,59 +157,56 @@ export const BattleArenaView: React.FC = () => {
   // SQL track state
   const [sqlQuery, setSqlQuery] = useState('SELECT emp_name, salary FROM employees WHERE salary > 70000 ORDER BY salary DESC;');
 
-  // Live Timer
+  // Live Timer: ONLY runs when match has been actively started!
   useEffect(() => {
+    if (!isMatchStarted || arenaSubTab !== 'arena' || isBattleWon) return;
+
     const timerInterval = setInterval(() => {
       setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
     }, 1000);
 
-    // Dynamic peer progress simulation
+    // Dynamic peer progress simulation during active match
     const peerUpdateInterval = setInterval(() => {
-      if (!isBattleWon) {
-        setParticipants((prev) => {
-          const next = [...prev];
-          const randomIdx = Math.floor(Math.random() * next.length);
-          const target = { ...next[randomIdx] };
+      setParticipants((prev) => {
+        const next = [...prev];
+        const randomIdx = Math.floor(Math.random() * next.length);
+        const target = { ...next[randomIdx] };
 
-          if (target.testCasesPassed < 10) {
-            target.testCasesPassed += 1;
-            target.lines += Math.floor(Math.random() * 2) + 1;
-            target.score = target.testCasesPassed * 10;
-            next[randomIdx] = target;
+        if (target.testCasesPassed < 10) {
+          target.testCasesPassed += 1;
+          target.lines += Math.floor(Math.random() * 2) + 1;
+          target.score = target.testCasesPassed * 10;
+          next[randomIdx] = target;
 
-            setLiveTicker((t) => [
-              `🚀 ${target.name} (${target.college}) just passed Testcase #${target.testCasesPassed}!`,
-              ...t.slice(0, 3)
-            ]);
-          }
-          return next;
-        });
-      }
+          setLiveTicker((t) => [
+            `🚀 ${target.name} (${target.college}) passed Checkpoint #${target.testCasesPassed}!`,
+            ...t.slice(0, 3)
+          ]);
+        }
+        return next;
+      });
     }, 3500);
 
     return () => {
       clearInterval(timerInterval);
       clearInterval(peerUpdateInterval);
     };
-  }, [isBattleWon]);
+  }, [isMatchStarted, arenaSubTab, isBattleWon]);
 
-  // Anti-Cheat Proctoring (Tab Switch Detection)
+  // Anti-Cheat Proctoring (Tab Switch Detection during active contest)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden && arenaSubTab === 'arena' && !isBattleWon) {
+      if (document.hidden && arenaSubTab === 'arena' && isMatchStarted && !isBattleWon) {
         setTabSwitchCount((c) => {
           const next = c + 1;
-          showToast(`⚠️ Warning! Tab switch detected (${next}/3). Proctored room rules enforce full focus.`, 'error');
-          if (next >= 3) {
-            showToast('🚨 Maximum tab violations exceeded! Submission flagged to instructor.', 'error');
-          }
+          showToast(`⚠️ Tab switch detected (${next}/3). Full focus enforced.`, 'error');
           return next;
         });
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [arenaSubTab, isBattleWon]);
+  }, [arenaSubTab, isMatchStarted, isBattleWon]);
 
   // Formatted Timer Display
   const formatTimer = (seconds: number) => {
@@ -236,10 +239,10 @@ export const BattleArenaView: React.FC = () => {
     navigator.clipboard?.writeText(shareText);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
-    showToast(`Room link copied for ${battleTrack.toUpperCase()} Battle! Share with your students or peers.`, 'success');
+    showToast(`Room code "${roomCode}" copied! Share with your students or peers.`, 'success');
   };
 
-  // Teacher / Host Creates Customized Room
+  // Teacher / Host Creates Customized Room (Moves to Waiting Lobby)
   const handleCreateRoom = (capacity: number) => {
     const trackPrefix = battleTrack === 'coding' ? 'CODE' : battleTrack === 'mcq' ? 'QUIZ' : 'SQL';
     const newCode = `${trackPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -250,14 +253,17 @@ export const BattleArenaView: React.FC = () => {
     setUserScore(0);
     setUserTestsPassed(0);
     setMcqIdx(0);
-    setArenaSubTab('arena');
+    setIsHost(true);
+    setIsMatchStarted(false);
+    setArenaSubTab('waiting_room');
     playSuccessSound();
-    showToast(`🎉 Room Created: ${newCode} • [${battleTrack.toUpperCase()}] • ${capacity} Students Max!`, 'success');
+    showToast(`Room created: ${newCode}! Waiting for players to join.`, 'success');
   };
 
+  // Student Joins an Existing Room
   const handleJoinCustomRoom = () => {
     if (!joinInputCode.trim()) {
-      setJoinError('Please enter a room code');
+      setJoinError('Please enter a valid room code');
       return;
     }
     const code = joinInputCode.trim().toUpperCase();
@@ -266,10 +272,42 @@ export const BattleArenaView: React.FC = () => {
     else if (code.startsWith('SQL')) setBattleTrack('sql');
     else setBattleTrack('coding');
     setParticipants(generate100Players().slice(0, roomCapacity));
-    setArenaSubTab('arena');
+    setIsHost(false);
+    setIsMatchStarted(false);
+    setArenaSubTab('waiting_room');
     setJoinError('');
     playSuccessSound();
-    showToast(`Successfully joined Room ${code}!`, 'success');
+    showToast(`Joined Room ${code}! Waiting for host to start match.`, 'success');
+  };
+
+  // Instant Solo / 1v1 Practice Match
+  const handleStartQuickDuel = () => {
+    setRoomCode('SOLO-1V1');
+    setRoomCapacity(2);
+    setBattleTrack('coding');
+    setBattleTopic('DSA Speed Sprint');
+    setSecondsLeft(300); // 5 min
+    setParticipants(generate100Players().slice(0, 1));
+    setIsHost(true);
+    setIsMatchStarted(true);
+    setArenaSubTab('arena');
+    playSuccessSound();
+    showToast('Starting 1v1 Quick Duel! Good luck.', 'info');
+  };
+
+  // Host starts the match for all connected players
+  const handleHostStartMatch = () => {
+    setIsMatchStarted(true);
+    setArenaSubTab('arena');
+    playSuccessSound();
+    showToast(`🚀 Match Started! ${participants.length + 1} players competing.`, 'success');
+  };
+
+  // Leave battle / return to lobby
+  const handleLeaveToLobby = () => {
+    setIsMatchStarted(false);
+    setArenaSubTab('lobby');
+    showToast('Returned to Battle Hub Lobby.', 'info');
   };
 
   // Coding Submission Handler
@@ -348,59 +386,281 @@ export const BattleArenaView: React.FC = () => {
   return (
     <div className="space-y-4 max-w-6xl mx-auto pb-12 font-['Plus_Jakarta_Sans'] text-slate-100">
       {/* Top Banner Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0b101e] border border-cyan-500/25 rounded-2xl p-4 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0b101e] border border-rose-500/25 rounded-2xl p-4 shadow-xl relative overflow-hidden">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500/20 to-indigo-600/30 border border-rose-500/40 flex items-center justify-center text-rose-300 shadow-md">
             <Swords className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-extrabold text-white tracking-tight">Multiplayer Battle Arena</h1>
+              <h1 className="text-base font-extrabold text-white tracking-tight">Code Battles &amp; Live Multiplayer Arena</h1>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-950/60 text-rose-300 border border-rose-500/30 font-bold uppercase">
-                {battleTrack} Track
+                {isMatchStarted ? `${battleTrack} IN-PROGRESS` : 'LOBBY READY'}
               </span>
             </div>
-            <p className="text-xs text-slate-400">Synchronized live contests for classrooms, batches, and 1v1 speed duels</p>
+            <p className="text-xs text-slate-400">Host custom multiplayer contests for classrooms, batches, and speed duels</p>
           </div>
         </div>
 
         {/* Sub-tab Navigation */}
         <div className="p-1 rounded-xl bg-[#0e1424] border border-slate-800 flex gap-1 self-start sm:self-auto">
           <button
-            onClick={() => setArenaSubTab('arena')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              arenaSubTab === 'arena'
+            onClick={() => setArenaSubTab('lobby')}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              arenaSubTab === 'lobby'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Live Match
+            🎮 Battle Hub
           </button>
+
+          {isMatchStarted && (
+            <button
+              onClick={() => setArenaSubTab('arena')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                arenaSubTab === 'arena'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                  : 'text-rose-400 hover:text-rose-300 animate-pulse'
+              }`}
+            >
+              ⚔️ Active Match ({formatTimer(secondsLeft)})
+            </button>
+          )}
+
           <button
             onClick={() => setArenaSubTab('create_room')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
               arenaSubTab === 'create_room'
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-cyan-400 hover:text-cyan-300'
             }`}
           >
-            🛠️ Host / Teacher Custom Room
+            🛠️ Host / Create Room
           </button>
+
           <button
             onClick={() => setArenaSubTab('leaderboard')}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
               arenaSubTab === 'leaderboard'
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🏆 Live Roster ({participants.length + 1})
+            🏆 Leaderboard
           </button>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* VIEW A: TEACHER / HOST CREATE CUSTOM ROOM                 */}
+      {/* VIEW 1: BATTLE LOBBY & HUB (DEFAULT SCREEN)               */}
+      {/* ========================================================= */}
+      {arenaSubTab === 'lobby' && (
+        <div className="space-y-4 animate-in fade-in">
+          {/* Hero Welcome Card */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-[#0c1426] via-[#091020] to-[#060b16] border border-cyan-500/20 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="max-w-2xl space-y-2 relative z-10">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 uppercase">
+                Synchronized Battle Hub
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Compete Live in Multi-User Coding &amp; CS Duels
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Create a custom battle room as a teacher/instructor for your batch, or enter an invitation code to join peers in synchronized competitive rounds.
+              </p>
+            </div>
+          </div>
+
+          {/* Action Cards: Host vs Join vs Instant Duel */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Card 1: Host Room */}
+            <div className="p-5 rounded-3xl bg-[#0b101e] border border-cyan-500/30 hover:border-cyan-400 transition shadow-xl flex flex-col justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-10 w-10 rounded-2xl bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <School className="h-5 w-5" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">Host a Classroom Room</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  For teachers, instructors, or organizers. Pick your topic (Coding, CS MCQs, SQL), set room scale (up to 100+), and control when the contest begins.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setArenaSubTab('create_room')}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition"
+              >
+                <span>Configure &amp; Host Room</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Card 2: Join Existing Room */}
+            <div className="p-5 rounded-3xl bg-[#0b101e] border border-slate-800 hover:border-slate-700 transition shadow-xl flex flex-col justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-10 w-10 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-sky-400">
+                  <Gamepad2 className="h-5 w-5" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">Join Room with Code</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Have an invitation room code from your professor or peer? Enter it below to connect to their waiting lobby.
+                </p>
+
+                <div className="pt-1">
+                  <input
+                    type="text"
+                    placeholder="Enter Code (e.g. CODE-8492)"
+                    value={joinInputCode}
+                    onChange={(e) => setJoinInputCode(e.target.value.toUpperCase())}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#080d19] border border-slate-800 text-xs text-white placeholder-slate-500 font-mono outline-none focus:border-cyan-400"
+                  />
+                  {joinError && <p className="text-[11px] text-rose-400 mt-1 font-medium">{joinError}</p>}
+                </div>
+              </div>
+
+              <button
+                onClick={handleJoinCustomRoom}
+                className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center justify-center gap-2 transition"
+              >
+                <span>Connect &amp; Enter Room</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Card 3: Instant Solo 1v1 Quick Duel */}
+            <div className="p-5 rounded-3xl bg-[#0b101e] border border-slate-800 hover:border-rose-500/30 transition shadow-xl flex flex-col justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-10 w-10 rounded-2xl bg-rose-950/40 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <h3 className="text-sm font-extrabold text-white">Instant 1v1 Speed Duel</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Practice immediately in a rapid 5-minute head-to-head algorithm sprint against an AI competitor. No code required.
+                </p>
+              </div>
+
+              <button
+                onClick={handleStartQuickDuel}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md shadow-rose-600/30 flex items-center justify-center gap-2 transition"
+              >
+                <Swords className="h-3.5 w-3.5" />
+                <span>Start Instant 1v1 Match</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* VIEW 2: ROOM WAITING LOBBY (BEFORE MATCH STARTS)          */}
+      {/* ========================================================= */}
+      {arenaSubTab === 'waiting_room' && (
+        <div className="bg-[#0b101e] border border-cyan-500/30 rounded-3xl p-6 shadow-2xl space-y-6 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
+                  Waiting Room
+                </span>
+                <span className="text-xs text-slate-400 font-mono">Discipline: {battleTrack.toUpperCase()}</span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-black text-white mt-1">
+                Room Code: <span className="text-cyan-300 font-mono">{roomCode}</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                {isHost
+                  ? 'Share the room code with your students. When everyone is in, click "Start Battle" to unlock questions and begin the countdown.'
+                  : 'You have joined! Waiting for the instructor/host to start the contest.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyShareLink}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-2 transition"
+              >
+                {copiedCode ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                <span>{copiedCode ? 'Code Copied!' : 'Copy Room Code'}</span>
+              </button>
+
+              <button
+                onClick={handleLeaveToLobby}
+                className="px-4 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-bold border border-rose-500/30 flex items-center gap-1.5 transition"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Leave</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Connected Participants Roster */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-white flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-emerald-400" />
+                Connected Competitors ({participants.length + 1} / {roomCapacity})
+              </span>
+              <span className="text-slate-400 font-mono">Duration: {battleDurationMins} Mins • {battleTopic}</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-1">
+              <div className="p-3 rounded-2xl bg-cyan-950/40 border border-cyan-400/40 flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-cyan-400 text-slate-950 font-black text-xs flex items-center justify-center shrink-0">
+                  YOU
+                </div>
+                <div className="truncate">
+                  <div className="text-xs font-bold text-white truncate">You ({isHost ? 'Host' : 'Student'})</div>
+                  <div className="text-[10px] text-cyan-300 font-mono">🟢 Ready</div>
+                </div>
+              </div>
+
+              {participants.slice(0, 15).map((p) => (
+                <div key={p.id} className="p-3 rounded-2xl bg-[#0e1424] border border-slate-800 flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center shrink-0">
+                    {p.avatar}
+                  </div>
+                  <div className="truncate">
+                    <div className="text-xs font-bold text-slate-200 truncate">{p.name}</div>
+                    <div className="text-[10px] text-emerald-400 font-mono">🟢 Connected</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Trigger */}
+          <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-slate-400 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>
+                {isHost
+                  ? 'All competitor sockets connected. Ready to initiate simultaneous start.'
+                  : 'Waiting for room creator to launch the contest...'}
+              </span>
+            </div>
+
+            {isHost ? (
+              <button
+                onClick={handleHostStartMatch}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-xl shadow-teal-600/30 flex items-center justify-center gap-2 transition transform active:scale-95"
+              >
+                <Play className="h-4 w-4 fill-white" />
+                <span>START BATTLE FOR ALL PLAYERS NOW</span>
+              </button>
+            ) : (
+              <div className="px-5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-mono text-slate-300 flex items-center gap-2">
+                <Lock className="h-3.5 w-3.5 text-amber-400" />
+                <span>Host Controls Starting Gate</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* VIEW 3: TEACHER / HOST CREATE CUSTOM ROOM                 */}
       {/* ========================================================= */}
       {arenaSubTab === 'create_room' && (
         <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-6 animate-in fade-in">
@@ -414,9 +674,12 @@ export const BattleArenaView: React.FC = () => {
                 Configure custom battle rooms tailored for specific subjects, class sizes, timers, and difficulty levels.
               </p>
             </div>
-            <div className="px-3 py-1.5 rounded-xl bg-[#0e1424] border border-cyan-500/40 font-mono text-xs font-bold text-cyan-300">
-              Active Room: {roomCode}
-            </div>
+            <button
+              onClick={() => setArenaSubTab('lobby')}
+              className="text-xs text-slate-400 hover:text-white font-bold"
+            >
+              Cancel
+            </button>
           </div>
 
           {/* 1. TEACHER CHOICE: BATTLE TRACK DISCIPLINE */}
@@ -554,40 +817,21 @@ export const BattleArenaView: React.FC = () => {
             </div>
           </div>
 
-          {/* LAUNCH BUTTON & JOIN BY CODE */}
-          <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* LAUNCH BUTTON */}
+          <div className="pt-3 border-t border-slate-800 flex justify-end">
             <button
               onClick={() => handleCreateRoom(roomCapacity)}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition transform active:scale-95"
+              className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition transform active:scale-95"
             >
               <Zap className="h-4 w-4" />
-              <span>LAUNCH {battleTrack.toUpperCase()} ROOM NOW</span>
+              <span>CREATE ROOM &amp; OPEN WAITING LOBBY ➔</span>
             </button>
-
-            {/* Join Room Code Input */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input
-                type="text"
-                placeholder="Enter Code (e.g. CODE-8492)"
-                value={joinInputCode}
-                onChange={(e) => setJoinInputCode(e.target.value.toUpperCase())}
-                className="px-3.5 py-2.5 rounded-xl bg-[#080d19] border border-slate-800 text-xs text-white placeholder-slate-500 font-mono outline-none focus:border-cyan-400"
-              />
-              <button
-                onClick={handleJoinCustomRoom}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700"
-              >
-                Join
-              </button>
-            </div>
           </div>
-
-          {joinError && <p className="text-xs text-rose-400 font-medium">⚠️ {joinError}</p>}
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* VIEW B: LIVE LEADERBOARD VIEW                             */}
+      {/* VIEW 4: LIVE LEADERBOARD VIEW                             */}
       {/* ========================================================= */}
       {arenaSubTab === 'leaderboard' && (
         <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-6 shadow-xl space-y-4 animate-in fade-in">
@@ -598,7 +842,7 @@ export const BattleArenaView: React.FC = () => {
                 <span>Live Arena Leaderboard • Top Competitors</span>
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Real-time standings for {participants.length + 1} players in Room {roomCode} ({battleTrack.toUpperCase()})
+                Standings for Room {roomCode} ({battleTrack.toUpperCase()})
               </p>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-indigo-950/60 border border-indigo-500/40">
@@ -664,20 +908,20 @@ export const BattleArenaView: React.FC = () => {
 
           <div className="text-center pt-2">
             <button
-              onClick={() => setArenaSubTab('arena')}
+              onClick={() => setArenaSubTab(isMatchStarted ? 'arena' : 'lobby')}
               className="text-xs text-sky-400 hover:text-sky-300 font-bold"
             >
-              ← Back to Battle Arena
+              ← Back to {isMatchStarted ? 'Live Contest' : 'Lobby'}
             </button>
           </div>
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* VIEW C: LIVE CONTEST ARENA                                */}
+      {/* VIEW 5: ACTIVE LIVE CONTEST ARENA                         */}
       {/* ========================================================= */}
-      {arenaSubTab === 'arena' && (
-        <div className="space-y-4">
+      {arenaSubTab === 'arena' && isMatchStarted && (
+        <div className="space-y-4 animate-in fade-in">
           {/* Header Matchup Bar */}
           <div className="bg-[#0b101e] border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
             {/* Player Info (You) */}
@@ -698,7 +942,7 @@ export const BattleArenaView: React.FC = () => {
               </div>
             </div>
 
-            {/* Center: Live Timer & Track Badge */}
+            {/* Center: Live Countdown Timer & Track Badge */}
             <div className="flex flex-col items-center">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 uppercase">
@@ -717,16 +961,21 @@ export const BattleArenaView: React.FC = () => {
 
             {/* Room Code & 1-Click Share Button */}
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <div className="text-right mr-1 hidden sm:block">
-                <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Room Code</div>
-                <div className="text-xs font-mono font-black text-cyan-300">{roomCode}</div>
-              </div>
               <button
                 onClick={handleCopyShareLink}
                 className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-700 transition"
               >
                 {copiedCode ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                 <span>{copiedCode ? 'Link Copied!' : 'Share Room'}</span>
+              </button>
+
+              <button
+                onClick={handleLeaveToLobby}
+                className="px-3 py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-bold border border-rose-500/30 flex items-center gap-1 transition"
+                title="Leave battle"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>End</span>
               </button>
             </div>
           </div>
