@@ -4,7 +4,7 @@ from sqlalchemy import func
 from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token, decode_token
 from app.api.v1.deps import get_current_user, get_current_admin
-from app.models.models import User, Profile, Subtopic, Submission, LoginHistory
+from app.models.models import User, Profile, Subtopic, Submission, LoginHistory, AnalyticsEvent
 from app.schemas.schemas import UserRegister, UserLogin, TokenResponse, TokenRefresh, UserResponse, OnboardingRequest, ProfileResponse, GoogleLoginRequest, StudentAdminResponse, StudentProgressResponse
 import httpx
 import secrets
@@ -17,8 +17,10 @@ router = APIRouter()
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
     clean_email = user_in.email.strip().lower()
     
-    # Check if user already exists (case-insensitive)
-    user = db.query(User).filter(func.lower(User.email) == clean_email).first()
+    # Fast indexed lookup first, fallback to case-insensitive lower()
+    user = db.query(User).filter(User.email == clean_email).first()
+    if not user:
+        user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     if user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -33,8 +35,7 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         is_admin=False
     )
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    db.flush()  # Assigns new_user.id in memory without extra disk commit
 
     # Initialize candidate profile for this specific user
     default_name = user_in.name.strip() if (user_in.name and user_in.name.strip()) else clean_email.split("@")[0].replace(".", " ").title()
@@ -55,11 +56,21 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         communication_level=0.0
     )
     db.add(profile)
+
+    # Record analytics in same atomic batch
+    try:
+        event = AnalyticsEvent(
+            user_id=new_user.id,
+            event_type="user_signed_up",
+            metadata_json={"email": new_user.email, "role": "student"}
+        )
+        db.add(event)
+    except Exception:
+        pass
+
+    # Single atomic commit for instant high-speed persistence
     db.commit()
     db.refresh(new_user)
-
-    # Record analytics
-    record_analytics_event(db, "user_signed_up", new_user.id, {"email": new_user.email, "role": "student"})
 
     # Generate tokens
     access_token = create_access_token(data={"sub": str(new_user.id)})
@@ -78,22 +89,36 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     )
 
 def log_login_event(db: Session, user_id, auth_provider: str, request: Request):
-    ip_address = request.client.host if request.client else "unknown"
-    device_info = request.headers.get("user-agent", "Unknown Device")
-    log = LoginHistory(
-        user_id=user_id,
-        auth_provider=auth_provider,
-        ip_address=ip_address,
-        device_info=device_info
-    )
-    db.add(log)
-    db.commit()
-    record_analytics_event(db, "user_logged_in", user_id, {"auth_provider": auth_provider, "ip": ip_address})
+    try:
+        ip_address = request.client.host if request.client else "unknown"
+        device_info = request.headers.get("user-agent", "Unknown Device")
+        log = LoginHistory(
+            user_id=user_id,
+            auth_provider=auth_provider,
+            ip_address=ip_address,
+            device_info=device_info
+        )
+        event = AnalyticsEvent(
+            user_id=user_id,
+            event_type="user_logged_in",
+            metadata_json={"auth_provider": auth_provider, "ip": ip_address}
+        )
+        db.add(log)
+        db.add(event)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        # Telemetry should never block authentication flow
+        print(f"Warning: Failed to log login event: {e}")
 
 @router.post("/login", response_model=TokenResponse)
 def login(user_in: UserLogin, request: Request, db: Session = Depends(get_db)):
     clean_email = user_in.email.strip().lower()
-    user = db.query(User).filter(func.lower(User.email) == clean_email).first()
+    
+    # Fast indexed lookup first, fallback to case-insensitive lower()
+    user = db.query(User).filter(User.email == clean_email).first()
+    if not user:
+        user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     
     if not user:
         raise HTTPException(

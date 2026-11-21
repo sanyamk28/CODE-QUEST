@@ -34,7 +34,8 @@ const ViewLoadingFallback: React.FC = () => (
 
 import { Smartphone, Monitor, Sparkles } from 'lucide-react';
 import { ToastContainer } from './components/Toast';
-import { QuestChatbot } from './components/QuestChatbot';
+
+const QuestChatbot = React.lazy(() => import('./components/QuestChatbot').then(m => ({ default: m.QuestChatbot })));
 
 export const App: React.FC = () => {
   // Global user state initialized from localStorage
@@ -42,7 +43,7 @@ export const App: React.FC = () => {
   const [targetRole, setTargetRole] = useState<string>(() => localStorage.getItem('cq_target_role') || '');
   const [streak, setStreak] = useState<number>(1);
   const [activeTab, setActiveTab] = useState<ActiveTabType>('dashboard');
-  
+
   // Real login verification - demo/guest tokens are invalidated
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     const token = localStorage.getItem('cq_token');
@@ -347,11 +348,13 @@ export const App: React.FC = () => {
         </main>
 
         {/* 24/7 AI Mentor Chatbot (shown on all screens except coding arena, mcq, and brainteasers) */}
-        <QuestChatbot
-          activeTab={activeTab}
-          userName={userName}
-          targetRole={targetRole}
-        />
+        <React.Suspense fallback={null}>
+          <QuestChatbot
+            activeTab={activeTab}
+            userName={userName}
+            targetRole={targetRole}
+          />
+        </React.Suspense>
 
         {/* Fixed Mobile Bottom Navigation Bar (rendered on mobile) */}
         <div className="md:hidden">
