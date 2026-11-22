@@ -388,7 +388,13 @@ export const BattleArenaView: React.FC = () => {
     if (!isMatchStarted || arenaSubTab !== 'arena' || isBattleWon) return;
 
     const timerInterval = setInterval(() => {
-      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          setIsBattleWon(true);
+          return 0;
+        }
+        return s - 1;
+      });
     }, 1000);
 
     // Dynamic peer progress simulation during active match
@@ -478,6 +484,8 @@ export const BattleArenaView: React.FC = () => {
     setUserScore(0);
     setUserTestsPassed(0);
     setMcqIdx(0);
+    setMcqStreak(0);
+    setIsBattleWon(false);
     setIsHost(true);
     setIsMatchStarted(false);
     setArenaSubTab('waiting_room');
@@ -522,6 +530,11 @@ export const BattleArenaView: React.FC = () => {
     else setBattleTrack('coding');
 
     setParticipants([]);
+    setUserScore(0);
+    setUserTestsPassed(0);
+    setMcqIdx(0);
+    setMcqStreak(0);
+    setIsBattleWon(false);
     setIsHost(false);
     setIsMatchStarted(false);
     setArenaSubTab('waiting_room');
@@ -556,6 +569,11 @@ export const BattleArenaView: React.FC = () => {
     setBattleTopic('DSA Speed Sprint');
     setSecondsLeft(300); // 5 min
     setParticipants(generate100Players().slice(0, 1));
+    setUserScore(0);
+    setUserTestsPassed(0);
+    setMcqIdx(0);
+    setMcqStreak(0);
+    setIsBattleWon(false);
     setIsHost(true);
     setIsMatchStarted(true);
     setArenaSubTab('arena');
@@ -578,6 +596,7 @@ export const BattleArenaView: React.FC = () => {
       }));
     }
 
+    setIsBattleWon(false);
     setIsMatchStarted(true);
     setArenaSubTab('arena');
     playSuccessSound();
@@ -593,6 +612,12 @@ export const BattleArenaView: React.FC = () => {
       wsRef.current = null;
     }
     setIsMatchStarted(false);
+    setIsBattleWon(false);
+    setUserScore(0);
+    setUserTestsPassed(0);
+    setMcqIdx(0);
+    setMcqStreak(0);
+    setSubmissionFeedback(null);
     setArenaSubTab('lobby');
     showToast('Returned to Battle Hub Lobby.', 'info');
   };
