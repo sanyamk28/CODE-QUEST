@@ -464,6 +464,8 @@ class BattleRoomCreate(BaseModel):
     problem_id: Optional[str] = None
     difficulty: Optional[str] = "Easy"
     max_players: int = 100
+    room_code: Optional[str] = None
+    track: Optional[str] = "coding"
 
 class BattleRoomJoin(BaseModel):
     room_code: str
@@ -471,6 +473,8 @@ class BattleRoomJoin(BaseModel):
 class BattleParticipantResponse(BaseModel):
     user_id: UUID
     user_name: str
+    college: Optional[str] = "Student"
+    avatar: Optional[str] = "ST"
     has_passed: bool
     score: int
     joined_at: datetime

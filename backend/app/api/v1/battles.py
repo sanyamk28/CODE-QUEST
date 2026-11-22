@@ -183,14 +183,58 @@ def create_battle_room(
         if payload.difficulty:
             query = query.filter(models.Question.difficulty == payload.difficulty)
         problem = query.first()
+        if not problem:
+            problem = db.query(models.Question).first()
 
-    room_code = generate_room_code()
-    attempts = 0
-    while db.query(models.BattleRoom).filter(models.BattleRoom.room_code == room_code).first() and attempts < 10:
-        room_code = generate_room_code()
-        attempts += 1
-    if attempts >= 10:
-        room_code = uuid.uuid4().hex[:6].upper()
+    if payload.room_code and payload.room_code.strip():
+        room_code = payload.room_code.strip().upper()
+        # If this room already exists for this host in waiting state, reuse it
+        existing_room = db.query(models.BattleRoom).filter(
+            models.BattleRoom.room_code == room_code,
+            models.BattleRoom.host_id == current_user.id,
+            models.BattleRoom.status == "waiting"
+        ).first()
+        if existing_room:
+            participants_res = []
+            for p in existing_room.participants:
+                p_user = p.user
+                p_name = p_user.profile.name if p_user and p_user.profile and p_user.profile.name else (p_user.email.split('@')[0] if p_user else "Player")
+                p_college = p_user.profile.college if p_user and p_user.profile and p_user.profile.college else "Student"
+                p_avatar = (p_name[:2]).upper() if p_name else "PL"
+                participants_res.append(schemas.BattleParticipantResponse(
+                    user_id=p.user_id,
+                    user_name=p_name,
+                    college=p_college,
+                    avatar=p_avatar,
+                    has_passed=p.has_passed,
+                    score=p.score,
+                    joined_at=p.joined_at
+                ))
+            return schemas.BattleRoomResponse(
+                id=existing_room.id,
+                room_code=existing_room.room_code,
+                host_id=existing_room.host_id,
+                problem_id=existing_room.problem_id,
+                status=existing_room.status,
+                max_players=existing_room.max_players,
+                created_at=existing_room.created_at,
+                participants=participants_res,
+                problem=format_battle_problem_list(existing_room.problem),
+                problem_detail=format_battle_problem_detail(existing_room.problem)
+            )
+    else:
+        track_prefix = "CODE"
+        if getattr(payload, 'track', '') == "mcq":
+            track_prefix = "QUIZ"
+        elif getattr(payload, 'track', '') == "sql":
+            track_prefix = "SQL"
+        room_code = f"{track_prefix}-{generate_room_code()[:4]}"
+        attempts = 0
+        while db.query(models.BattleRoom).filter(models.BattleRoom.room_code == room_code).first() and attempts < 10:
+            room_code = f"{track_prefix}-{generate_room_code()[:4]}"
+            attempts += 1
+        if attempts >= 10:
+            room_code = f"{track_prefix}-{uuid.uuid4().hex[:4].upper()}"
 
     room = models.BattleRoom(
         room_code=room_code,
@@ -222,10 +266,16 @@ def create_battle_room(
         metadata={"room_code": room_code, "room_id": str(room.id)}
     )
 
+    p_name = current_user.profile.name if current_user.profile and current_user.profile.name else current_user.email.split('@')[0]
+    p_college = current_user.profile.college if current_user.profile and current_user.profile.college else "Student"
+    p_avatar = (p_name[:2]).upper() if p_name else "YO"
+
     participants_res = [
         schemas.BattleParticipantResponse(
             user_id=current_user.id,
-            user_name=current_user.profile.name if current_user.profile else current_user.email.split('@')[0],
+            user_name=p_name,
+            college=p_college,
+            avatar=p_avatar,
             has_passed=False,
             score=0,
             joined_at=participant.joined_at
@@ -281,13 +331,22 @@ async def join_battle_room(
 
     db.refresh(room)
 
-    user_name = current_user.profile.name if current_user.profile else current_user.email.split('@')[0]
+    user_name = current_user.profile.name if current_user.profile and current_user.profile.name else current_user.email.split('@')[0]
+    college = current_user.profile.college if current_user.profile and current_user.profile.college else "Student"
+    avatar = (user_name[:2]).upper() if user_name else "PL"
     
     # Broadcast player_joined event to WebSocket room
     await battle_manager.broadcast_to_room(
         room_code=room.room_code,
         event_type="player_joined",
-        data={"user_id": str(current_user.id), "user_name": user_name}
+        data={
+            "user_id": str(current_user.id),
+            "user_name": user_name,
+            "college": college,
+            "avatar": avatar,
+            "score": 0,
+            "test_cases_passed": 0
+        }
     )
 
     # Record analytics
@@ -301,10 +360,14 @@ async def join_battle_room(
     participants_res = []
     for p in room.participants:
         p_user = p.user
-        p_name = p_user.profile.name if p_user and p_user.profile else (p_user.email.split('@')[0] if p_user else "Player")
+        p_name = p_user.profile.name if p_user and p_user.profile and p_user.profile.name else (p_user.email.split('@')[0] if p_user else "Player")
+        p_college = p_user.profile.college if p_user and p_user.profile and p_user.profile.college else "Student"
+        p_avatar = (p_name[:2]).upper() if p_name else "PL"
         participants_res.append(schemas.BattleParticipantResponse(
             user_id=p.user_id,
             user_name=p_name,
+            college=p_college,
+            avatar=p_avatar,
             has_passed=p.has_passed,
             score=p.score,
             joined_at=p.joined_at
@@ -402,10 +465,14 @@ def get_battle_room(
     participants_res = []
     for p in room.participants:
         p_user = p.user
-        p_name = p_user.profile.name if p_user and p_user.profile else (p_user.email.split('@')[0] if p_user else "Player")
+        p_name = p_user.profile.name if p_user and p_user.profile and p_user.profile.name else (p_user.email.split('@')[0] if p_user else "Player")
+        p_college = p_user.profile.college if p_user and p_user.profile and p_user.profile.college else "Student"
+        p_avatar = (p_name[:2]).upper() if p_name else "PL"
         participants_res.append(schemas.BattleParticipantResponse(
             user_id=p.user_id,
             user_name=p_name,
+            college=p_college,
+            avatar=p_avatar,
             has_passed=p.has_passed,
             score=p.score,
             joined_at=p.joined_at
@@ -568,16 +635,18 @@ import html
 
 @router.websocket("/ws/{room_code}")
 async def battle_websocket_endpoint(websocket: WebSocket, room_code: str):
-    room_code = "".join([c for c in room_code.upper() if c.isalnum()])[:8]
+    room_code = "".join([c for c in room_code.upper() if c.isalnum() or c == '-'])[:16]
     raw_uid = websocket.query_params.get("user_id", str(uuid.uuid4()))
     user_id = "".join([c for c in raw_uid if c.isalnum() or c in "-_"])[:64]
     user_name = html.escape(websocket.query_params.get("user_name", "Player"))[:32]
+    user_college = html.escape(websocket.query_params.get("college", "Student"))[:48]
+    user_avatar = (user_name[:2]).upper() if user_name else "PL"
     
     await battle_manager.connect(room_code, user_id, websocket)
     await battle_manager.broadcast_to_room(
         room_code=room_code,
         event_type="player_connected",
-        data={"user_id": user_id, "user_name": user_name}
+        data={"user_id": user_id, "user_name": user_name, "college": user_college, "avatar": user_avatar}
     )
     try:
         while True:
@@ -590,7 +659,13 @@ async def battle_websocket_endpoint(websocket: WebSocket, room_code: str):
                 action = payload.get("action")
                 if action == "ping":
                     await websocket.send_text(json.dumps({"event": "pong"}))
-                elif action in ["code_progress", "test_update", "chat_message", "player_ready", "taunt", "surrender"]:
+                elif action == "start_battle":
+                    await battle_manager.broadcast_to_room(
+                        room_code=room_code,
+                        event_type="battle_started",
+                        data={"room_code": room_code}
+                    )
+                elif action in ["code_progress", "test_update", "chat_message", "player_ready", "player_joined", "taunt", "surrender"]:
                     # Rate-limiting for 100+ players: throttle progress broadcasts to at most once per second per user
                     now = time.time()
                     throttle_key = f"{room_code}:{user_id}:{action}"
